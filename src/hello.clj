@@ -35,6 +35,32 @@
 ; FYI - print-table is 20 lines of code
 (pp/print-table [(crux/entity (db) :ids.people/Charles)])
 
+(pp/print-table [:person/name :person/location
+                 :person/born :person/str
+                 :person/int :person/dex
+                 :person/hp]
+                [(crux/entity (db) :ids.people/Charles)])
+
+; suggest something like:
+(comment
+
+  ; set up the heading
+  (def person-headings [{:col-heading {:person/name "Name"}
+                         :cell-validator #(String? %)
+                         :cell-style {:text-color :white
+                                      :text-weight :bold
+                                      :bkgrn-color :green}
+                         ...}
+
+                        {:tbl-heading {:person/born "DoB"}}
+                        ...])
+
+  ; then construct the table
+  (r/table-component person-headings (data-from-source ...))
+
+  ())
+
+
 
 
 (crux/q (db) '{:find  [?id]
@@ -48,23 +74,57 @@
                        [?id :person/name ?name]]})
 
 
-(defn reg-find [db r]
-      (crux/q db {:find  ['?id]
-                  :where [[(re-find r '?name)]
-                          ['?id :person/name '?name]]
-                  :args [('regex r)]}))
-(reg-find (db) #"J")
+(defn find-attr [db attr]
+  (crux/q db {:find  ['?id '?attr]
+              :where [['?id attr '?attr]]}))
+
+(find-attr (db) :person/name)
 
 
-(defn age-find [db a]
-  (crux/q db {:find  '[?age]
-              :where '[[(>= ?age 21)]]
+
+(defn str-find [db s]
+  (crux/q db {:find  '[?e]
+              :where '[[?e :person/str ?s]
+                       [(>= ?s ?str)]]
               :args (into []
-                          (for [i a]
-                            {'?age i}))}))
-(age-find (db) [22 23 20])
+                          (for [i s]
+                            {'?str i}))}))
+(str-find (db) [40])
+
+(defn dex-find [db s]
+  (crux/q db {:find  '[?e]
+              :where '[[?e :person/dex ?s]
+                       [(>= ?s ?str)]]
+              :args (into []
+                          (for [i s]
+                            {'?str i}))}))
+(dex-find (db) [55])
 
 
 
+
+
+
+
+
+
+; still working on this one...
+(defn reg-find [db attr reg]
+  (crux/q db {:find  ['?id]
+              :where [['?id attr '?attr]
+                      [(re-find reg '?attr)]]}))
+(reg-find (db) :person/name #"J")
+
+
+(re-find #"J" "Nothing to see")
+(re-find #"J" "Nothing to Jump")
+(re-find #"J" "Jumping to Jump")
+
+(defn r-find [reg val]
+  (re-find reg val))
+
+(r-find #"J" "Nothing to see")
+(r-find #"J" "Nothing to Jump")
+(r-find #"J" "Jumping to Jump")
 
 
