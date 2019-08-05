@@ -32,7 +32,7 @@
 
 
 
-; FYI - print-table is 20 lines of code
+; FYI - print-table is 20 lines of code [f-1]
 (pp/print-table [(crux/entity (db) :ids.people/Charles)])
 
 (pp/print-table [:person/name :person/location
