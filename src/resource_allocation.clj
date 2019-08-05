@@ -11,6 +11,11 @@
 ; requests made by a set of requestors
 ;
 
+
+
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;
 ; Additional activities
 ;
@@ -28,12 +33,10 @@
 
 
 
-
-
-(def plans {:a [[0 0] [0 1]]
-            :b [[1 0] [2 0]]
-            :c [[1 1] [2 1] [2 2]]
-            :d [[0 2] [0 3] [1 2] [1 3]]})
+(def requests {:a [[0 0] [0 1]]
+               :b [[1 0] [2 0]]
+               :c [[1 1] [2 1] [2 2]]
+               :d [[0 2] [0 3] [1 2] [1 3]]})
 
 
 ; the very simplest approach possible: fixed unit grid, specif exactly
@@ -44,41 +47,51 @@
   ()
   (in-ns 'resource-allocation)
 
-
+  ;
+  ; simplest model I can think of: fixed grid of unit elements
+  ; indexed by "x & y", in this can "channels" and "time-slots"
+  ;
   (defn fixed-unit-grid [channels time-periods]
     (vec (repeat time-periods (vec (repeat channels :_)))))
 
+  ;
+  ; simple algorithm to apply the resources: stick the requestor-id into the slot
+  ;
   (defn populate
         "Assigns each of the cells specified as [channel time-unit]
         coordinates to the given val."
-    [grid val request-cells]
+    [grid requestor-id request-cells]
     (reduce (fn [g [ch t]]
-              (assoc-in g [t ch] val))
+              (assoc-in g [t ch] requestor-id))
             grid request-cells))
 
   (populate (fixed-unit-grid 3 4) :a [[0 0] [1 2]])
 
 
-  (defn apply-plans [plans grid]
+  ;
+  ; something that can apply a whole collection of requests
+  (defn apply-plans [requests grid]
     "apply a map of plans to the grid, updating recursively
         NOTE: last one wins - i.e., only 1 plan can occupy a slot in
         the grid"
-    (if (empty? plans)
+    (if (empty? requests)
       grid
-      (let [[p coordinates] (first plans)]
-        (recur (rest plans) (populate grid p coordinates)))))
+      (let [[p coordinates] (first requests)]
+        (recur (rest requests) (populate grid p coordinates)))))
+
+
+  (def request-2 {:e [[0 4] [1 4] [2 4]]
+                  :f [[4 4] [5 4] [4 5] [5 5] [6 4] [6 5]]})
+
+  (apply-plans requests (fixed-unit-grid 3 4))
+  (apply-plans (merge requests request-2) (fixed-unit-grid 10 10))
 
 
 
-
-  (def plan-2 {:e [[0 4] [1 4] [2 4]]
-               :f [[4 4] [5 4] [4 5] [5 5] [6 4] [6 5]]})
-
-  (apply-plans plans (fixed-unit-grid 3 4))
-  (apply-plans (merge plans plan-2) (fixed-unit-grid 10 10))
-
-
-
+  ;
+  ;let's check to see if we get the result we expect (for this single case)
+  ;    (we'll use test.check for generative testing later)
+  ;
   (def sample-grid [[:a :b :b]
                     [:a :c :c]
                     [:d :d :c]
@@ -98,36 +111,47 @@
   ;    we'll change (apply-plans ...) to take a function (for populate)
   ;    as the first param
 
+  ;
   ; we also need to change (fixed-unit-grid ...) to pass in the "empty value"
   ; so we have a solid foundation
+  ;
   (defn fixed-unit-grid-2 [channels time-periods empty-val]
     (vec (repeat time-periods (vec (repeat channels empty-val)))))
 
   (fixed-unit-grid-2 3 4 #{})
 
+  ;
+  ; fixing populate to add the requestor-id into a set with the id's
+  ; of other requestors as the means of allocation
+  ;
   (defn populate-2
         "Assigns each of the cells specified as [channel time-unit]
         coordinates to the given val."
-    [grid val request-cells]
+    [grid requestor-id request-cells]
     (reduce (fn [g [ch t]]
-              (assoc-in g [t ch] (merge (get-in g [t ch]) val)))
+              (assoc-in g [t ch] (merge (get-in g [t ch]) requestor-id)))
             grid request-cells))
 
   (populate-2 (fixed-unit-grid-2 3 4 #{}) :a [[0 0] [1 2]])
 
-
-  (defn apply-plans-2 [pop-fn grid plans]
+  ;
+  ; all we need to do now is pass all the new params into the new populate-2
+  ; function
+  ;
+  (defn apply-plans-2 [pop-fn grid requests]
     "apply a map of plans to the grid, updating recursively
         NOTE: last one wins - i.e., only 1 plan can occupy a slot in
         the grid"
-    (if (empty? plans)
+    (if (empty? requests)
       grid
-      (let [[p coordinates] (first plans)]
-        (recur pop-fn (pop-fn grid p coordinates) (rest plans)))))
+      (let [[p coordinates] (first requests)]
+        (recur pop-fn (pop-fn grid p coordinates) (rest requests)))))
 
+  ;
   ; we'll do that by making each cell be a set #{} of the plans that
   ; want to use it
-  (apply-plans-2 populate-2 (fixed-unit-grid-2 3 4 #{}) plans)
+  ;
+  (apply-plans-2 populate-2 (fixed-unit-grid-2 3 4 #{}) requests)
 
   (def sample-grid-2 [[#{:a} #{:b} #{:b}]
                       [#{:a} #{:c} #{:c}]
@@ -141,11 +165,18 @@
 
   ; this should return FALSE!!!!
   (= (apply-plans-2 populate-2
-                    (merge plans overlapping-plan)
+                    (merge requests overlapping-plan)
                     (fixed-unit-grid-2 3 4 #{}))
      sample-grid-2)
 
 
+  ;
+  ; we can tell if the requests "work" if there are no allocation "sets"
+  ; with more than 1 id in it
+  ;
+  ; (we'll figure out if there are ever situations where this invariant
+  ;  might not hold)
+  ;
   (defn validate-grid [pred-fn extract-fn grid]
     "validate that the given grid
     works, i.e., no sets that violate the pred(icate) function"
@@ -192,31 +223,44 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;
   ; now we can start looking at our request problem
 
-  ; make some plan names (keyword)
+  ;
+  ; make some requestor names (keyword)
+  ;
+  (def gen-requestor-name gen/keyword)
+  (gen/sample gen-requestor-name)
 
-  (def gen-plan-name gen/keyword)
-  (gen/sample gen-plan-name)
-
+  ;
   ; now some channel assignments (vector of int)
+  ;
   (def gen-chan-req (gen/tuple gen/nat gen/nat))
   (gen/sample gen-chan-req)
 
+  ;
+  ; sets of requests
+  ;
   (def gen-requests (gen/not-empty (gen/vector gen-chan-req)))
   (gen/sample gen-requests)
 
-  (def gen-plan-reqs (gen/map gen-plan-name gen-requests))
+  ;
+  ; and now hook a requestor name onto it
+  ;
+  (def gen-plan-reqs (gen/map gen-requestor-name gen-requests))
   (gen/sample gen-plan-reqs)
 
 
+  ;
   ; find the max number of time-slots we need to fit all a plan
   ;    we can use this to size a "fixed grid" to fit all the plans
-  (defn max-ts [plan]
+  ;
+  ; not sure yet how (or where) this might be useful...
+  ;
+  (defn max-ts [request]
     "find the max number of time-slots we need to fit all a plan"
-    (if (empty? plan)
+    (if (empty? request)
       0
       (apply max
              (first
-               (for [[p reqs] plan]
+               (for [[p reqs] request]
                  (if (empty? reqs)
                    '(0)
                    (for [[_ ts] reqs]
@@ -302,56 +346,31 @@
 
 
 
-(comment                                                    ; re-thinking this whole approach (thanks Rich)
-
-  (defn check-plans [apply-fn plans grid-fn channels empty-marker pop-fn max-value]
-    (let [ts   (max-ts plans)
-          grid (grid-fn channels ts empty-marker)]
-      (map (fn [p]
-             (->> p
-                  (apply-fn pop-fn grid)
-                  (validate-grid max-value)))
-           plans)))
-
-
-  (let [ts   (max-ts [{} {:q+ [[1 3]]}])
-        grid (fixed-unit-grid-2 10 ts #{})]
-    (map (fn [p]
-           (->> p
-                (apply-plans-2 populate-2 grid)
-                (validate-grid 1)))
-         [{} {:q+ [[1 3]]}]))
-
-
-  (check-plans apply-plans-2
-               [{} {:q+ [[1 1]]}]
-               fixed-unit-grid-2 10 #{}
-               populate-2
-               1)
-
-  ; note: we can only handle 10 generated plans, as they start getting too big
-  ; for the 10x10 grid we are using
-  (check-plans apply-plans-2
-               (gen/sample gen-plan-reqs 10)
-               (fixed-unit-grid-2 10 10 #{})
-               populate-2
-               1)
-
-
-
-  ; we should test a grid to see if it passes some predicate
-
-  (defn check-grid [pred grid])
+;;;;;;;;;;;;;;;;;;;;;
+; next considerations
+;
+; take a more 'Datomic' approach and return not just the updated grid, but
+;      1) the :before-grid
+;      2) the :after-grid
+;      3) requests that were satisfied (and what slots they were assigned[1])
+;      4) requests that were NOT satisfied AND why
+;
+; [1] in cases where a request is flexible as to the resource[2], we may want
+;     to know where it actually got assigned
+;
+; [2] we need a way to describe this "flexibility" such that a request could
+;     have multiple channel(sets) with this flexibility (so a simple '_' won't
+;     work as we need to distinguish between the 'groups'
 
 
 
 
 
-  ())
 
 
 
 (comment
+  ; from Stu's "Clojure in 10 Big Ideas" (Chicago 2017)
 
   (defn foo
         [n]
@@ -366,9 +385,12 @@
 
   ())
 
+
+
 ;;;;;;;;;;;;;;;;;;;;
 ; FUTURE EXPERIMENTS
-
+;       - less important than getting the mechanism correct
+;
 ; 1) infinite time slots - we plan for the future and it is infinite
 ;
 ; 2) non-unit resources - "channels" may be fixed size and position, but not
