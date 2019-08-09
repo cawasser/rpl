@@ -11,6 +11,8 @@
 ;
 ;
 
+{:namespace "allocation-try-2"
+ :public-api ["fixed-unit-grid-2" "test-requests" "retract-requests"]}
 
 ;;;;;;;;;;;;;;;;;;;;;
 ; A working solution
@@ -19,11 +21,16 @@
 ;
 ; 2) then scan for requests that overlap
 ;
-;      a) requests that do are marked as "rejected"
+;      a) requests that do overlap are marked as "rejected"
 ;
-;      b) requests that don't are marked as "satisfied"
+;      b) requests that don't overlap are marked as "satisfied"
 ;
 ; 3) back out any contested slots, so the final grid is acceptable
+;
+; 4) we also need to retract requests from the grid, because conditions
+;    may change and resources are no longer needed
+;
+
 
 
 
@@ -34,14 +41,14 @@
 ;       in the 'input' grid - this due to how check-rejected works: it doesn't
 ;       have enough info to figure this out
 ;
-;       RESOLVED? - change remove-rejects to set any bad slots back
+;       RESOLVED - change remove-rejects to set any bad slots back
 ;       to the original value. works in one case, but needs lots more testing
 ;
 ;
 ;    b) subsequent invocations prove not just the most recent set of
 ;       "satisfactions", but ALL of them, which isn't exactly what I want
 ;
-;       RESOLVED? - change check-satisfied to not include slots that haven't
+;       RESOLVED - change check-satisfied to not include slots that haven't
 ;       changed from the original
 ;
 ;    c) do we really want to make (test-requests...) threadable? ie, do we
@@ -50,7 +57,7 @@
 ;
 ;       how realistic it that is actual practice?
 ;
-;      RESOLVED - no threading!
+;       RESOLVED - no threading!
 ;
 ;    d) let's get some spec going, so we can generate some tests
 ;
@@ -76,7 +83,6 @@
   "Assigns each of the cells specified as [channel time-unit]
   coordinates to the given val
 
-
       returns - an updated grid"
   [grid requestor-id request-cells]
   (reduce (fn [g [ch t]]
@@ -85,7 +91,7 @@
 
 
 (defn- apply-requests-2 [pop-fn grid requests]
-  "apply a map of plans to the grid, updating recursively
+  "apply a map of requests to the grid, updating recursively
       NOTE: last one wins - i.e., only 1 plan can occupy a slot in
       the grid
 
@@ -138,11 +144,11 @@
 (defn test-requests [sat-rule rej-rule initial-grid requests]
   "given a grid and a set of requests, apply the requests
 
-     returns a map of:
-        1) the grid 'before' (:before)
-        2) the grid 'after' (:after)
-        3) the set of requests that were applied (:satisfied)
-        4) the set of requests that were NOT applied (:rejected)"
+      returns a map of:
+         1) the grid 'before' (:before)
+         2) the grid 'after' (:after)
+         3) the set of requests that were applied (:satisfied)
+         4) the set of requests that were NOT applied (:rejected)"
   (let [g (apply-requests-2 populate-2 initial-grid requests)]
     (let [sat (check-satisfied sat-rule g initial-grid)
           rej (check-rejected rej-rule g)]
@@ -150,6 +156,32 @@
        :after  (remove-rejects initial-grid g rej)
        :sat    sat
        :rej    rej})))
+
+
+(defn- retract-one-requestor
+  "removes the requestor-id from each cell specified by retraction-cells -
+     side benefit: it works even if you pass it invalid slots (ie, the requestor
+     doesn't have an allocation
+
+      returns - an updated grid"
+  [grid requestor-id retraction-cells]
+  (reduce (fn [g [ch t]]
+            (assoc-in g [t ch] (disj (get-in g [t ch]) requestor-id)))
+          grid retraction-cells))
+
+
+(defn retract-requests [grid requests]
+  "apply a map of retractions to the grid, updating recursively
+
+      returns - an updated grid"
+  (if (empty? requests)
+    grid
+    (let [[p coordinates] (first requests)]
+      (recur
+        (retract-one-requestor grid p coordinates)
+        (rest requests)))))
+
+
 
 
 ; TESTS
@@ -170,6 +202,16 @@
   ; a very simple case
   ;
   (test-requests sat-rule rej-rule empty-grid-5-5 overlapping-requests)
+     ; => {:before [[#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}]],
+     ;     :after  [[#{:b} #{} #{} #{} #{}]
+     ;              [#{:a} #{} #{} #{} #{}]
+     ;              [#{} #{:a} #{} #{} #{}]
+     ;              [#{} #{} #{} #{:c} #{}]
+     ;              [#{} #{} #{} #{:c} #{:c}]],
+     ;     :sat    {[0 0] #{:b}, [0 1] #{:a},
+     ;              [1 2] #{:a}, [3 3] #{:c},
+     ;              [3 4] #{:c}, [4 4] #{:c}},
+     ;      :rej   {[1 1] #{:b :a}}}
 
 
   ; now try chaining a few requests together. do we lose any pre-existing
@@ -186,6 +228,11 @@
                                  rej-rule
                                  @current-grid
                                  overlapping-requests)))
+      ; => [[#{:b} #{} #{} #{} #{}]
+      ;     [#{:a} #{} #{} #{} #{}]
+      ;     [#{} #{:a} #{} #{} #{}]
+      ;     [#{} #{} #{} #{:c} #{}]
+      ;     [#{} #{} #{} #{:c} #{:c}]]
   @current-grid
 
   (reset! current-grid
@@ -193,6 +240,11 @@
                                  rej-rule
                                  @current-grid
                                  requests-2)))
+      ; => [[#{:b} #{} #{} #{} #{}]
+      ;     [#{:a} #{:d} #{} #{} #{}]
+      ;     [#{} #{:a} #{:e} #{} #{}]
+      ;     [#{} #{:f} #{:e} #{:c} #{}]
+      ;     [#{} #{:f} #{:e} #{:c} #{:c}]]
 
   (def fill-in {:g #{[0 1] [0 2] [0 3] [0 4]}
                 :h #{[1 0] [2 0] [3 0] [4 0]}})
@@ -201,67 +253,37 @@
                                  rej-rule
                                  @current-grid
                                  fill-in)))
+      ; => [[#{:b} #{:h} #{:h} #{:h} #{:h}]
+      ;     [#{:a} #{:d} #{} #{} #{}]
+      ;     [#{:g} #{:a} #{:e} #{} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{:c}]]
 
+  ; some retractions
+  ;
+  (def retractions {:g #{[0 2]}})
+  (def retractions-2 {:g #{[0 3] [0 4]}})
+  (def retract-3 {:a #{[0 1]} :c #{[4 4]}})
 
-  ())
+  (retract-requests @current-grid retractions)
+      ; => [[#{:b} #{:h} #{:h} #{:h} #{:h}]
+      ;     [#{:a} #{:d} #{} #{} #{}]
+      ;     [#{} #{:a} #{:e} #{} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{:c}]]
 
+  (retract-requests @current-grid retractions-2)
+      ; => [[#{:b} #{:h} #{:h} #{:h} #{:h}]
+      ;     [#{:a} #{:d} #{} #{} #{}]
+      ;     [#{:g} #{:a} #{:e} #{} #{}]
+      ;     [#{} #{:f} #{:e} #{:c} #{}]
+      ;     [#{} #{:f} #{:e} #{:c} #{:c}]]
 
-
-
-
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-
-
-(comment
-  (in-ns 'allocation-try-2)
-
-
-  (populate-2 (fixed-unit-grid-2 3 4 #{}) :a #{[0 0] [1 2]})
-  (def empty-grid-5-5 (ra/fixed-unit-grid-2 5 5 #{}))
-  (def overlapping-requests {:b #{[0 0] [1 1]}
-                             :a #{[0 1] [1 1] [1 2]}
-                             :c #{[3 3] [3 4] [4 4]}})
-  (apply-requests-2 populate-2 empty-grid-5-5 overlapping-requests)
-  (def grid-ex [[#{:b} #{} #{} #{} #{}]
-                [#{:a} #{:b :a} #{} #{} #{}]
-                [#{} #{:a} #{} #{} #{}]
-                [#{} #{} #{} #{:c} #{}]
-                [#{} #{} #{} #{:c} #{:c}]])
-  (def sat-ex {[0 0] #{:b}, [0 1] #{:a}, [1 2] #{:a},
-               [3 3] #{:c}, [3 4] #{:c}, [4 4] #{:c}})
-  (def rej-ex {[1 1] #{:b :a}})
-  (def rej-ex {[1 1] #{:b :a} [2 2] #{:c :d}})
-  (for [[[x y] req-set] rej-ex]
-    (assoc-in grid-ex [x y] #{}))
-  (reduce (fn [g [[ch t] _]]
-            (assoc-in g [t ch] #{}))
-          grid-ex rej-ex)
-  (check-satisfied sat-rule (apply-requests-2 populate-2
-                                              empty-grid-5-5
-                                              overlapping-requests))
-  (check-rejected rej-rule (apply-requests-2 populate-2
-                                             empty-grid-5-5
-                                             overlapping-requests))
-
-  (def rejs (check-rejected rej-rule (apply-requests-2 populate-2
-                                                       empty-grid-5-5
-                                                       overlapping-requests)))
-  (let [g (apply-requests-2 populate-2
-                            empty-grid-5-5
-                            overlapping-requests)]
-    (remove-rejects g (check-rejected rej-rule g)))
-  (let [g (apply-requests-2 populate-2 empty-grid-5-5 overlapping-requests)]
-    (let [sat (check-satisfied sat-rule g)
-          rej (check-rejected rej-rule g)]
-      {:before empty-grid-5-5 :after (remove-rejects g rej) :sat sat :rej rej}))
-  (test-requests empty-grid-5-5 overlapping-requests)
-
+  (retract-requests @current-grid retract-3)
+      ; => [[#{:b} #{:h} #{:h} #{:h} #{:h}]
+      ;     [#{} #{:d} #{} #{} #{}]
+      ;     [#{:g} #{:a} #{:e} #{} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{}]
+      ;     [#{:g} #{:f} #{:e} #{:c} #{}]]
 
   ())
