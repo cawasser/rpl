@@ -1,9 +1,10 @@
 (ns allocation-try-2)
 
 ;;;;;;;;;;;;;;;;;;;;;
+;
 ; PROBLEM
 ;
-; develop a simple (really simple) model and algorithm for resource "demand"
+; develop a simple (really simple) model and algorithm for handling resource "demand"
 ; requests made by a set of requestors
 ;
 ; return a data structure like Datomic, :before, :after, :satisfied, and :rejected
@@ -15,11 +16,12 @@
  :public-api ["fixed-unit-grid-2" "test-requests" "retract-requests"]}
 
 ;;;;;;;;;;;;;;;;;;;;;
-; A working solution
+;
+; SOLUTION
 ;
 ; 1) apply the requests to the grid
 ;
-; 2) then scan for requests that overlap
+; 2) then scan for grid for requests that overlap
 ;
 ;      a) requests that do overlap are marked as "rejected"
 ;
@@ -35,7 +37,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;
-; Remaining issues
+;
+; ISSUES DURING EXPERIMENTATION
 ;
 ;    a) subsequent invocations don't preserve existing allocations found
 ;       in the 'input' grid - this due to how check-rejected works: it doesn't
@@ -43,7 +46,6 @@
 ;
 ;       RESOLVED - change remove-rejects to set any bad slots back
 ;       to the original value. works in one case, but needs lots more testing
-;
 ;
 ;    b) subsequent invocations prove not just the most recent set of
 ;       "satisfactions", but ALL of them, which isn't exactly what I want
@@ -59,8 +61,103 @@
 ;
 ;       RESOLVED - no threading!
 ;
-;    d) let's get some spec going, so we can generate some tests
+; TODO: let's get some spec going, so we can generate some tests
 ;
+; TODO: any modification cause by the rules engine approach in loco-rules.clj
+;
+; TODO: develop a simple UI to develop "requests"
+;
+; TODO: develop a simple UI to visualize the "demand" modeled by the algorithm
+;
+; TODO: determine what makes sense to LOG (intermediates? params?)
+;
+; TODO: determine METRICS for performance
+;
+;
+
+
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;
+; DATA STRUCTURES
+;
+; GRID
+;    vector of vectors (2d rectangular matrix) of sets
+;
+;    eg. (5x5)
+;
+;      [[#{} #{} #{} #{} #{}]
+;       [#{} #{} #{} #{} #{}]
+;       [#{} #{} #{} #{} #{}]
+;       [#{} #{} #{} #{} #{}]
+;       [#{} #{} #{} #{} #{}]]
+;
+; REQUESTS
+;
+;    map of requestor-id set of vectors of request-slot (ie. channel and time-slot)
+;
+;    eg.
+;
+;      {:a #{[0 0] [1 1]}
+;       :b #{[0 1] [1 0]}}
+;
+; GRID-TEST-TX
+;
+;   map of 4-tuple
+;
+;      :before    - GRID before any valid requests were added
+;
+;      :after     - GRID after all valid requests were added
+;
+;      :satisfied - map of request-slot to requestor-id
+;
+;      :rejected  - map of request-slot to set of requestor-ids
+;
+;   eg.
+;
+;      {:before [[#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}] [#{} #{} #{} #{} #{}]],
+;       :after  [[#{:b} #{} #{} #{} #{}]
+;                [#{:a} #{} #{} #{} #{}]
+;                [#{} #{:a} #{} #{} #{}]
+;                [#{} #{} #{} #{:c} #{}]
+;                [#{} #{} #{} #{:c} #{:c}]],
+;       :sat    {[0 0] #{:b}, [0 1] #{:a},
+;                [1 2] #{:a}, [3 3] #{:c},
+;                [3 4] #{:c}, [4 4] #{:c}},
+;       :rej    {[1 1] #{:b :a}}}
+;
+;
+; TODO: request-slot (ie. channel and time-slot) may need to be modified to support rules engine
+;
+;;;;;;;;;;;;;;;;;;;;
+;
+; PUBLIC API
+;
+; fixed-unit-grid-2  - returns an empty GRID, a rectangular data structure of empty
+;                      sets to be used as resource 'slots
+;
+; test-requests    - given a GRID and a REQUESTS, apply the requests
+;
+;                    returns a map of:
+;                       1) the GRID 'before' (:before)
+;                       2) the GRID 'after' (:after)
+;                       3) the set of requests that were applied (:satisfied)
+;                       4) the set of requests that were NOT applied (:rejected)
+;
+; retract-requests - returns an updated grid that does NOT include and of the
+;                    allocations provided in the 'rejects' parameter, which is
+;                    formatted as REQUESTS
+;
+;                    returns - an updated 'clean' grid
+;
+;                    note: in true LISP fashion, passing in items that don't exist
+;                          does NOT cause an error. "Make sure these aren't in there." "Okay"
+;
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+
 
 
 (defn fixed-unit-grid-2
@@ -79,6 +176,7 @@
                (vec (repeat channels empty-val)))))
 
 
+; TODO: may need to modify (populate-2...) to support rules engine
 (defn- populate-2
   "Assigns each of the cells specified as [channel time-unit]
   coordinates to the given val
@@ -141,6 +239,7 @@
           grid rejects))
 
 
+;PUBLIC
 (defn test-requests [sat-rule rej-rule initial-grid requests]
   "given a grid and a set of requests, apply the requests
 
@@ -169,7 +268,7 @@
             (assoc-in g [t ch] (disj (get-in g [t ch]) requestor-id)))
           grid retraction-cells))
 
-
+; PUBLIC
 (defn retract-requests [grid requests]
   "apply a map of retractions to the grid, updating recursively
 

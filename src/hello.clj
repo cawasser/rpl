@@ -5,6 +5,16 @@
             [injest :as i]
             [clojure.pprint :as pp]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; Let's play with Crux!
+;
+; see https://juxt.pro/crux
+;
+;
+
+
+
 (def ^crux.api.ICruxAPI node
   (crux/start-standalone-node {:kv-backend    "crux.kv.memdb.MemKv"
                                :db-dir        "data/db-dir-1"

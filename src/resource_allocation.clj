@@ -17,19 +17,6 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;
-; TODO: Additional activities
-;
-; develop a simple UI to develop "requests"
-;
-; develop a simple UI to visualize the "demand" modeled by the algorithm
-;
-; determine what makes sense to LOG (intermediates? params?)
-;
-; determine METRICS for performance
-;
-;
-;
 
 
 
@@ -474,28 +461,40 @@
 
         returns a map of 2 keys:
 
-        :satisfied - vector of slots that CAN be satisfied
-        :rejected  - vector of slots that CANNOT be satisfied
+        :satisfied - map of requested slots that CAN be satisfied
+        :rejected  - map of requested slots that CANNOT be satisfied
 
             NOTE: this still assumes 'first in wins'"
 
     [request-id request-cells pred-fn grid]
 
-    (let [satisfied (atom []) rejected (atom [])]
-      (reduce
-        (fn [g [ch t]]
-          (if (pred-fn (get-in g [t ch]))
-            (do
-              ;(prn "sat" request-id t ch)
-              (swap! satisfied conj [request-id [t ch]])
-              (assoc-in g [t ch] (merge (get-in g [t ch]) request-id)))
-            (do
-              ;(prn "rej" request-id t ch)
-              (swap! rejected conj [request-id [t ch]])
-              g)))
-        grid request-cells)
-      {:satisfied @satisfied :rejected @rejected}))
+    (let [satisfied (atom {}) rejected (atom {}) g (atom grid)]
+      (reset! g
+              (reduce
+                (fn [g [ch t]]
+                  (if (pred-fn (get-in g [t ch]))
+                    (do
+                      (swap! satisfied assoc request-id (conj (if (nil? (request-id @satisfied))
+                                                                #{}
+                                                                (request-id @satisfied))
+                                                              [t ch]))
+                      (assoc-in g [t ch] (merge (get-in g [t ch]) request-id)))
+                    (do
+                      (swap! rejected assoc request-id (conj (if (nil? (request-id @satisfied))
+                                                               #{}
+                                                               (request-id @rejected))
+                                                             [t ch]))
+                      g)))
+                grid request-cells))
+      {:satisfied @satisfied :rejected @rejected :grid @g}))
 
+
+  (def sat (atom {:a [[2 2]]}))
+  (assoc @sat :a [(conj (:a @sat) [1 1])])
+  (swap! sat assoc :a [(conj (:a @sat) [1 1])])
+  @sat
+
+  (nil? (:a {}))
 
   ; TESTS
   (check-request :a #{[0 0]} empty? (fixed-unit-grid-2 3 4 #{}))
@@ -518,120 +517,254 @@
                                                      [#{:a} #{:c :q} #{:c}]
                                                      [#{:d} #{:d} #{:c}]
                                                      [#{:d} #{:d} #{:q}]])
+  (check-request :f #{[2 3] [1 1] [2 0]} empty? [[#{:a} #{:b} #{}]
+                                                 [#{:a} #{:c} #{:c}]
+                                                 [#{:d} #{:d} #{:c}]
+                                                 [#{:d} #{:d} #{}]])
 
 
-
+  ;
+  ; I'm no longer sure we need this...
+  ;
   (defn remove-rejects
         "remove the offending requests from the collection provided
 
         return: requests with the offending items removed"
 
-    [rejects requests]
+    [rejects requests-w]
 
-    (for [[ident rejs] rejects
-          [rej] rejs]
-      (do
-        (assoc requests ident (disj (get-in requests [ident]) rej)))))
+    (let [ident (first (keys rejects))
+          rejs  (first (vals rejects))]
+      (assoc requests-w ident (apply disj
+                                     (ident requests-w)
+                                     (apply concat rejs)))))
 
-  (remove-rejects [[:f [[1 1]]]] {:f #{[2 3] [1 1]}})
-
-
-  (def rq {:f #{[2 3] [1 1]}})
-  (def y (:f rq))
-  (def rj [[:f [[2 3] [1 1]]]])
-  (def rej [2 3])
-  (def ident :f)
-  (def rejs (get-in rq [ident]))
-
-  (get-in rq [:f])
-
-  (remove #(= [2 3] %) [[2 3] [1 1]])
-  (remove #(= rej %) y)
-
-  (def x (atom y))
-  (def f (atom y))
-
-  (swap! x assoc :y (remove #(= rej %) y))
-  @x
-
-  (let [fy (atom rq)]
-    (prn (str @fy))
-    (swap! fy assoc :f (remove #(= rej %) y)))
+  ; TESTS
+  (remove-rejects {:f [[[1 1]]]} {:f #{[2 3] [1 1]}})
+  (remove-rejects {:f [[[1 1] [2 3]]]} {:f #{[2 3] [1 1]}})
+  (remove-rejects {:f [[[5 1] [2 3]]]} {:f #{[2 3] [1 1]}})
 
 
-  (let [retval (atom {})]
-    (for [[ident rejs] rj
-          rej rejs]
-      (do
-        (swap! retval assoc ident (remove #(= rej %)
-                                          (get-in rq [ident]))))))
+  ; thread data through the chain
+  (def x (remove-rejects {:f [[[5 1] [2 3]]]} {:a #{[0 0]}
+                                               :b #{[1 1] [3 4]}
+                                               :f #{[2 3] [3 1]}}))
+  x
+  (def request-2 {:e #{[0 4] [1 4] [2 4]}
+                  :f #{[4 4] [5 4] [4 5] [5 5] [6 4] [6 5]}})
 
-  (map #(let [id  (first %)
-              req (rest %)]
-          [id req]) {:f [[2 3] [1 1]] :g [[0 0]]})
-
-  (map #(let [slot %]
-          slot) [[2 3] [1 1]])
-
-  (map (fn [s]
-         (let [slot s]
-           slot))
-       [[2 3] [1 1]])
-
-  (def wer (atom {}))
-  (map (fn [s]
-         (let [slot s]
-           (doall
-             (prn @wer)
-             (swap! wer assoc :f (remove #(= slot %) [[2 3] [1 1]])))))
-       [[2 3] [1 1]])
+  (apply-requests-2 populate-2 (fixed-unit-grid-2 10 10 #{}) x)
 
 
 
+  ;
+  ; lets go the whole path
+  (def req-with-overlaps {:a #{[0 0] [0 1] [0 2]}
+                          :b #{[0 0] [1 1] [1 2]}})
+
+  (check-all-requests pred-fn my-grid req-with-overlaps)
 
 
-  (map #(let [id  (first %)
-              req (rest %)]
-          (map (fn [s]
-                 (let [[ch ts] s]
-                   ch))
-               req)) {:f [[2 3] [1 1]] :g [[0 0]]})
+  (def pred-fn empty?)
+  (def my-grid (fixed-unit-grid-2 10 10 #{}))
+  (defn ident [x] (first (keys x)))
+  (defn reqs [x] (first (vals x)))
+
+  (check-request (ident req-with-overlaps)
+                 (reqs req-with-overlaps)
+                 pred-fn my-grid)
+
+  ;
+  ; from SO (https://stackoverflow.com/questions/9408846/in-clojure-how-to-merge-several-maps-combining-mappings-with-same-key-into-a-li#10256000)
+  ;
+  ; with a little tweak (fnil conj []) -> (fnil conj {})
+  ;
+  (defn merge-lists [& maps]
+    (reduce (fn [m1 m2]
+              (reduce (fn [m [k v]]
+                        (update-in m [k] (fnil conj {}) v))
+                      m1 m2))
+            {}
+            maps))
 
 
-  (s/select [s/VAL s/FIRST] {:f [[2 3] [1 1]] :g [[0 0]]})
+  ; TESTS
+  (def a {:sat {:a [[[0 0]]]} :rej {}})
+  (def b {:sat {:b [[[0 1]]]} :rej {:b [[[3 4]]]}})
+  (def c {:sat {:c [[[1 1]]]} :rej {:c [[[10 10]]]}})
 
-  (first {:f [[2 3] [1 1]] :g [[0 0]]})
+  (merge-lists a b)
+  (merge-lists a b c)
 
-  (def fvgterfd {:f #{[2 3] [1 1]} :g #{[0 0]}})
-  (conj [[3 2]] (first (rest (first (rest (first fvgterfd))))))
-
-  (conj [(inc
-           (ffirst
-             (first (rest
-                      (first fvgterfd)))))
-         (second (first (first (rest
-                                 (first fvgterfd)))))])
-
-
-  (let [loc (rest
-              (first fvgterfd))]
-    (assoc fvgterfd :f
-                    (first [(conj
-                              [(conj [(inc
-                                        (first (first (first loc))))
-                                      (second (first (first loc)))])]
-                              (first (rest (first loc))))])))
-
-  (for [p (partition 1 fvgterfd)]
-    (flatten p))
-
-  (disj (first (rest (first fvgterfd))) [2 3])
+  ;
+  ; and it WORKS!
+  ;
+  (apply merge-lists re)
 
 
+  (defn check-request-2
+        [request-id request-cells pred-fn grid]
 
-  (s/transform [#(= :f s/FIRST) s/FIRST]
-               inc
-               {:f [[2 3] [1 1]] :g [[0 0]]})
+    (let [satisfied (atom {}) rejected (atom {}) grid-a (atom [])]
+      (reset! grid-a (reduce
+                       (fn [g [ch t]]
+                         (if (pred-fn (get-in g [t ch]))
+                           (do
+                             (swap! satisfied assoc request-id (conj (if (nil? (request-id @satisfied))
+                                                                       #{}
+                                                                       (request-id @satisfied))
+                                                                     [ch t]))
+                             (assoc-in g [t ch] (merge (get-in g [t ch]) request-id)))
+                           (do
+                             (swap! rejected assoc request-id (conj (if (nil? (request-id @rejected))
+                                                                      #{}
+                                                                      (request-id @rejected))
+                                                                    [ch t]))
+                             g)))
+                       grid request-cells))
+      {:satisfied @satisfied :rejected @rejected :grid @grid-a}))
+
+
+  ; TESTS
+  (check-request-2 :a #{[0 0]} empty? (fixed-unit-grid-2 3 4 #{}))
+  (check-request-2 :f #{[0 0] [1 1]} empty? [[#{:a} #{:b} #{:b}]
+                                             [#{:a} #{:c} #{:c}]
+                                             [#{:d} #{:d} #{:c}]
+                                             [#{:d} #{:d} #{}]]) ; rejects both
+  (check-request-2 :f #{[2 3] [1 1]} empty? [[#{:a} #{:b} #{:b}]
+                                             [#{:a} #{:c} #{:c}]
+                                             [#{:d} #{:d} #{:c}] ; satisfies one,
+                                             [#{:d} #{:d} #{}]]) ; rejects the other
+
+  ; changing the predicate means we get different answers (both work now)
+  (check-request-2 :f #{[2 3] [1 1]} #(< (count %) 2) [[#{:a} #{:b} #{:b}]
+                                                       [#{:a} #{:c} #{:c}]
+                                                       [#{:d} #{:d} #{:c}]
+                                                       [#{:d} #{:d} #{}]])
+  ; [1 1] rejected, [2 3] satisfied:
+  (check-request-2 :f #{[2 3] [1 1]} #(< (count %) 2) [[#{:a} #{:b} #{:b}]
+                                                       [#{:a} #{:c :q} #{:c}]
+                                                       [#{:d} #{:d} #{:c}]
+                                                       [#{:d} #{:d} #{:q}]])
+  (check-request-2 :f #{[2 3] [1 1] [2 0]} empty? [[#{:a} #{:b} #{}]
+                                                   [#{:a} #{:c} #{:c}]
+                                                   [#{:d} #{:d} #{:c}]
+                                                   [#{:d} #{:d} #{}]])
+
+
+  (defn check-requests-3
+        [satisfied rejected grid pred-fn request-id request-cells]
+    (reset! grid (reduce
+                   (fn [g [ch t]]
+                     (if (pred-fn (get-in g [t ch]))
+                       (do
+                         ;(prn "sat" request-id t ch)
+                         (swap! satisfied
+                                assoc request-id (conj (if (nil? (request-id @satisfied))
+                                                         #{}
+                                                         (request-id @satisfied))
+                                                       [ch t]))
+                         (assoc-in g [t ch] (merge (get-in g [t ch]) request-id)))
+                       (do
+                         ;(prn "rej" request-id t ch)
+                         (swap! rejected
+                                assoc request-id (conj (if (nil? (request-id @rejected))
+                                                         #{}
+                                                         (request-id @rejected))
+                                                       [ch t]))
+                         g)))
+                   @grid request-cells)))
+
+
+  (check-requests-3 (atom {})
+                    (atom {})
+                    (atom (fixed-unit-grid-2 3 4 #{}))
+                    empty?
+                    :a
+                    #{[1 1] [2 2] [2 3]})
+
+  (def a (atom {:al ""}))
+  ((fn atom-test [a]
+     (reset! a {:al "this worked"})) a)
+  @a
+
+  (let [satisfied (atom {})
+        rejected  (atom {})
+        grid      (atom (fixed-unit-grid-2 3 4 #{}))]
+    (check-requests-3 satisfied rejected grid
+                      empty?
+                      :a
+                      #{[1 1] [2 3]})
+    {:satisfied @satisfied :rejected @rejected :grid @grid})
+
+  (map #(prn (first %) (first (rest %))) req-with-overlaps)
+
+  (def satisfied (atom {}))
+  (def rejected  (atom {}))
+  (def grid      (atom (fixed-unit-grid-2 3 4 #{})))
+
+  @satisfied
+  @rejected
+  @grid
+
+  (check-requests-3 satisfied rejected grid
+                    empty?
+                    :a
+                    #{[0 0] [0 2]})
+  (check-requests-3 satisfied rejected grid
+                    empty?
+                    :b
+                    #{[0 0] [1 1] [1 2]})
+
+  (do
+    (reset! satisfied {})
+    (reset! rejected {})
+    (reset! grid (fixed-unit-grid-2 3 4 #{})))
+
+  (let []
+    (map #(check-requests-3 satisfied rejected grid
+                            empty?
+                            (first %)
+                            (first (rest %)))
+         req-with-overlaps)
+    {:satisfied @satisfied :rejected @rejected :grid @grid})
+
+
+  (def req-with-overlaps {:a #{[0 0] [0 1] [0 2]}
+                          :b #{[0 0] [1 1] [1 2]}})
+
+
+  (defn check-all-requests [requests]
+    (let [satisfied (atom {})
+          rejected (atom {})
+          grid (atom (fixed-unit-grid-2 3 4 #{}))]
+      (for [r requests]
+        (check-requests-3 satisfied rejected grid
+                          empty?
+                          (first r)
+                          (first (rest r))))
+      {:satisfied @satisfied :rejected @rejected :grid @grid}))
+
+
+  (check-all-requests req-with-overlaps)
+
+
+  (for [a req-with-overlaps]
+    (prn a))
+
+
+
+
+  ;
+  ; lots of fits and starts, but not complete success
+  ;
+  ; what we need is a function that modifies 3 different accumulators:
+  ;  1) requests satisfied
+  ;
+  ;  2) requests rejected
+  ;
+  ;  3) the grid so far, as we apply each request
+  ;       which we need to be the input to the next check
 
 
 
@@ -639,16 +772,44 @@
 
 
 
-  ; should return {:a [[1 1]] :f [[2 2]}
 
 
 
 
 
-  (remove-rejects [:f [[2 3] [1 1]]] {:f [[2 3] [1 1]]})
 
 
 
+  ;
+  ; this is NOT working yet - doesn't pass the grid from prior loops
+  ; into the next one...
+  ;
+  (defn check-all-requests
+        ""
+    [pred-fn grid requests
+     (into []
+           (for [r requests]
+             (let [id   (first r)
+                   reqs (first (rest r))]
+               (check-request id reqs pred-fn g))))])
+
+
+
+  (def re (check-all-requests pred-fn my-grid req-with-overlaps))
+
+
+  ;
+  ; chaining through everything
+  ; -> requests
+  ;       -> (check-all-requests %)
+  ;             -> (merge-lists)
+  ;                  ->(apply-requests-2 (:satisfied %))
+  ;
+  (->> req-with-overlaps
+       (check-all-requests pred-fn my-grid)
+       (apply merge-lists)
+       :satisfied
+       (apply-requests-2 populate-2 my-grid))
 
 
 

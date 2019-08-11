@@ -30,7 +30,7 @@ we will model "frequency" as s Clojure vector of abstract fixed-unit "slots":
 
 ```[slot-1 slot 2 slot3]```
 
-If we view the slots as the X-axis then we can model Time as the Y-axis using 
+If we view the slots as the X-axis then we can model _Time_ as the Y-axis using 
 another vector of the first:
 
 ```
@@ -58,7 +58,7 @@ We'll actually make each slot hold a Clojure `set` of the request IDs:
 
 Using sets makes this much easier, since we can take advantage of the 
 [(disj...)](https://clojuredocs.org/clojure.core/disj) function
-to remove unwanted IDs if we ned to (and we need to).
+to remove unwanted IDs if we need to (and we need to).
 
 
 ## Constraints Programming
