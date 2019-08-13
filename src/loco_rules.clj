@@ -133,18 +133,8 @@
 ; different slot given the availability
 ;
 
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;
-;
-; At this point we can choose to modify our resource allocation model
-; to use some variant of this loco example, or we can continue to
-; examine loco by looking at the second example
-;
-;
-; I'm feeling lazy, so let's stick with Alex's blog
 
-
+; Mark's second example
 
 ; we'll reuse a bunch of code form above, but we need to add a new
 ; concept
@@ -152,7 +142,7 @@
 (def timeslots (distinct (apply concat availability)))
   ; => (1 2 3 4)
 
-;  we need ot keep track of how many people are in each slot
+;  we need to keep track of how many people are in each slot
 ;
 (def people-in-timeslot-vars
   (for [i timeslots] [:_num-people-in-timeslot i]))
@@ -334,6 +324,8 @@ number-in-timeslots
 ;
 ; The loco GitHub includes a sudoku example in the test suite, maybe this
 ; will give us some hints.
+;
+
 
 (def sudoku-base-model
   "Base board constraints, without the puzzle-specific hints."
@@ -427,7 +419,7 @@ number-in-timeslots
 ; resource allocation problem?
 ;
 ; First, I think we need to figure out what problem we are solving,
-; namely - are we trying to develop a working plan form a set of flexible
+; namely - are we trying to develop a working plan from a set of flexible
 ; requests, or we trying to make the set of requests work?
 ;
 ; These are actually different problems. Developing a working plan
@@ -435,7 +427,7 @@ number-in-timeslots
 ; "working plan" can be put directly into the grid using our existing
 ; code.
 ;
-; "Making the requests work" probably required changing some (or all)
+; "Making the requests work" probably requires changing some (or all)
 ; of the code in allocation-try-2.clj...
 ;
 ; The "clojurist" in me thinks we want the former - its just another
@@ -468,17 +460,444 @@ number-in-timeslots
 ; that might help
 
 ;
-; one think I see - let's do this "long hand" first
+; one thing I see - let's do this "long hand" first
 ;   and figure out how to generalize it once we understand the constraints
+;
+; see also loco_rules_2.clj
 ;
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;
+; :a = 0, :b = 1
+; {:a #{[[0  ] 0] [[0 1] 1]}  <- :a [0 0], :a [0 1] or [1 1]
+;
+;  :b #{[[0 1] 0] [[1  ] 1]}} <- :b [0 0] or [1 0], :b [1 1]
+;
+; grid [[#{} #{}]
+;       [#{} #{}]]
+
+(let [model [($in [:cell 0 0] (range 2)) ; :a or :b
+             ($in [:cell 0 1] (range 2)) ; :a or :b
+             ($in [:cell 1 0] (range 2)) ; :a or :b
+             ($in [:cell 1 1] (range 2)) ; :a or :b
+             ($=  [:cell 0 0] 0)         ; :a
+             ($=  [:cell 1 1] 1)]]       ; :b
+
+  (into (sorted-map)
+        (solutions model)))
+
+;
+; 1) all cells can take on every :request-id value as a default
+;
+; 2) cells with a few requestors map just that collection
+;
+; 3) lock down cells that are required by a certain requestor
+;
+
+(into [] #{1 2 3})
+
+;;;;;;;;;;;;;;;;;;;;;
+
+; :a = 0, :b = 1, :c = 2
+;
+; =>  '!' indicated a fixed request (must be fulfilled)
+;
+; {:b #{[[0  ] 0] [[0 1 2] 1]}  <- :b [0,0], :b [0,1] or [1,1] or [2,1]
+;
+;  :a #{[[0 1] 0] [[1    ] 1]}  <- :a [0,0] or [1,0], :a [1,1]
+;
+;  :c #{[[1 2] 0] [[1 2  ] 1]}} <- :c [1,0] or [2,0], :c [1,1] or [2,1]
+;
+; sort of...
+;
+;    grid [[#{:a! :b} #{:b :c    } #{:c    }]
+;          [#{:a    } #{:a :b! :c} #{:a :c }]]
+
+;
+; Note: we can add multiple $in clauses, each more
+; restrictive than the last, and the evaluation still works!
+;
+
+
+(let [model [ ; defaults
+             ($in [:cell 0 0] [0 1 2])
+             ($in [:cell 0 1] [0 1 2])
+             ($in [:cell 1 0] [0 1 2])
+             ($in [:cell 1 1] [0 1 2])
+             ($in [:cell 2 0] [0 1 2])
+
+             ; flex-ranges
+             ($in [:cell 0 0] [0 1])
+             ($in [:cell 2 1] [0 2])
+             ($in [:cell 1 0] [1 2])
+             ($in [:cell 2 0] [2])
+
+             ; fixed requests
+             ($=  [:cell 0 0] 0)
+             ($=  [:cell 1 1] 1)]]
+  (into (sorted-map)
+        (solution model)))
+  ; => {[:cell 0 0] 0, [:cell 1 0] 1, [:cell 2 0] 2,
+  ;     [:cell 0 1] 0, [:cell 1 1] 1, [:cell 2 1] 0} <- reformatted
+  ;
+  ; OR
+  ;
+  ;  [[#{:a} #{:b} #{:c}]
+  ;   [#{:a} #{:b} #{:a}]]
+
+; but there are many possible solutions:
+;
+(let [defaults [ ; defaults
+                ($in [:cell 0 0] [0 1 2])
+                ($in [:cell 0 1] [0 1 2])
+                ($in [:cell 1 0] [0 1 2])
+                ($in [:cell 1 1] [0 1 2])
+                ($in [:cell 2 0] [0 1 2])]
+
+      flex     [ ; flex-ranges
+                ($in [:cell 0 0] [0 1])
+                ($in [:cell 2 1] [0 2])
+                ($in [:cell 1 0] [1 2])
+                ($in [:cell 2 0] [2])]
+
+      fixed    [ ; fixed requests
+                ($=  [:cell 0 0] 0)
+                ($=  [:cell 1 1] 1)]]
+
+  (solutions (concat defaults flex fixed)))
+
+
+
+; some notion of scoring would be good (which one is "best")
+;
+; we will also need a function to convert the solution(s) back into our
+; planning format
+;
+
+
+; MAYBE
+
+; try with overlapping-requests
+
+; :b 1 :a 2 :c 3, we need 0 -> not assigned
+;
+; x->  0       1        2      3     4
+;
+; 0 [[#{:b!} #{}       #{}   #{}    #{}]
+; 1  [#{:b}  #{:a! :b} #{:b} #{:b}  #{}]
+; 2  [#{}    #{:a!}    #{}   #{}    #{}]
+; 3  [#{}    #{}       #{}   #{:c!} #{}]
+; 4  [#{}    #{}       #{}   #{:c!} #{:c!}]]
+
+; should produce:
+;  [0 0] 1/:b
+;  [0 1] 1/:b =or= [1 2] 1/:b =or= [1 3] 1/:b
+;  [1 1] 2/:a
+;  [2 1] 1/:a
+;  [3 3] 3/:c
+;  [3 4] 3/:c
+;  [4 4] 3/:c
+;
+
+;  [:cell 0 0] 1/:b
+;  [:cell 0 1] 1/:b
+;  [:cell 1 1] 2/:a
+;  [:cell 1 2] 2/:a <- 1/:b
+;  [:cell 2 1] 1/:b <- 2
+;  [:cell 3 1] 1/:b
+;  [:cell 3 3] 3/:c
+;  [:cell 3 4] 3/:c
+;  [:cell 4 4] 3/:c
+
+
+(def overlapping-requests {:b #{[[0] 0] [[0 1 2 3] 1]}
+                           :a #{[[1] 1] [[1] 2]}
+                           :c #{[[3] 3] [[3] 4] [[4] 4]}})
+
+(let [defaults [(for [i (range 5)
+                      j (range 5)]
+                  ($in [:cell i j] [0 1 2 3]))]
+
+      flex     [($in [:cell 0 1] [1])
+                ($in [:cell 1 1] [1 2])
+                ($in [:cell 2 1] [1 2])
+                ($in [:cell 3 1] [1])]
+
+      fixed    [($= [:cell 0 0] 1)
+                ($= [:cell 1 1] 2)
+                ($= [:cell 1 2] 2)
+                ($= [:cell 3 3] 3)
+                ($= [:cell 3 4] 3)
+                ($= [:cell 4 4] 3)]]
+
+  (into (sorted-map)
+        (solution (concat (first defaults) flex fixed) :timeout 1000)))
+
+  ; => {[:cell 0 0] 2, [:cell 1 0] 0, [:cell 2 0] 0, [:cell 3 0] 0, [:cell 4 0] 0,
+  ;     [:cell 0 1] 2, [:cell 1 1] 1, [:cell 2 1] 1, [:cell 3 1] 1, [:cell 4 1] 0,
+  ;     [:cell 0 2] 0, [:cell 1 2] 1, [:cell 2 2] 0, [:cell 3 2] 0, [:cell 4 2] 0,
+  ;     [:cell 0 3] 0, [:cell 1 3] 0, [:cell 2 3] 0, [:cell 3 3] 3, [:cell 4 3] 0,
+  ;     [:cell 0 4] 0, [:cell 1 4] 0, [:cell 2 4] 0, [:cell 3 4] 3, [:cell 4 4] 3}
+  ;
+  ; or
+  ;
+  ;  [[#{:b}  #{}   #{} #{}   #{}]
+  ;   [#{:b}  #{:a} #{} #{:b} #{}]
+  ;   [#{}    #{:a} #{} #{}   #{}]
+  ;   [#{}    #{:b} #{} #{:c} #{}]
+  ;   [#{}    #{}   #{} #{:c} #{:c}]]
+
+
+;;;;;;
+; WEIRD
+;
+;  letting the solver run longer returns this:
+
+;=>
+;{[:cell 0 0] 2,[:cell 1 0] 0,[:cell 2 0] 0,[:cell 3 0] 1,[:cell 4 0] 0,
+; [:cell 0 1] 2,[:cell 1 1] 1,[:cell 2 1] 1,[:cell 3 1] 2,[:cell 4 1] 1,
+; [:cell 0 2] 0,[:cell 1 2] 1,[:cell 2 2] 2,[:cell 3 2] 0,[:cell 4 2] 2,
+; [:cell 0 3] 0,[:cell 1 3] 0,[:cell 2 3] 0,[:cell 3 3] 3,[:cell 4 3] 0,
+; [:cell 0 4] 1,[:cell 1 4] 0,[:cell 2 4] 2,[:cell 3 4] 3,[:cell 4 4] 3)
+
+;  [[#{:b}  #{}   #{}   #{:a} #{}]
+;   [#{:b}  #{:a} #{:a} #{:b} #{:a}]
+;   [#{}    #{:a} #{:b} #{}   #{:b}]
+;   [#{}    #{}   #{}   #{:c} #{}]
+;   [#{:a}  #{}   #{:b} #{:c} #{:c}]]
+;
+; maybe this means we need to trim down "defaults" to only the cells in
+; play?
+
+
+(let [defaults [($in [:cell 0 0] [0 1 2 3])
+                ($in [:cell 1 1] [0 1 2 3])
+                ($in [:cell 1 2] [0 1 2 3])
+                ($in [:cell 3 3] [0 1 2 3])
+                ($in [:cell 3 4] [0 1 2 3])
+                ($in [:cell 4 4] [0 1 2 3])]
+
+      flex     [($in [:cell 0 1] [1])
+                ($in [:cell 1 1] [1 2])
+                ($in [:cell 2 1] [1 2])
+                ($in [:cell 3 1] [1])]
+
+      fixed    [($= [:cell 0 0] 1)
+                ($= [:cell 1 1] 2)
+                ($= [:cell 1 2] 2)
+                ($= [:cell 3 3] 3)
+                ($= [:cell 3 4] 3)
+                ($= [:cell 4 4] 3)]]
+  (into (sorted-map)
+        (solutions (concat defaults
+                           flex fixed)
+                   :timeout 1000)))
+
+;({:type :int-domain, :can-init-var true, :name [:cell 0 0], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 1 1], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 1 2], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 3], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 4], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 4 4], :domain [0 1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 0 1], :domain [1]}
+; {:type :int-domain, :can-init-var true, :name [:cell 1 1], :domain [1 2]}
+; {:type :int-domain, :can-init-var true, :name [:cell 2 1], :domain [1 2]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 1], :domain [1]}
+; {:arg2 1, :eq "=", :type :arithm-eq, :arg1 [:cell 0 0]}
+; {:arg2 2, :eq "=", :type :arithm-eq, :arg1 [:cell 1 1]}
+; {:arg2 2, :eq "=", :type :arithm-eq, :arg1 [:cell 1 2]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 3 3]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 3 4]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 4 4]})
+
+;(
+; {:type :int-domain, :can-init-var true, :name [:cell 0 0], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 0 1], :domain [1 2 3]})
+; {:type :int-domain, :can-init-var true, :name [:cell 1 1], :domain [1 2]}
+; {:type :int-domain, :can-init-var true, :name [:cell 1 2], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 2 1], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 3], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 4], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 3 1], :domain [1 2 3]}
+; {:type :int-domain, :can-init-var true, :name [:cell 4 4], :domain [1 2 3]}
+; {:arg2 1, :eq "=", :type :arithm-eq, :arg1 [:cell 0 0]}
+; {:arg2 1, :eq "=", :type :arithm-eq, :arg1 [:cell 0 1]}
+; {:arg2 2, :eq "=", :type :arithm-eq, :arg1 [:cell 1 2]}
+; {:arg2 1, :eq "=", :type :arithm-eq, :arg1 [:cell 2 1]}
+; {:arg2 1, :eq "=", :type :arithm-eq, :arg1 [:cell 3 1]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 3 3]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 3 4]}
+; {:arg2 3, :eq "=", :type :arithm-eq, :arg1 [:cell 4 4]}
+
+
+
+
+;{[:cell 0 0] 1,
+; [:cell 0 1] 1,
+; [:cell 1 1] 2,
+; [:cell 1 2] 2,
+; [:cell 2 1] 2,
+; [:cell 3 1] 1,
+; [:cell 3 3] 3,
+; [:cell 3 4] 3,
+; [:cell 4 4] 3}
+
+;{[:cell 0 0] 1, :b
+; [:cell 0 1] 1, :b
+; [:cell 1 1] 2, :a
+; [:cell 1 2] 2, :a
+; [:cell 2 1] 1, :b <- 2
+; [:cell 3 1] 1, :b
+; [:cell 3 3] 3, :c
+; [:cell 3 4] 3, :c
+; [:cell 4 4] 3} :c
+
+(defn req-grid [demands]
+  (flatten
+    (let [id-map (zipmap (keys demands) (iterate inc 1))
+          re (apply merge-with clojure.set/union
+                    (for [[req-id reqs] demands
+                          [cs ts] reqs
+                          c cs]
+                      {[c ts] #{req-id}}))]
+      (for [[[ch ts] req-ids] re]
+        (if (< 1 (count req-ids))
+          (let [ids (into [] (for [k req-ids]
+                               (k id-map)))]
+            ($in [:cell ch ts] ids))
+          (list
+            ($= [:cell ch ts] ((first req-ids) id-map))
+            ($in [:cell ch ts] (into [] (vals id-map)))))))))
+
+
+
+(let [defaults [($in [:cell 0 0] [1])
+                ($in [:cell 1 1] [2])
+                ($in [:cell 1 2] [2])
+                ($in [:cell 3 3] [3])
+                ($in [:cell 3 4] [3])
+                ($in [:cell 4 4] [3])]
+
+      flex     [($in [:cell 0 1] [1])
+                ($in [:cell 1 1] [1 2])
+                ($in [:cell 2 1] [1 2])
+                ($in [:cell 3 1] [1])]
+
+      fixed    [($= [:cell 0 0] 1)
+                ($= [:cell 1 1] 2)
+                ($= [:cell 1 2] 2)
+                ($= [:cell 3 3] 3)
+                ($= [:cell 3 4] 3)
+                ($= [:cell 4 4] 3)]]
+  (into (sorted-map)
+        (solutions (concat defaults
+                           flex fixed)
+                   :timeout 1000)))
+
+
+
+(if (< 1 (count ch))
+  ($= [:cell ch ts] (ch id-map)))
+
+(def requests {:b #{[[0] 0] [[0 1 2 3] 1]}
+               :a #{[[0] 0] [[1] 2]}
+               :c #{[[3] 3] [[3] 4] [[4] 4]}})
+
+(into (sorted-map) (solution (req-grid requests) :timeout 1000))
+; =>
+; {[:cell 0 0] 1,
+;  [:cell 0 1] 1, [:cell 1 1] 1, [:cell 2 1] 1, [:cell 3 1] 1,
+;                 [:cell 1 2] 2,
+;                                               [:cell 3 3] 3,
+;                                               [:cell 3 4] 3, [:cell 4 4] 3}
+;
+;
+;  [[#{:b}  #{}   #{}   #{}   #{}]
+;   [#{:b}  #{:a} #{:a} #{}   #{}]
+;   [#{}    #{:b} #{}   #{}   #{}]
+;   [#{}    #{}   #{}   #{:c} #{}]
+;   [#{}    #{}   #{}   #{:c} #{:c}]]
+
+;  [[#{:b}  #{}   #{} #{}   #{}]
+;   [#{:b}  #{:a} #{} #{:b} #{}]
+;   [#{}    #{:a} #{} #{}   #{}]
+;   [#{}    #{:b} #{} #{:c} #{}]
+;   [#{}    #{}   #{} #{:c} #{:c}]]
+
+
+
+(into (sorted-map) (solutions (req-grid fill-in) :timeout 1000))
+
+
+
+
+
+(def requests {:b #{[[0] 0] [[0 1 2 3] 1]}
+               :a #{[[0] 0] [[1] 2]}
+               :c #{[[3] 3] [[3] 4] [[4] 4]}})
+
+(def slot2req-idSet (apply merge-with clojure.set/union
+                           (for [[req-id reqs] requests
+                                 [cs ts] reqs
+                                 c cs]
+                             {[c ts] #{req-id}})))
+
+
+(def slots2req-id (for [req-id    (keys requests)
+                        slot      (req-id requests)]
+                    (let [[ch time-slot] slot]
+                      [[ch time-slot] req-id])))
+
+(remove nil?
+        (for [p slots2req-id]
+          (let [[[x ts] id] p]
+            (if (>= 1 (count x))
+              [(first x) ts id]))))
+
+
+(defn req-grid-2 [requests]
+  (flatten
+    (let [id-map (merge {:_ 0}
+                        (zipmap (keys requests) (iterate inc 1)))
+          s2id (for [req-id    (keys requests)
+                     slot      (req-id requests)]
+                 (let [[ch time-slot] slot]
+                   [[ch time-slot] req-id]))
+          re (remove nil?
+                     (for [p slots2req-id]
+                       (let [[[x ts] id] p]
+                         (if (>= 1 (count x))
+                           [(first x) ts id]))))]
+      (for [[[ch ts] req-ids] s2id]
+        (if (< 1 (count req-ids))
+          (let [ids (into [] (for [k req-ids]
+                               (k id-map)))]
+            ($in [:cell ch ts] ids))))
+      (for [[ch ts id] re]
+        (list
+          ($= [:cell ch ts] (id id-map)))))))
+
+
+(into (sorted-map)
+      (solutions (req-grid overlapping-requests)
+                 :timeout 1000))
 
 
 
 
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+
+
+; This stuff happened BEFORE I did the static modeling above
+;        |
+;        V
 
 ; some requests
 ;
@@ -584,63 +1003,6 @@ number-in-timeslots
   ;     {:type :int-domain, :can-init-var true, :name [:requestor :h 0], :domain [1]}
   ;     {:type :int-domain, :can-init-var true, :name [:requestor :h 0], :domain [1]}
   ;     {:type :int-domain, :can-init-var true, :name [:requestor :h 0], :domain [1]})
-
-
-; time to think some more
-;
-; we need a different data structure. in Clojure, we'll say this a lot
-;
-
-
-
-
-
-
-
-
-
-
-
-
-
-(defn request-fixed-constraints [demands]
-  (remove nil?
-    (for [req-id    (keys demands)
-          slot      (req-id demands)]
-      (let [[channels time-slot] slot]
-        (if (= 1 (count channels))
-          ($in [:requestor req-id time-slot (first channels)]
-               (first channels)))))))
-
-(request-fixed-constraints fill-in)
-
-
-(defn request-flex-constraints [demands]
-  (remove nil?
-          (for [req-id    (keys demands)
-                slot      (req-id demands)]
-            (let [[channels time-slot] slot]
-              (if (< 1 (count channels))
-                ($in [:requestor req-id time-slot] channels))))))
-
-(request-flex-constraints fill-in)
-
-
-
-(defn solve-all [demands]
-  (into (sorted-map) (solutions
-                       (concat
-                         (request-flex-constraints demands)
-                         (request-fixed-constraints demands)))))
-
-(solutions
-  (concat
-    (request-flex-constraints fill-in)
-    (request-fixed-constraints fill-in)))
-
-(solve-all fill-in)
-
-
 
 
 
@@ -781,30 +1143,31 @@ number-in-timeslots
                 (k id-map))]
       {[ch ts] ids})))
 
-(defn req-grid [demands]
-  (let [id-map (zipmap (keys demands) (range))
-        re (apply merge-with clojure.set/union
-                  (for [[req-id reqs] demands
-                        [cs ts] reqs
-                        c cs]
-                    {[c ts] #{req-id}}))]
-    (for [[[ch ts] req-ids] re]
-      (let [ids (for [k req-ids]
-                  (k id-map))]
-        ($in [:cell ch ts] ids)))))
 
-(def requests {:b #{[[0] 0] [[0 1 2 3] 1]}
-               :a #{[[0] 0] [[1] 2]}
-               :c #{[[3] 3] [[3] 4] [[4] 4]}})
+(let [id-map (zipmap (keys requests) (iterate inc 1))
+      re (apply merge-with clojure.set/union
+                (for [[req-id reqs] requests
+                      [cs ts] reqs
+                      c cs]
+                  {[c ts] #{req-id}}))]
+  (for [[[ch ts] req-ids] re]
+    (if (< 1 (count req-ids))
+      (let [ids (into [] (for [k req-ids]
+                           (k id-map)))]
+        ($in [:cell ch ts] ids))
+      ($= [:cell ch ts] ((first req-ids) id-map)))))
 
-(solve (req-grid requests))
 
-(solve (req-grid fill-in))
+(let [id-map (zipmap (keys requests) (iterate inc 1))
+      re (apply merge-with clojure.set/union
+                (for [[req-id reqs] requests
+                      [cs ts] reqs
+                      c cs]
+                  {[c ts] #{req-id}}))]
+  (for [[[ch ts] req-ids] re]
+    (let [ids (into [] (for [k req-ids]
+                         (k id-map)))]
+      ($in [:cell ch ts] ids))))
 
-;
-; There is still something missing, but I'm not sure what. I feel
-; I'm close, but I'm not sure where to go here. I assume it will
-; be some additional constraint (or two) on the value for a given
-; cell.
-;
-; can we actually constrain the cells to a set of keywords?
+
+
