@@ -13,7 +13,8 @@
 ;
 
 {:namespace "allocation-try-2"
- :public-api ["fixed-unit-grid-2" "test-requests" "retract-requests"]}
+ :public-api ["fixed-unit-grid-2" "test-requests" "retract-requests"]
+ :effective-sloc 113}
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -175,8 +176,8 @@
   (vec (repeat time-periods
                (vec (repeat channels empty-val)))))
 
-
 ; TODO: may need to modify (populate-2...) to support rules engine
+; TODO: modify (populate-2) to support [] as grid
 (defn- populate-2
   "Assigns each of the cells specified as [channel time-unit]
   coordinates to the given val
@@ -186,7 +187,6 @@
   (reduce (fn [g [ch t]]
             (assoc-in g [t ch] (merge (get-in g [t ch]) requestor-id)))
           grid request-cells))
-
 
 (defn- apply-requests-2 [pop-fn grid requests]
   "apply a map of requests to the grid, updating recursively
@@ -198,7 +198,6 @@
     grid
     (let [[p coordinates] (first requests)]
       (recur pop-fn (pop-fn grid p coordinates) (rest requests)))))
-
 
 (defn- check-satisfied
   "return a map of {[slot] #{requestor}} that can be applyed to the grid without
@@ -214,7 +213,6 @@
                      (not (= val (get-in original-grid [ts ch]))))
               {[ch ts] (get-in grid [ts ch])})))))
 
-
 (defn- check-rejected
   "return a map of {[slot] #{requestor}} that can be applyed to the grid that
   pass the the (rej-rule) predicate, ie, 'we should reject these'
@@ -227,7 +225,6 @@
           (if (not (pred-fn (get-in grid [ts ch])))
             {[ch ts] (get-in grid [ts ch])}))))
 
-
 (defn- remove-rejects
   "returns an updated grid that does NOT include and of the allocations provided
   in the 'rejects' parameter, ie, the resulting grid is 'clean'
@@ -237,6 +234,17 @@
   (reduce (fn [g [[ch t] _]]
             (assoc-in g [t ch] (get-in original-grid [t ch])))
           grid rejects))
+
+(defn- retract-one-requestor
+  "removes the requestor-id from each cell specified by retraction-cells -
+     side benefit: it works even if you pass it invalid slots (ie, the requestor
+     doesn't have an allocation
+
+      returns - an updated grid"
+  [grid requestor-id retraction-cells]
+  (reduce (fn [g [ch t]]
+            (assoc-in g [t ch] (disj (get-in g [t ch]) requestor-id)))
+          grid retraction-cells))
 
 
 ;PUBLIC
@@ -257,18 +265,6 @@
        :rej    rej})))
 
 
-(defn- retract-one-requestor
-  "removes the requestor-id from each cell specified by retraction-cells -
-     side benefit: it works even if you pass it invalid slots (ie, the requestor
-     doesn't have an allocation
-
-      returns - an updated grid"
-  [grid requestor-id retraction-cells]
-  (reduce (fn [g [ch t]]
-            (assoc-in g [t ch] (disj (get-in g [t ch]) requestor-id)))
-          grid retraction-cells))
-
-; PUBLIC
 (defn retract-requests [grid requests]
   "apply a map of retractions to the grid, updating recursively
 
@@ -385,4 +381,22 @@
       ;     [#{:g} #{:f} #{:e} #{:c} #{}]
       ;     [#{:g} #{:f} #{:e} #{:c} #{}]]
 
+
+
+  (defn fixed-unit-grid-3
+        [channels time-periods empty-val]
+    (into (sorted-map)
+          (apply merge-with conj
+                 (for [x (range channels)
+                       y (range time-periods)]
+                   {[x y] empty-val}))))
+
+  (fixed-unit-grid-3 2 2 #{})
+  (fixed-unit-grid-3 5 5 #{})
+
+
+  (test-requests sat-rule
+                 rej-rule
+                 []
+                 overlapping-requests)
   ())
