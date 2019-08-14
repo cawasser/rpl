@@ -27,6 +27,44 @@
 ;   channels replaced by fixed channels such that all the requests will work
 ;
 ;
+;
+; This one requires some explanation. Some familiarity with allocation-try-2 is required
+;
+;
+;
+; Assume a simple 2x2 GRID two requestors :a and :b
+;
+;   :a needs cells [0 0] and [1 1]
+;
+;   :b needs 1 channel at time-slot 0, but it can be either channel 0 or channel 1
+;
+; we can express this in a REQUEST like this:
+;
+;      {:a #{[  0   0]   [1 1]}
+;       :b #{[[0 1] 0]        }}
+;
+; :a need 2 channels, and has no flexibility in them. it needs [0 0] AND [0 1].  we refer to
+; these as "fixed requests"
+;
+; notice how the channel for :b is expressed as a vector of the channels that :b
+; could use, as long as it gets one of them. in essence, :b needs [0 0] OR [1 0],
+; but not both. we refer to this as a "flexible request"
+;
+; we can also see from inspection that there is exactly 1 possible solution: :b can
+; only have channel 1 at time-slot 0, since :a can ONLY work with [0 0]
+;
+;      {:a #{[0 0] [1 1]}
+;       :b #{[1 0]      }}
+;
+; for something so simple, it's easy to figure out a workable answer, but when things
+; get even a little bit more complicated... we need to call in the big guns:
+;
+;                   Logic Programming
+;
+; specifically the subset called "constraint solvers." by formulating a set of constraints
+; that describe the problem and "constrain" the possible solutions, we can have the
+; computer find us a solution
+;
 
 
 
@@ -39,7 +77,7 @@
 ; 2) develop mechanisms for pragmatically producing the
 ;    necessary constraints
 ;
-; 3) run the constrains through the colver and grab the first solution
+; 3) run the constrains through the solver and grab the first solution
 ;
 ; 4) convert the solution back into the REQUEST data structure and
 ;    return it
@@ -108,7 +146,7 @@
                      ($!= [:cell r ts] (req-id id-map))))))))))
 
 (defn- build-fixed-constraints
-  "build the constraint for a fixed cahnnel/time-slot request"
+  "build the constraint for a fixed channel/time-slot request"
 
   [cs ts req-id id-map]
   ($= [:cell cs ts] (req-id id-map)))
@@ -228,34 +266,21 @@
 
 
 
-; we need some kind of constraint that makes [[0 1 2] 1] pick only
-; ONE slot rather than multiples, which is what it looks like is
-; happening
+; "long hand"
 
-;
-; would $or work?
-;
-; combining $or with disjoint $and's seems to work
-; in a very simple case
-;
+{:b #{[0 0] [[0 1 2 3] 1]}
+ :a #{[1 1] [1 2]}
+ :c #{[3 3] [3 4] [4 4]}}
 
+; remember, loco only works with integers, so we need to change our
+; requestor IDs into numbers...
 
-(let [fixed    [($= [:cell 0 0] 1)
-                ($= [:cell 1 1] 2)
+(let [fixed    [($= [:cell 0 0] 1)                          ; :b = 1
+                ($= [:cell 1 1] 2)                          ; :a = 2
                 ($= [:cell 1 2] 2)
-                ($= [:cell 3 3] 3)
+                ($= [:cell 3 3] 3)                          ; ;c = 3
                 ($= [:cell 3 4] 3)
                 ($= [:cell 4 4] 3)]
-
-      defaults [($in [:cell 0 0] [0 1 2 3])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 1 1] [0 1 2 3])
-                ($in [:cell 1 2] [0 1 2 3])
-                ($in [:cell 2 1] [0 1])
-                ($in [:cell 3 1] [0 1])
-                ($in [:cell 3 3] [0 1 2 3])
-                ($in [:cell 3 4] [0 1 2 3])
-                ($in [:cell 4 4] [0 1 2 3])]
 
       flex     [($or ($and ($= [:cell 0 1] 1)
                            ($!= [:cell 1 1] 1)
@@ -272,8 +297,17 @@
                      ($and ($!= [:cell 0 1] 1)
                            ($!= [:cell 1 1] 1)
                            ($!= [:cell 2 1] 1)
-                           ($= [:cell 3 1] 1)))]]
+                           ($= [:cell 3 1] 1)))]
 
+      defaults [($in [:cell 0 0] [0 1])
+                ($in [:cell 0 1] [0 1])
+                ($in [:cell 1 1] [0 1 2])
+                ($in [:cell 1 2] [0 2])
+                ($in [:cell 2 1] [0 1])
+                ($in [:cell 3 1] [0 1])
+                ($in [:cell 3 3] [0 3])
+                ($in [:cell 3 4] [0 3])
+                ($in [:cell 4 4] [0 3])]]
   (into (sorted-map)
         (solutions (concat defaults
                            flex fixed)
@@ -284,22 +318,16 @@
 ; what if :b and :c are flexible, and overlap in their ranges?
 ;
 
+{:b #{[0 0] [[0 1 2 3] 1]}
+ :a #{[1 1] [1 2]}
+ :c #{[[2 3] 1] [3 3] [3 4] [4 4]}}
+
 (let [fixed    [($= [:cell 0 0] 1)
                 ($= [:cell 1 1] 2)
                 ($= [:cell 1 2] 2)
                 ($= [:cell 3 3] 3)
                 ($= [:cell 3 4] 3)
                 ($= [:cell 4 4] 3)]
-
-      defaults [($in [:cell 0 0] [0 1 2 3])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 1 1] [0 1 2 3])
-                ($in [:cell 1 2] [0 1 2 3])
-                ($in [:cell 2 1] [0 1 3])
-                ($in [:cell 3 1] [0 1 3])
-                ($in [:cell 3 3] [0 1 2 3])
-                ($in [:cell 3 4] [0 1 2 3])
-                ($in [:cell 4 4] [0 1 2 3])]
 
       flex     [($or ($and ($= [:cell 0 1] 1)
                            ($!= [:cell 1 1] 1)
@@ -320,7 +348,17 @@
                 ($or ($and ($= [:cell 2 1] 3)
                            ($!= [:cell 3 1] 3))
                      ($and ($!= [:cell 2 1] 3)
-                           ($= [:cell 3 1] 3)))]]
+                           ($= [:cell 3 1] 3)))]
+
+      defaults [($in [:cell 0 0] [0 1])
+                ($in [:cell 0 1] [0 1])
+                ($in [:cell 1 1] [0 2])
+                ($in [:cell 1 2] [0 1 2])
+                ($in [:cell 2 1] [0 1 3])
+                ($in [:cell 3 1] [0 1 3])
+                ($in [:cell 3 3] [0 3])
+                ($in [:cell 3 4] [0 3])
+                ($in [:cell 4 4] [0 3])]]
 
   (into (sorted-map)
         (solutions (concat defaults flex fixed)
@@ -330,21 +368,14 @@
 ; what if :c adds a 2nd request that is flexible?
 ;
 
+ {:b #{[0 0] [[0 1 2 3] 1]}
+  :a #{[1 1] [1 2]}
+  :c #{[[2 3] 1] [3 3] [[3 4] 4]}}
+
 (let [fixed    [($= [:cell 0 0] 1)
                 ($= [:cell 1 1] 2)
                 ($= [:cell 1 2] 2)
-                ($= [:cell 3 3] 3)
-                ($= [:cell 3 4] 3)]
-
-      defaults [($in [:cell 0 0] [0 1 2 3])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 1 1] [0 1 2 3])
-                ($in [:cell 1 2] [0 1 2 3])
-                ($in [:cell 2 1] [0 1 3])
-                ($in [:cell 3 1] [0 1 3])
-                ($in [:cell 3 3] [0 1 2 3])
-                ($in [:cell 3 4] [0 3])
-                ($in [:cell 4 4] [0 3])]
+                ($= [:cell 3 3] 3)]
 
       flex     [ ; :b [0 1] or [1 1] 0r [2 1] or [3 1]
                 ($or ($and ($= [:cell 0 1] 1)
@@ -374,7 +405,17 @@
                 ($or ($and ($= [:cell 3 4] 3)
                            ($!= [:cell 4 4] 3))
                      ($and ($!= [:cell 3 4] 3)
-                           ($= [:cell 4 4] 3)))]]
+                           ($= [:cell 4 4] 3)))]
+
+      defaults [($in [:cell 0 0] [0 1])
+                ($in [:cell 0 1] [0 1])
+                ($in [:cell 1 1] [0 1 2])
+                ($in [:cell 1 2] [0 1 2 3])
+                ($in [:cell 2 1] [0 1 3])
+                ($in [:cell 3 1] [0 1 3])
+                ($in [:cell 3 3] [0 3])
+                ($in [:cell 3 4] [0 3])
+                ($in [:cell 4 4] [0 3])]]
 
   (into (sorted-map)
         (solutions (concat defaults flex fixed)
@@ -386,21 +427,14 @@
 ; what if :a adds a flexible request that overlaps :c?
 ;
 
+{:b #{[0 0] [[0 1 2 3] 1]}
+ :a #{[1 1] [1 2] [[3 4] 4]}
+ :c #{[[2 3] 1] [3 3] [[3 4] 4]}}
+
 (let [fixed    [($= [:cell 0 0] 1)
                 ($= [:cell 1 1] 2)
                 ($= [:cell 1 2] 2)
-                ($= [:cell 3 3] 3)
-                ($= [:cell 3 4] 3)]
-
-      defaults [($in [:cell 0 0] [0 1 2 3])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 1 1] [0 1 2 3])
-                ($in [:cell 1 2] [0 1 2 3])
-                ($in [:cell 2 1] [0 1 3])
-                ($in [:cell 3 1] [0 1 3])
-                ($in [:cell 3 3] [0 1 2 3])
-                ($in [:cell 3 4] [0 2 3])
-                ($in [:cell 4 4] [0 2 3])]
+                ($= [:cell 3 3] 3)]
 
       flex     [ ; :b [0 1] or [1 1] 0r [2 1] or [3 1]
                 ($or ($and ($= [:cell 0 1] 1)
@@ -436,7 +470,18 @@
                 ($or ($and ($= [:cell 3 4] 2)
                            ($!= [:cell 4 4] 2))
                      ($and ($!= [:cell 3 4] 2)
-                           ($= [:cell 4 4] 2)))]]
+                           ($= [:cell 4 4] 2)))]
+
+      defaults [($in [:cell 0 0] [0 1])
+                ($in [:cell 0 1] [0 1])
+                ($in [:cell 1 1] [0 1 2])
+                ($in [:cell 1 2] [0 1 2])
+                ($in [:cell 2 1] [0 1 3])
+                ($in [:cell 3 1] [0 1 3])
+                ($in [:cell 3 3] [0 2 3])
+                ($in [:cell 3 4] [0 2 3])
+                ($in [:cell 4 4] [0 2 3])]]
+
   (into (sorted-map)
         (solutions (concat defaults flex fixed)
                    :timeout 1000)))
@@ -501,16 +546,6 @@
                 ($= [:cell 1 1] 2)
                 ($= [:cell 1 2] 2)]
 
-      defaults [($in [:cell 0 0] [0 1])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 0 2] [0 1])
-                ($in [:cell 1 1] [0 1 2])
-                ($in [:cell 1 2] [0 1 2])
-                ($in [:cell 2 1] [0 1])
-                ($in [:cell 2 2] [0 1])
-                ($in [:cell 3 1] [0 1])
-                ($in [:cell 3 2] [0 1])]
-
       flex     [($or ($and ($= [:cell 0 1] 1)
                            ($= [:cell 0 2] 1)
                            ($!= [:cell 1 1] 1)
@@ -541,7 +576,17 @@
                            ($!= [:cell 2 1] 1)
                            ($!= [:cell 2 2] 1)
                            ($= [:cell 3 1] 1)
-                           ($= [:cell 3 2] 1)))]]
+                           ($= [:cell 3 2] 1)))]
+
+      defaults [($in [:cell 0 0] [0 1])
+                ($in [:cell 0 1] [0 1])
+                ($in [:cell 0 2] [0 1])
+                ($in [:cell 1 1] [0 1 2])
+                ($in [:cell 1 2] [0 1 2])
+                ($in [:cell 2 1] [0 1])
+                ($in [:cell 2 2] [0 1])
+                ($in [:cell 3 1] [0 1])
+                ($in [:cell 3 2] [0 1])]]
   (into (sorted-map)
         (solutions (concat defaults
                            flex fixed)

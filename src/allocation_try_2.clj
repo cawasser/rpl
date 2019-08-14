@@ -14,7 +14,7 @@
 
 {:namespace "allocation-try-2"
  :public-api ["fixed-unit-grid-2" "test-requests" "retract-requests"]
- :effective-sloc 113}
+ :effective-sloc 110}
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -62,13 +62,15 @@
 ;
 ;       RESOLVED - no threading!
 ;
-; TODO: let's get some spec going, so we can generate some tests
-;
 ; TODO: any modification cause by the rules engine approach in loco-rules.clj
 ;
-; TODO: develop a simple UI to develop "requests"
+; TODO: sparse matrix for the resource GRID
+;
+; TODO: let's get some spec going, so we can generate some tests
 ;
 ; TODO: develop a simple UI to visualize the "demand" modeled by the algorithm
+;
+; TODO: develop a simple UI to develop "requests"
 ;
 ; TODO: determine what makes sense to LOG (intermediates? params?)
 ;
@@ -383,6 +385,34 @@
 
 
 
+  ())
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;
+; need to make GRID be "sparse"
+;
+; example: 128 channels for 1 month (hourly)
+;
+; grid -> 128 x (24*30) -> 128 x 720 -> 92,160 cells!
+;
+; many might be empty
+;
+; we may need a more compressed format
+;            (see https://en.wikipedia.org/wiki/Run-length_encoding)
+;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+
+
+(comment
   (defn fixed-unit-grid-3
         [channels time-periods empty-val]
     (into (sorted-map)
@@ -395,8 +425,8 @@
   (fixed-unit-grid-3 5 5 #{})
 
 
-  (test-requests sat-rule
-                 rej-rule
-                 []
-                 overlapping-requests)
+  (test-requests-2 sat-rule
+                   rej-rule
+                   []
+                   overlapping-requests)
   ())
