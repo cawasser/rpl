@@ -12,7 +12,7 @@
 
 {:namespace      "loco-rules-2"
  :public-api     ["generate-acceptable-requests"]
- :effective-sloc 90}
+ :effective-sloc 95}
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -113,6 +113,9 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 
+;;;;;;;;;;;;;;;;;;;;;
+;
+; NS PRIVATE
 
 (defn- build-defaults
   "build the 'default' set of constraints for cells that have multiple
@@ -167,7 +170,7 @@
          (zipmap (iterate inc 1)
                  (keys requests))))
 
-(defn- req-grid-2 [requests]
+(defn- build-all-constraints [requests]
   "develop the complete set of constraints necessary to describe the
    request problem"
 
@@ -195,7 +198,9 @@
 
 
 
-;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;
+;
+; PUBLIC
 
 (defn generate-acceptable-requests
       "take a set of requests with possible flexible needs and
@@ -204,15 +209,28 @@
 
   [requests]
 
-  (->> requests
-       req-grid-2
-       solution
-       (into (sorted-map))
-       (make-request (flipped-id-map requests))
-       (apply merge-with clojure.set/union)
-       (filter
-         (fn [x] (not (= :_ (key x)))))
-       (into {})))
+  (->>
+    ; take the requests
+    requests
+
+    ; build all the constraints
+    build-all-constraints
+
+    ; solve the constraints
+    solution
+
+    ; turn the solution back into a REQUEST
+    (make-request (flipped-id-map requests))
+
+    ; merge into 1 data structure
+    (apply merge-with clojure.set/union)
+
+    ; filter out the "empty slots" loco added
+    (filter
+      (fn [x] (not (= :_ (key x)))))
+
+    ; make sure its a map
+    (into {})))
 
 
 
