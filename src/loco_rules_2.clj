@@ -8,6 +8,10 @@
 ;
 ;       the second hardest part is getting the rules correct to actually
 ;       describe your problem
+;
+;       the third hardest part is figuring out if an empty answer is because
+;       you did the constraints wrong, or there really is no answer
+;
 
 
 {:namespace      "loco-rules-2"
@@ -20,7 +24,7 @@
 ; PROBLEM
 ;
 ; develop a simple (really simple) model and algorithm for determining a workable
-; resource "demand" set given a set of request with a combination of fixed and
+; resource "demand" set given a set of request with a combination of "fixed" and
 ; "flexible" needs
 ;
 ; return a REQUEST (see allocation_try_2.clj) data structure with any flexible
@@ -32,36 +36,36 @@
 ;
 ;
 ;
-; Assume a simple 2x2 GRID two requestors :a and :b
+; Assume a simple 2x2 GRID and two requestors :a and :b
 ;
 ;   :a needs cells [0 0] and [1 1]
 ;
 ;   :b needs 1 channel at time-slot 0, but it can be either channel 0 or channel 1
 ;
-; we can express this in a REQUEST like this:
+; We can express this in a REQUEST like this:
 ;
 ;      {:a #{[  0   0]   [1 1]}
 ;       :b #{[[0 1] 0]        }}
 ;
-; :a need 2 channels, and has no flexibility in them. it needs [0 0] AND [0 1].  we refer to
+; :a need 2 channels, and has no flexibility in them. it needs [0 0] AND [1 1].  we refer to
 ; these as "fixed requests"
 ;
-; notice how the channel for :b is expressed as a vector of the channels that :b
-; could use, as long as it gets one of them. in essence, :b needs [0 0] OR [1 0],
+; Notice how the channel for :b is expressed as a vector of the channels that :b
+; could use, as long as it gets one of them. In essence, :b needs [0 0] OR [1 0],
 ; but not both. we refer to this as a "flexible request"
 ;
-; we can also see from inspection that there is exactly 1 possible solution: :b can
+; We can also see from inspection that there is exactly 1 possible solution: :b can
 ; only have channel 1 at time-slot 0, since :a can ONLY work with [0 0]
 ;
 ;      {:a #{[0 0] [1 1]}
 ;       :b #{[1 0]      }}
 ;
-; for something so simple, it's easy to figure out a workable answer, but when things
+; For something so simple, it's easy to figure out a workable answer, but when things
 ; get even a little bit more complicated... we need to call in the big guns:
 ;
 ;                   Logic Programming
 ;
-; specifically the subset called "constraint solvers." by formulating a set of constraints
+; Specifically the subset called "constraint solvers." By formulating a set of constraints
 ; that describe the problem and "constrain" the possible solutions, we can have the
 ; computer find us a solution
 ;
@@ -72,14 +76,16 @@
 ;
 ; SOLUTION
 ;
-; 1) leverage the 'loco' constraint solver Clojure library
+; 0) leverage the 'loco' constraint solver Clojure library
 ;
-; 2) develop mechanisms for pragmatically producing the
-;    necessary constraints
 ;
-; 3) run the constrains through the solver and grab the first solution
 ;
-; 4) convert the solution back into the REQUEST data structure and
+; 1) pragmatically produce the necessary constraints to describe the
+;    problem
+;
+; 2) run the constraints through the solver and grab the solution
+;
+; 3) convert the solution back into a REQUEST data structure and
 ;    return it
 ;
 
@@ -104,7 +110,7 @@
 ;
 ; PUBLIC API
 ;
-; generate-acceptable-plan  - takes a REQUEST containing flexible channel
+; generate-acceptable-requests  - takes a REQUEST containing flexible channel
 ;          needs and returns a REQUEST where the channels are fixed such that
 ;          the entire set will work. internally it uses a "constraint solver"
 ;
@@ -117,9 +123,9 @@
 ;
 ; NS PRIVATE
 
-(defn- build-defaults
-  "build the 'default' set of constraints for cells that have multiple
-   requestors 'needing' them"
+(defn- expand-flexible-requests
+  "expand the collections of 'flexible' channel so each is a separate item. we
+   will use this to build al the $in constraints"
 
   [requests]
   (apply merge-with clojure.set/union
@@ -172,16 +178,23 @@
 
 (defn- build-all-constraints [requests]
   "develop the complete set of constraints necessary to describe the
-   request problem"
+   request problem
+
+   one side problem - we need to convert our keyword requestor-ids into
+   integers for loco"
 
   (let [id-map (id-map requests)]
     (flatten
       (list
-        (for [[[ch ts] r] (build-defaults requests)]
+        ; build the 'domain' constraints to include all the overlapping
+        ; requests, converts the keywords into the integers loco needs
+        (for [[[ch ts] r] (expand-flexible-requests requests)]
           ($in [:cell ch ts] (into []
                                    (flatten [0
                                              (for [x r]
                                                (x id-map))]))))
+
+        ; now build the constraints for the flexible and fixed requests
         (for [x (for [[req-id reqs] requests
                       [cs ts] reqs]
                   (if (coll? cs)
@@ -190,7 +203,7 @@
           x)))))
 
 (defn- make-request
-  "turns a 'solution' back into a REQUEST"
+  "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
 
   [id-map s]
   (for [[[_ ch ts] x] s]
@@ -219,13 +232,13 @@
     ; solve the constraints
     solution
 
-    ; turn the solution back into a REQUEST
+    ; turn the solution back into a set of individual REQUESTs
     (make-request (flipped-id-map requests))
 
-    ; merge into 1 data structure
+    ; merge them all into 1 map
     (apply merge-with clojure.set/union)
 
-    ; filter out the "empty slots" loco added
+    ; filter out the "empty requests" loco added
     (filter
       (fn [x] (not (= :_ (key x)))))
 
@@ -290,42 +303,51 @@
  :a #{[1 1] [1 2]}
  :c #{[3 3] [3 4] [4 4]}}
 
-; remember, loco only works with integers, so we need to change our
+; loco only works with integers, so we need to change our
 ; requestor IDs into numbers...
 
 (let [fixed    [($= [:cell 0 0] 1)                          ; :b = 1
                 ($= [:cell 1 1] 2)                          ; :a = 2
                 ($= [:cell 1 2] 2)
-                ($= [:cell 3 3] 3)                          ; ;c = 3
+                ($= [:cell 3 3] 3)                          ; :c = 3
                 ($= [:cell 3 4] 3)
                 ($= [:cell 4 4] 3)]
 
-      flex     [($or ($and ($= [:cell 0 1] 1)
-                           ($!= [:cell 1 1] 1)
-                           ($!= [:cell 2 1] 1)
-                           ($!= [:cell 3 1] 1))
-                     ($and ($!= [:cell 0 1] 1)
-                           ($= [:cell 1 1] 1)
-                           ($!= [:cell 2 1] 1)
-                           ($!= [:cell 3 1] 1))
-                     ($and ($!= [:cell 0 1] 1)
-                           ($!= [:cell 1 1] 1)
-                           ($= [:cell 2 1] 1)
-                           ($!= [:cell 3 1] 1))
-                     ($and ($!= [:cell 0 1] 1)
-                           ($!= [:cell 1 1] 1)
-                           ($!= [:cell 2 1] 1)
-                           ($= [:cell 3 1] 1)))]
+      flex     [($or                                        ; any one of the following
 
-      defaults [($in [:cell 0 0] [0 1])
-                ($in [:cell 0 1] [0 1])
-                ($in [:cell 1 1] [0 1 2])
-                ($in [:cell 1 2] [0 2])
-                ($in [:cell 2 1] [0 1])
-                ($in [:cell 3 1] [0 1])
-                ($in [:cell 3 3] [0 3])
-                ($in [:cell 3 4] [0 3])
-                ($in [:cell 4 4] [0 3])]]
+                  ($and ($= [:cell 0 1] 1)                  ; [0 1] but not [1 1], [2 1] or [3 1]
+                        ($!= [:cell 1 1] 1)
+                        ($!= [:cell 2 1] 1)
+                        ($!= [:cell 3 1] 1))
+
+                  ($and ($!= [:cell 0 1] 1)                 ; [1 1] but not [0 1], [2 1] or [3 1]
+                        ($= [:cell 1 1] 1)
+                        ($!= [:cell 2 1] 1)
+                        ($!= [:cell 3 1] 1))
+
+                  ($and ($!= [:cell 0 1] 1)                 ; [2 1] but not [0 1], [1 1] or [3 1]
+                        ($!= [:cell 1 1] 1)
+                        ($= [:cell 2 1] 1)
+                        ($!= [:cell 3 1] 1))
+
+                  ($and ($!= [:cell 0 1] 1)                 ; [3 1] but not [0 1], [1 1] or [2 1]
+                        ($!= [:cell 1 1] 1)
+                        ($!= [:cell 2 1] 1)
+                        ($= [:cell 3 1] 1)))]
+
+      ; loco requires all $= and $!= constraints to have a matching $in constraint
+      ;
+      ; we use 0 to mean 'no one gets this cell'
+      ;
+      defaults [($in [:cell 0 0] [0 1])                     ; only :b wants this
+                ($in [:cell 0 1] [0 1])                     ; part of :b's flexible request
+                ($in [:cell 1 1] [0 1 2])                   ; :a AND :b want this
+                ($in [:cell 1 2] [0 2])                     ; only :a wants this
+                ($in [:cell 2 1] [0 1])                     ; part of :b's flexible request
+                ($in [:cell 3 1] [0 1])                     ; part of :b's flexible request
+                ($in [:cell 3 3] [0 3])                     ; only :c wants these
+                ($in [:cell 3 4] [0 3])                     ; only :c wants these
+                ($in [:cell 4 4] [0 3])]]                   ; only :c wants these
   (into (sorted-map)
         (solutions (concat defaults
                            flex fixed)
