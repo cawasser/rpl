@@ -10,8 +10,8 @@
 ;       describe your problem
 
 
-{:namespace "loco-rules-2"
- :public-api ["generate-acceptable-requests"]
+{:namespace      "loco-rules-2"
+ :public-api     ["generate-acceptable-requests"]
  :effective-sloc 90}
 
 
@@ -174,7 +174,7 @@
   (let [id-map (id-map requests)]
     (flatten
       (list
-        (for [[[ch ts] r]  (build-defaults requests)]
+        (for [[[ch ts] r] (build-defaults requests)]
           ($in [:cell ch ts] (into []
                                    (flatten [0
                                              (for [x r]
@@ -186,6 +186,14 @@
                     (build-fixed-constraints cs ts req-id id-map)))]
           x)))))
 
+(defn- make-request
+  "turns a 'solution' back into a REQUEST"
+
+  [id-map s]
+  (for [[[_ ch ts] x] s]
+    {(get id-map x) #{[ch ts]}}))
+
+
 
 ;;;;;;;;
 
@@ -196,15 +204,17 @@
 
   [requests]
 
-  (into {}
-        (filter
-          #(not (= :_ (key %)))
-          (apply merge-with clojure.set/union
-                 (let [id-map (flipped-id-map requests)]
-                   (for [[[_ ch ts] x] (into (sorted-map)
-                                             (solution (req-grid-2
-                                                         requests)))]
-                     {(get id-map x) #{[ch ts]}}))))))
+  (->> requests
+       req-grid-2
+       solution
+       (into (sorted-map))
+       (make-request (flipped-id-map requests))
+       (apply merge-with clojure.set/union)
+       (filter
+         (fn [x] (not (= :_ (key x)))))
+       (into {})))
+
+
 
 
 
@@ -223,16 +233,6 @@
 (def requests-4 {:b #{[0 0] [[0 1 2 3] 1]}
                  :a #{[1 1] [1 2] [[3 4] 4]}
                  :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
-
-
-
-
-(into (sorted-map) (solution (req-grid-2 requests-1)))
-(into (sorted-map) (solution (req-grid-2 requests-2)))
-(into (sorted-map) (solution (req-grid-2 requests-3)))
-(into (sorted-map) (solution (req-grid-2 requests-4)))
-
-
 
 
 (generate-acceptable-requests requests-1)
@@ -368,16 +368,16 @@
 ; what if :c adds a 2nd request that is flexible?
 ;
 
- {:b #{[0 0] [[0 1 2 3] 1]}
-  :a #{[1 1] [1 2]}
-  :c #{[[2 3] 1] [3 3] [[3 4] 4]}}
+{:b #{[0 0] [[0 1 2 3] 1]}
+ :a #{[1 1] [1 2]}
+ :c #{[[2 3] 1] [3 3] [[3 4] 4]}}
 
 (let [fixed    [($= [:cell 0 0] 1)
                 ($= [:cell 1 1] 2)
                 ($= [:cell 1 2] 2)
                 ($= [:cell 3 3] 3)]
 
-      flex     [ ; :b [0 1] or [1 1] 0r [2 1] or [3 1]
+      flex     [; :b [0 1] or [1 1] 0r [2 1] or [3 1]
                 ($or ($and ($= [:cell 0 1] 1)
                            ($!= [:cell 1 1] 1)
                            ($!= [:cell 2 1] 1)
@@ -436,7 +436,7 @@
                 ($= [:cell 1 2] 2)
                 ($= [:cell 3 3] 3)]
 
-      flex     [ ; :b [0 1] or [1 1] 0r [2 1] or [3 1]
+      flex     [; :b [0 1] or [1 1] 0r [2 1] or [3 1]
                 ($or ($and ($= [:cell 0 1] 1)
                            ($!= [:cell 1 1] 1)
                            ($!= [:cell 2 1] 1)
