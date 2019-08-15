@@ -147,8 +147,15 @@
   "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
 
   [id-map s]
-  (for [[[_ ch ts] x] s]
-    {(get id-map x) #{[ch ts]}}))
+  ; make sure we return a map (this is a Clojure thing)
+  (into {}
+        ; filter out the "empty requests" loco added
+        (filter #(not (= :_ (key %)))
+                ; merge all the little parts into 1 map
+                (apply merge-with clojure.set/union
+                       ; convert the format to be a REQUEST
+                       (for [[[_ ch ts] x] s]
+                         {(get id-map x) #{[ch ts]}})))))
 
 (defn- expand-flexible-requests
   "expand the collection of 'flexible' request so each is a separate item.
@@ -252,16 +259,7 @@
     solution
 
     ; turn the solution back into a set of individual REQUESTs
-    (make-request (flipped-id-map requests))
-
-    ; merge them all into 1 map
-    (apply merge-with clojure.set/union)
-
-    ; filter out the "empty requests" loco added
-    (filter #(not (= :_ (key %))))
-
-    ; make sure its a map (this is a Clojure thing)
-    (into {})))
+    (make-request (flipped-id-map requests))))
 
 
 
