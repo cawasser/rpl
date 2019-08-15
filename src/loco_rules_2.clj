@@ -16,7 +16,7 @@
 
 {:namespace      "loco-rules-2"
  :public-api     ["generate-acceptable-requests"]
- :effective-sloc 95}
+ :effective-sloc 100}
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -123,9 +123,36 @@
 ;
 ; NS PRIVATE
 
+;
+; these are the helper functions
+;
+
+(defn- id-map [requests]
+  "build a map to convert keywords, used by REQUESTS, into integers,
+   which are required by loco"
+
+  (merge {:_ 0}
+         (zipmap (keys requests)
+                 (iterate inc 1))))
+
+(defn- flipped-id-map [requests]
+  "build a map to convert integers, which are required by loco into
+   keywords, used by REQUESTS"
+
+  (merge {0 :_}
+         (zipmap (iterate inc 1)
+                 (keys requests))))
+
+(defn- make-request
+  "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
+
+  [id-map s]
+  (for [[[_ ch ts] x] s]
+    {(get id-map x) #{[ch ts]}}))
+
 (defn- expand-flexible-requests
-  "expand the collections of 'flexible' channel so each is a separate item. we
-   will use this to build al the $in constraints"
+  "expand the collection of 'flexible' request so each is a separate item.
+   we will use this to build all the 'default' $in constraints"
 
   [requests]
   (apply merge-with clojure.set/union
@@ -136,6 +163,10 @@
                     (for [c cs]
                       {[c ts] #{req-id}}))
              {[cs ts] #{req-id}}))))
+
+;
+; these are the functions that do all the work
+;
 
 (defn- build-flex-constraints
   "build the set of constraints for requests that have flexible channel
@@ -155,59 +186,47 @@
                      ($!= [:cell r ts] (req-id id-map))))))))))
 
 (defn- build-fixed-constraints
-  "build the constraint for a fixed channel/time-slot request"
+  "build the constraint for one fixed channel/time-slot request"
 
   [cs ts req-id id-map]
   ($= [:cell cs ts] (req-id id-map)))
 
-(defn- id-map [requests]
-  "build a map to convert keywords, used by REQUESTS, into integers,
-   which are required by loco"
+(defn- build-default-constraints
+  "build the 'domain' constraints to include all the overlapping
+   requests, converts the keywords into the integers loco needs"
 
-  (merge {:_ 0}
-         (zipmap (keys requests)
-                 (iterate inc 1))))
+  [id-map requests]
+  (for [[[ch ts] r] (expand-flexible-requests requests)]
+    ($in [:cell ch ts]
+         (into []
+               (flatten [0
+                         (for [x r]
+                           (x id-map))])))))
 
-(defn- flipped-id-map [requests]
-  "build a map to convert integers, which are required by loco into
-   keywords, used by REQUESTS"
-
-  (merge {0 :_}
-         (zipmap (iterate inc 1)
-                 (keys requests))))
-
-(defn- build-all-constraints [requests]
+(defn- build-all-constraints
   "develop the complete set of constraints necessary to describe the
    request problem
 
    one side problem - we need to convert our keyword requestor-ids into
    integers for loco"
 
+  [requests]
   (let [id-map (id-map requests)]
     (flatten
       (list
-        ; build the 'domain' constraints to include all the overlapping
-        ; requests, converts the keywords into the integers loco needs
-        (for [[[ch ts] r] (expand-flexible-requests requests)]
-          ($in [:cell ch ts] (into []
-                                   (flatten [0
-                                             (for [x r]
-                                               (x id-map))]))))
-
-        ; now build the constraints for the flexible and fixed requests
-        (for [x (for [[req-id reqs] requests
+        ;  build the constraints for the flexible and fixed requests
+        (for [r (for [[req-id reqs] requests
                       [cs ts] reqs]
                   (if (coll? cs)
                     (build-flex-constraints cs ts req-id id-map)
                     (build-fixed-constraints cs ts req-id id-map)))]
-          x)))))
+          r)
 
-(defn- make-request
-  "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
+        ; now build the default constraints
+        (build-default-constraints id-map requests)))))
 
-  [id-map s]
-  (for [[[_ ch ts] x] s]
-    {(get id-map x) #{[ch ts]}}))
+
+
 
 
 
@@ -217,7 +236,7 @@
 
 (defn generate-acceptable-requests
       "take a set of requests with possible flexible needs and
-       return a set of requests  where those slots are locked
+       return a set of requests where those needs are locked
        down so that all the requests can work"
 
   [requests]
@@ -239,10 +258,9 @@
     (apply merge-with clojure.set/union)
 
     ; filter out the "empty requests" loco added
-    (filter
-      (fn [x] (not (= :_ (key x)))))
+    (filter #(not (= :_ (key %))))
 
-    ; make sure its a map
+    ; make sure its a map (this is a Clojure thing)
     (into {})))
 
 
@@ -252,24 +270,33 @@
 ; TESTS
 ;
 
+(def requests-0 {:b #{[1 1]}
+                 :a #{[1 1] [1 2]}})
+
 (def requests-1 {:b #{[0 0] [[0 1 2 3] 1]}
                  :a #{[1 1] [1 2]}
                  :c #{[3 3] [3 4] [4 4]}})
+
 (def requests-2 {:b #{[0 0] [[0 1 2 3] 1]}
                  :a #{[1 1] [1 2]}
                  :c #{[[2 3] 1] [3 3] [3 4] [4 4]}})
+
 (def requests-3 {:b #{[0 0] [[0 1 2 3] 1]}
                  :a #{[1 1] [1 2]}
                  :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
+
 (def requests-4 {:b #{[0 0] [[0 1 2 3] 1]}
                  :a #{[1 1] [1 2] [[3 4] 4]}
                  :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
 
+(generate-acceptable-requests requests-0)
+; => {}
 
 (generate-acceptable-requests requests-1)
 ;=> {:b #{[0 0] [0 1]},
 ;    :a #{[1 1] [1 2]},
 ;    :c #{[3 3] [3 4] [4 4]}}
+
 
 (generate-acceptable-requests requests-2)
 ;=> {:b #{[0 0] [2 1]},
@@ -335,7 +362,7 @@
                         ($!= [:cell 2 1] 1)
                         ($= [:cell 3 1] 1)))]
 
-      ; loco requires all $= and $!= constraints to have a matching $in constraint
+      ; loco requires all $= and $!= constraints have a matching $in constraint
       ;
       ; we use 0 to mean 'no one gets this cell'
       ;
@@ -345,9 +372,9 @@
                 ($in [:cell 1 2] [0 2])                     ; only :a wants this
                 ($in [:cell 2 1] [0 1])                     ; part of :b's flexible request
                 ($in [:cell 3 1] [0 1])                     ; part of :b's flexible request
-                ($in [:cell 3 3] [0 3])                     ; only :c wants these
-                ($in [:cell 3 4] [0 3])                     ; only :c wants these
-                ($in [:cell 4 4] [0 3])]]                   ; only :c wants these
+                ($in [:cell 3 3] [0 3])                     ; only :c wants this
+                ($in [:cell 3 4] [0 3])                     ; only :c wants this
+                ($in [:cell 4 4] [0 3])]]                   ; only :c wants this
   (into (sorted-map)
         (solutions (concat defaults
                            flex fixed)
@@ -450,7 +477,7 @@
       defaults [($in [:cell 0 0] [0 1])
                 ($in [:cell 0 1] [0 1])
                 ($in [:cell 1 1] [0 1 2])
-                ($in [:cell 1 2] [0 1 2 3])
+                ($in [:cell 1 2] [0 1 2])
                 ($in [:cell 2 1] [0 1 3])
                 ($in [:cell 3 1] [0 1 3])
                 ($in [:cell 3 3] [0 3])
@@ -555,7 +582,7 @@
 ; channel over a set of time-slots, but the requestor doesn't
 ; care which channel as long as it is the SAME ONE at each time
 ;
-; logically, this is
+; logically, this is a situation like:
 ;
 ;      ":a needs one channel out of 0, 1, OR 2 at all time-slots
 ;         0, 1, AND 2"
@@ -567,15 +594,29 @@
 ; where the [vector] defines the OR-set and the #{set} defines
 ; the AND-set
 ;
+; also need ot look at situation where the channel is fixed and the
+; time-slots are grouped:
 ;
-; (this is a more flexible approach if we can make it work for both the
-;  channel and the time-slot)
+;     {:a #{[0 #{1 2}}}
+;
+; technically, this is the effectively {:a #{[0 1] [0 2}} but more
+; compact
+;
+;
+;
+; then we can stretch to:
+;
+;     {:a #{[#{0 1} #{1 2}}} -> {:a #{[0 1] [0 2] [1 1] [1 2]}}
+;
+; and maybe even:
+;
+;     {:a #{[#{0 1} [1 2]}} -> {:a #{[0 1] [0 2]} OR {:a #{[1 1] [1 2]}}
 ;
 
 
 
 
-; just to make it a bit smaller, only use :b and :a
+; just to make out example a bit smaller, only use :b and :a
 ;
 ;     this is still pretty hard to get right 'long-hand'
 ;
