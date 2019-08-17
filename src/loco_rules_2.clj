@@ -143,20 +143,6 @@
          (zipmap (iterate inc 1)
                  (keys requests))))
 
-(defn- make-request
-  "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
-
-  [id-map s]
-  ; make sure we return a map (this is a Clojure thing)
-  (into {}
-        ; filter out the "empty requests" loco added
-        (filter #(not (= :_ (key %)))
-                ; merge all the little parts into 1 map
-                (apply merge-with clojure.set/union
-                       ; convert the format to be a REQUEST
-                       (for [[[_ ch ts] x] s]
-                         {(get id-map x) #{[ch ts]}})))))
-
 (defn- expand-flexible-requests
   "expand the collection of 'flexible' request so each is a separate item.
    we will use this to build all the 'default' $in constraints"
@@ -170,6 +156,18 @@
                     (for [c cs]
                       {[c ts] #{req-id}}))
              {[cs ts] #{req-id}}))))
+
+(defn reqs-from-grid [grid]
+  (apply merge-with
+         clojure.set/union
+         (remove nil?
+                 (flatten
+                   (for [ch (range (count (first grid)))
+                         ts (range (count grid))]
+                     (if (empty? (get-in grid [ch ts]))
+                       ()
+                       {(first (get-in grid [ch ts])) #{[ch ts]}}))))))
+
 
 ;
 ; these are the functions that do all the work
@@ -232,8 +230,30 @@
         ; now build the default constraints
         (build-default-constraints id-map requests)))))
 
+(defn- make-request
+  "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
+
+  [id-map s]
+  ; make sure we return a map (this is a Clojure thing)
+
+  ;(->> (for [[[_ ch ts] x] s]
+  ;       {(get id-map x) #{[ch ts]}})
+  ;
+  ;     apply merge-with clojure.set/union
+  ;
+  ;     #(filter #(not (= :_ (key %))))
+  ;
+  ;     into {}))
 
 
+  (into {}
+        ; filter out the "empty requests" loco added
+        (filter #(not (= :_ (key %)))
+                ; merge all the little parts into 1 map
+                (apply merge-with clojure.set/union
+                       ; convert the format to be a REQUEST
+                       (for [[[_ ch ts] x] s]
+                         {(get id-map x) #{[ch ts]}})))))
 
 
 
@@ -287,8 +307,10 @@
                  :a #{[1 1] [1 2] [[3 4] 4]}
                  :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
 
+
 (generate-acceptable-requests requests-0)
 ; => {}
+
 
 (generate-acceptable-requests requests-1)
 ;=> {:b #{[0 0] [0 1]},
@@ -316,10 +338,48 @@
 
 
 
+(def grid [[#{:a} #{:a}]
+           [#{} #{:b}]])
+
+(def grid-reqs {:a #{[0 0] [0 1]} :b #{[1 1]}})
+
+(def ch (count (first grid)))
+(def ts (count grid))
+
+(range ch)
+
+
+(first (get-in grid [0 0]))
+(first (get-in grid [1 1]))
+
+(remove nil?
+       (flatten (for [ch (range (count (first grid)))
+                      ts (range (count grid))]
+                  [(first (get-in grid [ch ts]))])))
+
+(merge '({:a #{[0 0]}} {:b #{[1 1]}}))
+(apply merge '({:a #{[0 0]}} {:b #{[1 1]}}))
+
+(apply merge-with clojure.set/union '({:a #{[0 0]}} {:a #{[0 1]}}))
+
+(= {:a #{[0 0] [0 1]}, :b #{[1 1]}}
+  {:a #{[0 0] [0 1]} :b #{[1 1]}})
 
 
 
 
+(= grid-reqs
+  (apply merge-with clojure.set/union
+    (remove nil?
+      (flatten (for [ch (range (count (first grid)))
+                     ts (range (count grid))]
+                 (if (empty? (get-in grid [ch ts]))
+                   ()
+                   {(first (get-in grid [ch ts])) #{[ch ts]}}))))))
+
+
+
+(= grid-reqs (reqs-from-grid grid))
 
 
 ; "long hand"
