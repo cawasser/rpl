@@ -236,24 +236,14 @@
   [id-map s]
   ; make sure we return a map (this is a Clojure thing)
 
-  ;(->> (for [[[_ ch ts] x] s]
-  ;       {(get id-map x) #{[ch ts]}})
-  ;
-  ;     apply merge-with clojure.set/union
-  ;
-  ;     #(filter #(not (= :_ (key %))))
-  ;
-  ;     into {}))
+  (->> (for [[[_ ch ts] x] s]
+         {(get id-map x) #{[ch ts]}})
 
+       (apply merge-with clojure.set/union)
 
-  (into {}
-        ; filter out the "empty requests" loco added
-        (filter #(not (= :_ (key %)))
-                ; merge all the little parts into 1 map
-                (apply merge-with clojure.set/union
-                       ; convert the format to be a REQUEST
-                       (for [[[_ ch ts] x] s]
-                         {(get id-map x) #{[ch ts]}})))))
+       (filter #(not (= :_ (key %))))
+
+       (into {})))
 
 
 
