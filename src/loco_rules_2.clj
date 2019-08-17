@@ -328,48 +328,7 @@
 
 
 
-(def grid [[#{:a} #{:a}]
-           [#{} #{:b}]])
 
-(def grid-reqs {:a #{[0 0] [0 1]} :b #{[1 1]}})
-
-(def ch (count (first grid)))
-(def ts (count grid))
-
-(range ch)
-
-
-(first (get-in grid [0 0]))
-(first (get-in grid [1 1]))
-
-(remove nil?
-       (flatten (for [ch (range (count (first grid)))
-                      ts (range (count grid))]
-                  [(first (get-in grid [ch ts]))])))
-
-(merge '({:a #{[0 0]}} {:b #{[1 1]}}))
-(apply merge '({:a #{[0 0]}} {:b #{[1 1]}}))
-
-(apply merge-with clojure.set/union '({:a #{[0 0]}} {:a #{[0 1]}}))
-
-(= {:a #{[0 0] [0 1]}, :b #{[1 1]}}
-  {:a #{[0 0] [0 1]} :b #{[1 1]}})
-
-
-
-
-(= grid-reqs
-  (apply merge-with clojure.set/union
-    (remove nil?
-      (flatten (for [ch (range (count (first grid)))
-                     ts (range (count grid))]
-                 (if (empty? (get-in grid [ch ts]))
-                   ()
-                   {(first (get-in grid [ch ts])) #{[ch ts]}}))))))
-
-
-
-(= grid-reqs (reqs-from-grid grid))
 
 
 ; "long hand"
