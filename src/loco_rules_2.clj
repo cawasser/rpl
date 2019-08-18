@@ -16,7 +16,7 @@
 
 {:namespace      "loco-rules-2"
  :public-api     ["generate-acceptable-requests"]
- :effective-sloc 100}
+ :effective-sloc 130}
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -80,18 +80,19 @@
 ;
 ;
 ;
-; 1) pragmatically produce the necessary constraints to describe the
-;    problem
+; 1) take into account the allocations already in the grid
 ;
-; 2) run the constraints through the solver and grab the solution
+; 2) pragmatically produce the necessary constraints to describe the
+;     problem
 ;
-; 3) convert the solution back into a REQUEST data structure and
+; 3) run the constraints through the solver and grab the solution
+;
+; 4) convert the solution back into a REQUEST data structure and
 ;    return it
 ;
 
 
 
-; TODO: account for existing allocations (using a GRID)
 ;
 ; TODO: requestor needs a flexible channel at fixed times
 ;
@@ -127,21 +128,15 @@
 ; these are the helper functions
 ;
 
-(defn- id-map [requests]
-  "build a map to convert keywords, used by REQUESTS, into integers,
-   which are required by loco"
+(defn- id-map
+  "build a map to convert keyword, used by REQUESTS, into
+   keywords, which are required by loco and vice versa"
 
+  [requests]
   (merge {:_ 0}
-         (zipmap (keys requests)
-                 (iterate inc 1))))
-
-(defn- flipped-id-map [requests]
-  "build a map to convert integers, which are required by loco into
-   keywords, used by REQUESTS"
-
-  (merge {0 :_}
-         (zipmap (iterate inc 1)
-                 (keys requests))))
+         {0 :_}
+         (zipmap (keys requests) (iterate inc 1))
+         (zipmap (iterate inc 1) (keys requests))))
 
 (defn- expand-flexible-requests
   "expand the collection of 'flexible' request so each is a separate item.
@@ -151,22 +146,70 @@
   (apply merge-with clojure.set/union
          (for [[req-id reqs] requests
                [cs ts] reqs]
-           (if (coll? cs)
+           (if (vector? cs)
              (apply conj
                     (for [c cs]
                       {[c ts] #{req-id}}))
              {[cs ts] #{req-id}}))))
 
-(defn reqs-from-grid [grid]
-  (apply merge-with
-         clojure.set/union
-         (remove nil?
-                 (flatten
-                   (for [ch (range (count (first grid)))
-                         ts (range (count grid))]
-                     (if (empty? (get-in grid [ch ts]))
-                       ()
-                       {(first (get-in grid [ch ts])) #{[ch ts]}}))))))
+(defn reqs-from-grid
+      "'reverse engineer' a map of requests from the grid that they
+       'would have' produced, playing on the functional programming
+       adage:
+
+          'looking at the data, you can't prove this isn't how it
+           was done' "
+  [grid]
+
+  (apply
+    merge-with
+    clojure.set/union
+    (remove nil?
+            (flatten
+              (for [ch (range (count (first grid)))
+                    ts (range (count grid))]
+                (if (empty? (get-in grid [ts ch]))
+                  ()
+                  {(first (get-in grid [ts ch])) #{[ch ts]}}))))))
+
+(defn cells-from-grid
+      "'reverse engineer' a map of cell allocations that would have been
+       produced if we had run the requests that are built by
+       (reqs-from-grid) thorough (solution)
+
+       this also plays on the functional programming adage:
+
+          'looking at the data, you can't prove this isn't how it
+           was done' "
+  [grid]
+
+  (into
+    {}
+    (remove
+      nil?
+      (flatten
+        (for [ch (range (count (first grid)))
+              ts (range (count grid))]
+          (if (empty? (get-in grid [ts ch]))
+            ()
+            {[:cell ch ts] (first (get-in grid [ts ch]))}))))))
+
+
+
+; why do we need BOTH function?
+;
+(def sol
+  (let [r (merge-with
+            clojure.set/union requests-1 (reqs-from-grid used-grid))]
+    (solution
+      (build-all-constraints-2 (id-map r) r))))
+
+(cells-from-grid used-grid)
+
+(apply dissoc sol (keys (cells-from-grid used-grid)))
+
+
+
 
 
 ;
@@ -213,7 +256,7 @@
    request problem
 
    one side problem - we need to convert our keyword requestor-ids into
-   integers for loco"
+   integers for loco using the id-map we generate from the requests"
 
   [requests]
   (let [id-map (id-map requests)]
@@ -230,20 +273,70 @@
         ; now build the default constraints
         (build-default-constraints id-map requests)))))
 
+(defn- build-all-constraints-2
+  "develop the complete set of constraints necessary to describe the
+   request problem
+
+   one side problem - we need to convert our keyword requestor-ids into
+   integers for loco using the id-map passed in"
+
+  [id-map requests]
+  (flatten
+    (list
+      ;  build the constraints for the flexible and fixed requests
+      (for [r (for [[req-id reqs] requests
+                    [cs ts] reqs]
+                (if (coll? cs)
+                  (build-flex-constraints cs ts req-id id-map)
+                  (build-fixed-constraints cs ts req-id id-map)))]
+        r)
+
+      ; now build the default constraints
+      (build-default-constraints id-map requests))))
+
 (defn- make-request
   "turns a 'solution' back into a REQUEST, using the 'reverse' id-mapping"
 
   [id-map s]
   ; make sure we return a map (this is a Clojure thing)
 
-  (->> (for [[[_ ch ts] x] s]
-         {(get id-map x) #{[ch ts]}})
+  (->>
+    ; {[ch ts] #{:id}} -> {:id #{[ch ts]}}
+    (for [[[_ ch ts] x] s]
+      {(get id-map x) #{[ch ts]}})
 
-       (apply merge-with clojure.set/union)
+    ; merge the maps, and the value sets (union)
+    (apply merge-with clojure.set/union)
 
-       (filter #(not (= :_ (key %))))
+    ; filter out the "{:_ 0}" cases Loco added
+    (filter #(not (= :_ (key %))))
 
-       (into {})))
+    ; back into a map
+    (into {})))
+
+
+; the problem here is that we shouldn't just blindly throw out all the
+; keys we found in the grid. what if one of those requestors has
+; asked for a NEW allocation, on top of what they already have?
+;
+; we can argue that it wouldn't happen for a certain customer set, but
+; our goal here is to solve this entire category of problems, so
+; arbitrarily restrict a capability to service one customer is the
+; opposite
+;
+
+
+(defn clean-up-requests
+      "remove the cells that were originally in the grid so
+       we are only dealing with the 'new' stuff"
+
+  [grid-cells requests-cells]
+  (let [rfg (cells-from-grid grid-cells)]
+    (if (or (empty? rfg) (empty? requests-cells))
+      requests-cells
+
+      (into {}
+            (apply dissoc requests-cells (keys rfg))))))
 
 
 
@@ -268,8 +361,42 @@
     ; solve the constraints
     solution
 
-    ; turn the solution back into a set of individual REQUESTs
-    (make-request (flipped-id-map requests))))
+    ; turn the solution back into a set of individual REQUESTS
+    (make-request (id-map requests))))
+
+
+;
+; TOP TIP: don't change an existing function when you are refactoring,
+;          make a copy and re-factor the copy. that way you can still
+;          run the original and see if you are getting the same answer
+;
+;
+(defn generate-acceptable-requests-2
+      "take a set of requests with possible flexible needs and
+       return a set of requests where those needs are locked
+       down so that all the requests can work"
+
+  [grid requests]
+  (let [all-reqs (merge-with clojure.set/union
+                             requests
+                             (reqs-from-grid grid))
+        ids      (id-map all-reqs)]
+
+    (->>
+      ; take the requests
+      all-reqs
+
+      ; build all the constraints
+      (build-all-constraints-2 ids)
+
+      ; solve the constraints
+      solution
+
+      ; pull out all the slots that came from the original grid
+      (clean-up-requests grid)
+
+      ; turn the solution back into a REQUEST
+      (make-request ids))))
 
 
 
@@ -278,6 +405,7 @@
 ; TESTS
 ;
 
+; REQUEST
 (def requests-0 {:b #{[1 1]}
                  :a #{[1 1] [1 2]}})
 
@@ -297,33 +425,113 @@
                  :a #{[1 1] [1 2] [[3 4] 4]}
                  :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
 
+(def requests-5 {:b #{[0 0] [[0 1 2 3] 1]}
+                 :a #{[1 1] [1 2] [[3 4] 4]}
+                 :q #{[2 2]}
+                 :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
 
-(generate-acceptable-requests requests-0)
+(def requests-6 {:b #{[0 0] [[0 1 2 3] 1]}
+                 :a #{[1 1] [1 2] [[3 4] 4]}
+                 :q #{[[2 3] 2]}
+                 :c #{[[2 3] 1] [3 3] [[3 4] 4]}})
+
+; GRID
+(def empty-grid [[#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]])
+
+(def used-grid [[#{}   #{}   #{} #{} #{}]
+                [#{}   #{}   #{} #{} #{}]
+                [#{}   #{}   #{} #{} #{}]
+                [#{:q} #{}   #{} #{} #{}]
+                [#{:q} #{:q} #{} #{} #{}]])
+
+(def used-grid-2 [[#{}   #{}   #{}   #{} #{}]
+                  [#{}   #{}   #{}   #{} #{}]
+                  [#{}   #{}   #{:m} #{} #{}]
+                  [#{:q} #{}   #{}   #{} #{}]
+                  [#{:q} #{:q} #{}   #{} #{}]])
+
+
+(generate-acceptable-requests-2 empty-grid requests-0)
+(generate-acceptable-requests-2 used-grid requests-0)
+(generate-acceptable-requests-2 used-grid-2 requests-0)
 ; => {}
 
 
-(generate-acceptable-requests requests-1)
-;=> {:b #{[0 0] [0 1]},
-;    :a #{[1 1] [1 2]},
+
+(generate-acceptable-requests-2 empty-grid requests-1)
+(generate-acceptable-requests-2 used-grid requests-1)
+(generate-acceptable-requests-2 used-grid-2 requests-1)
+;=> {:a #{[1 1] [1 2]},
+;    :b #{[0 0] [0 1]},
 ;    :c #{[3 3] [3 4] [4 4]}}
 
 
-(generate-acceptable-requests requests-2)
+
+(generate-acceptable-requests-2 empty-grid requests-2)
+(generate-acceptable-requests-2 used-grid requests-2)
+(generate-acceptable-requests-2 used-grid-2 requests-2)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [1 2]},
 ;    :c #{[3 3] [3 4] [3 1] [4 4]}}
 
 
-(generate-acceptable-requests requests-3)
+
+(generate-acceptable-requests-2 empty-grid requests-3)
+(generate-acceptable-requests-2 used-grid requests-3)
+(generate-acceptable-requests-2 used-grid-2 requests-3)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]}}
 
 
-(generate-acceptable-requests requests-4)
+
+(generate-acceptable-requests-2 empty-grid requests-4)
+(generate-acceptable-requests-2 used-grid requests-4)
+(generate-acceptable-requests-2 used-grid-2 requests-4)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [3 4] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]}}
+
+
+
+(generate-acceptable-requests-2 empty-grid requests-5)
+(generate-acceptable-requests-2 used-grid requests-5)
+;=> {:b #{[0 0] [2 1]},
+;    :a #{[1 1] [3 4] [1 2]},
+;    :c #{[3 3] [3 1] [4 4]},
+;    :q #{[2 2]}}
+
+(generate-acceptable-requests-2 used-grid-2 requests-5)
+;=> {} <- :m is already using [2 2], so :q can't have it
+
+
+
+(generate-acceptable-requests-2 empty-grid requests-6)
+(generate-acceptable-requests-2 used-grid requests-6)
+;=> {:b #{[0 0] [2 1]},
+;    :a #{[1 1] [3 4] [1 2]},
+;    :c #{[3 3] [3 1] [4 4]},
+;    :q #{[2 2]}}
+
+(generate-acceptable-requests-2 used-grid-2 requests-6)
+;=> {:q #{[3 2]},                <- :m already has [2 2]
+;    :b #{[0 0] [2 1]},
+;    :a #{[1 1] [3 4] [1 2]},
+;    :c #{[3 3] [3 1] [4 4]}}
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -619,6 +827,29 @@
 ;
 ;     {:a #{[#{0 1} [1 2]}} -> {:a #{[0 1] [0 2]} OR {:a #{[1 1] [1 2]}}
 ;
+; I leave these last as an exercise for the reader...
+
+
+
+
+;
+; this leads to a simplification - just make all fixed allocations be
+; sets, #{}. this means we only have 2 cases each for channels and
+; time-slots: [] meaning flex, and #{} meaning fixed.
+;
+; this gives us 4 cases:
+;   fixed/fixed, flex/fixed, fixed/flex, and flex/flex
+;
+; I suggest keeping the definition of a REQUEST not change, so scalar
+; values are still allowed, keeping the text format simpler to develop
+; by hand, and simpler to read as well. this required a pre-processing
+; step to put request scalars into #{}.
+;
+; a small modification to reqs-from-grid is needed to produce #{}'s rather
+; than scalars for ch and ts. this eliminates the need to process these
+; element twice, once in reqs-from-grid and again as part of the pre-
+; processing set for the requests
+;
 
 
 
@@ -627,8 +858,8 @@
 ;
 ;     this is still pretty hard to get right 'long-hand'
 ;
-(def requests-5 {:b #{[0 0] [[0 1 2 3] #{1 2}]}
-                 :a #{[1 1] [1 2]}})
+{:b #{[0 0] [[0 1 2 3] #{1 2}]}
+ :a #{[1 1] [1 2]}}
 
 (let [fixed    [($= [:cell 0 0] 1)
                 ($= [:cell 1 1] 2)
@@ -688,7 +919,7 @@
 ;     [:cell 1 2] 2,
 ;     [:cell 2 1] 0,
 ;     [:cell 2 2] 0,
-;     [:cell 3 1] 1, <- in this case, loco picked channel 3
+;     [:cell 3 1] 1, <- in this case, loco picked [3 1] and [3 2]
 ;     [:cell 3 2] 1}))
 ;
 ; could have picked [0 1] and [0 2] OR [2 1] and [2 2]
