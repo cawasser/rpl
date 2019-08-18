@@ -194,24 +194,6 @@
             ()
             {[:cell ch ts] (first (get-in grid [ts ch]))}))))))
 
-
-
-; why do we need BOTH function?
-;
-(def sol
-  (let [r (merge-with
-            clojure.set/union requests-1 (reqs-from-grid used-grid))]
-    (solution
-      (build-all-constraints-2 (id-map r) r))))
-
-(cells-from-grid used-grid)
-
-(apply dissoc sol (keys (cells-from-grid used-grid)))
-
-
-
-
-
 ;
 ; these are the functions that do all the work
 ;
@@ -256,28 +238,6 @@
    request problem
 
    one side problem - we need to convert our keyword requestor-ids into
-   integers for loco using the id-map we generate from the requests"
-
-  [requests]
-  (let [id-map (id-map requests)]
-    (flatten
-      (list
-        ;  build the constraints for the flexible and fixed requests
-        (for [r (for [[req-id reqs] requests
-                      [cs ts] reqs]
-                  (if (coll? cs)
-                    (build-flex-constraints cs ts req-id id-map)
-                    (build-fixed-constraints cs ts req-id id-map)))]
-          r)
-
-        ; now build the default constraints
-        (build-default-constraints id-map requests)))))
-
-(defn- build-all-constraints-2
-  "develop the complete set of constraints necessary to describe the
-   request problem
-
-   one side problem - we need to convert our keyword requestor-ids into
    integers for loco using the id-map passed in"
 
   [id-map requests]
@@ -314,18 +274,6 @@
     ; back into a map
     (into {})))
 
-
-; the problem here is that we shouldn't just blindly throw out all the
-; keys we found in the grid. what if one of those requestors has
-; asked for a NEW allocation, on top of what they already have?
-;
-; we can argue that it wouldn't happen for a certain customer set, but
-; our goal here is to solve this entire category of problems, so
-; arbitrarily restrict a capability to service one customer is the
-; opposite
-;
-
-
 (defn clean-up-requests
       "remove the cells that were originally in the grid so
        we are only dealing with the 'new' stuff"
@@ -349,33 +297,6 @@
        return a set of requests where those needs are locked
        down so that all the requests can work"
 
-  [requests]
-
-  (->>
-    ; take the requests
-    requests
-
-    ; build all the constraints
-    build-all-constraints
-
-    ; solve the constraints
-    solution
-
-    ; turn the solution back into a set of individual REQUESTS
-    (make-request (id-map requests))))
-
-
-;
-; TOP TIP: don't change an existing function when you are refactoring,
-;          make a copy and re-factor the copy. that way you can still
-;          run the original and see if you are getting the same answer
-;
-;
-(defn generate-acceptable-requests-2
-      "take a set of requests with possible flexible needs and
-       return a set of requests where those needs are locked
-       down so that all the requests can work"
-
   [grid requests]
   (let [all-reqs (merge-with clojure.set/union
                              requests
@@ -387,7 +308,7 @@
       all-reqs
 
       ; build all the constraints
-      (build-all-constraints-2 ids)
+      (build-all-constraints ids)
 
       ; solve the constraints
       solution
@@ -455,69 +376,69 @@
                   [#{:q} #{:q} #{}   #{} #{}]])
 
 
-(generate-acceptable-requests-2 empty-grid requests-0)
-(generate-acceptable-requests-2 used-grid requests-0)
-(generate-acceptable-requests-2 used-grid-2 requests-0)
+(generate-acceptable-requests empty-grid requests-0)
+(generate-acceptable-requests used-grid requests-0)
+(generate-acceptable-requests used-grid-2 requests-0)
 ; => {}
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-1)
-(generate-acceptable-requests-2 used-grid requests-1)
-(generate-acceptable-requests-2 used-grid-2 requests-1)
+(generate-acceptable-requests empty-grid requests-1)
+(generate-acceptable-requests used-grid requests-1)
+(generate-acceptable-requests used-grid-2 requests-1)
 ;=> {:a #{[1 1] [1 2]},
 ;    :b #{[0 0] [0 1]},
 ;    :c #{[3 3] [3 4] [4 4]}}
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-2)
-(generate-acceptable-requests-2 used-grid requests-2)
-(generate-acceptable-requests-2 used-grid-2 requests-2)
+(generate-acceptable-requests empty-grid requests-2)
+(generate-acceptable-requests used-grid requests-2)
+(generate-acceptable-requests used-grid-2 requests-2)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [1 2]},
 ;    :c #{[3 3] [3 4] [3 1] [4 4]}}
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-3)
-(generate-acceptable-requests-2 used-grid requests-3)
-(generate-acceptable-requests-2 used-grid-2 requests-3)
+(generate-acceptable-requests empty-grid requests-3)
+(generate-acceptable-requests used-grid requests-3)
+(generate-acceptable-requests used-grid-2 requests-3)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]}}
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-4)
-(generate-acceptable-requests-2 used-grid requests-4)
-(generate-acceptable-requests-2 used-grid-2 requests-4)
+(generate-acceptable-requests empty-grid requests-4)
+(generate-acceptable-requests used-grid requests-4)
+(generate-acceptable-requests used-grid-2 requests-4)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [3 4] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]}}
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-5)
-(generate-acceptable-requests-2 used-grid requests-5)
+(generate-acceptable-requests empty-grid requests-5)
+(generate-acceptable-requests used-grid requests-5)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [3 4] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]},
 ;    :q #{[2 2]}}
 
-(generate-acceptable-requests-2 used-grid-2 requests-5)
+(generate-acceptable-requests used-grid-2 requests-5)
 ;=> {} <- :m is already using [2 2], so :q can't have it
 
 
 
-(generate-acceptable-requests-2 empty-grid requests-6)
-(generate-acceptable-requests-2 used-grid requests-6)
+(generate-acceptable-requests empty-grid requests-6)
+(generate-acceptable-requests used-grid requests-6)
 ;=> {:b #{[0 0] [2 1]},
 ;    :a #{[1 1] [3 4] [1 2]},
 ;    :c #{[3 3] [3 1] [4 4]},
 ;    :q #{[2 2]}}
 
-(generate-acceptable-requests-2 used-grid-2 requests-6)
+(generate-acceptable-requests used-grid-2 requests-6)
 ;=> {:q #{[3 2]},                <- :m already has [2 2]
 ;    :b #{[0 0] [2 1]},
 ;    :a #{[1 1] [3 4] [1 2]},
