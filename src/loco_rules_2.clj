@@ -212,14 +212,14 @@
                  $and
                  (for [r cs]
                    (if (= c r)
-                     ($= [:cell c ts] (req-id id-map))
-                     ($!= [:cell r ts] (req-id id-map))))))))))
+                     ($= [:cell c ts] (get id-map req-id))
+                     ($!= [:cell r ts] (get id-map req-id))))))))))
 
 (defn- build-fixed-constraints
   "build the constraint for one fixed channel/time-slot request"
 
   [cs ts req-id id-map]
-  ($= [:cell cs ts] (req-id id-map)))
+  ($= [:cell cs ts] (get id-map req-id)))
 
 (defn- build-default-constraints
   "build the 'domain' constraints to include all the overlapping
@@ -231,7 +231,7 @@
          (into []
                (flatten [0
                          (for [x r]
-                           (x id-map))])))))
+                           (get id-map x))])))))
 
 (defn- build-all-constraints
   "develop the complete set of constraints necessary to describe the
@@ -447,15 +447,20 @@
 
 
 
+(def used-grid-s [[#{}   #{}   #{} #{} #{}]
+                  [#{}   #{}   #{} #{} #{}]
+                  [#{}   #{}   #{} #{} #{}]
+                  [#{"q"} #{}   #{} #{} #{}]
+                  [#{"q"} #{"q"} #{} #{} #{}]])
 
 
+(def requests-s {"b" #{[0 0] [[0 1 2 3] 1]}
+                 "a" #{[1 1] [1 2] [[3 4] 4]}
+                 "q" #{[[2 3] 2]}
+                 "c" #{[[2 3] 1] [3 3] [[3 4] 4]}})
 
 
-
-
-
-
-
+(generate-acceptable-requests used-grid-s requests-s)
 
 
 
