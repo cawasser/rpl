@@ -1,4 +1,138 @@
-(ns scratch)
+(ns scratch
+  (:require [loco.core :refer :all]
+    [loco.constraints :refer :all]))
+
+
+
+(defn generate-acceptable-requests-2
+      "take a set of requests with possible flexible needs and
+       return a set of requests where those needs are locked
+       down so that all the requests can work"
+
+  [grid requests]
+
+  (let [comb (merge requests (reqs-from-grid grid))
+        ids (id-map comb)]
+
+    (->>
+      ; take all the requests
+      comb
+
+      ; build all the constraints
+      (build-all-constraints ids)
+
+      ; solve the constraints
+      solution
+
+      ; turn the solution back into a REQUEST
+      (make-request ids))))
+
+
+
+
+(defn- id-map
+  "build a map to convert keywords, used by REQUESTS, into integers,
+   which are required by loco; and vice versa
+
+   in Clojure, this is perfectly acceptable - maps can be keyed by
+   type of value, even in the same map!"
+
+  [requests]
+  (merge {:_ 0}
+         { 0 :_}
+         (zipmap (keys requests) (iterate inc 1))
+         (zipmap (iterate inc 1) (keys requests))))
+
+
+
+
+(def empty-grid [[#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]
+                 [#{} #{} #{} #{} #{}]])
+
+(def used-grid [[#{} #{} #{} #{} #{}]
+                [#{} #{} #{} #{} #{}]
+                [#{} #{} #{} #{} #{}]
+                [#{:q} #{} #{} #{} #{}]
+                [#{:q} #{:q} #{} #{} #{}]])
+
+
+
+
+(generate-acceptable-requests-2 empty-grid requests-0)
+(generate-acceptable-requests-2 empty-grid requests-1)
+(generate-acceptable-requests-2 empty-grid requests-2)
+(generate-acceptable-requests-2 empty-grid requests-3)
+(generate-acceptable-requests-2 empty-grid requests-4)
+
+(generate-acceptable-requests-2 used-grid requests-0)
+(generate-acceptable-requests-2 used-grid requests-1)
+(generate-acceptable-requests-2 used-grid requests-2)
+(generate-acceptable-requests-2 used-grid requests-3)
+(generate-acceptable-requests-2 used-grid requests-4)
+
+
+
+
+
+
+
+
+
+
+
+
+
+(def grid [[#{:b} #{:h} #{:h} #{:h} #{:h}]
+           [#{:a} #{:d} #{} #{} #{}]
+           [#{:g} #{:a} #{:e} #{} #{}]
+           [#{:g} #{:f} #{:e} #{:c} #{}]
+           [#{:g} #{:f} #{:e} #{:c} #{:c}]])
+
+(def id-map {:a 1 :b 2 :c 3 :d 4 :e 5 :f 6})
+
+
+(defn- build-pre-existing-constraints
+
+  [id-map grid]
+  (remove
+    nil?
+    (flatten
+      (for [ch (range (count (first grid)))
+            ts (range (count grid))]
+        (list
+          ($in [:cell ch ts] [0 (get id-map (first (get-in grid [ts ch])) 0)])
+          (if (not (empty? (get-in [ts ch] grid)))
+            ($= [:cell ch ts] (get id-map (first (get-in grid [ts ch])) 0))))))))
+
+(get (get grid 0 ) 0)
+(get id-map (first (get-in grid [0 0])))
+
+(for [ch (range (count (first grid)))
+      ts (range (count grid))]
+  [ts ch (get-in grid [ts ch])])
+
+
+(build-pre-existing-constraints id-map grid)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 (first #{[[0] 0] [[0 1 2 3] 1]})
@@ -61,20 +195,20 @@
 
 (defn request-fixed-constraints [demands]
   (remove nil?
-          (for [req-id    (keys demands)
-                slot      (req-id demands)]
+          (for [req-id (keys demands)
+                slot   (req-id demands)]
             (let [[channels time-slot] slot]
               (if (= 1 (count channels))
                 ($= [:requestor req-id time-slot (first channels)]
-                          (first channels)))))))
+                    (first channels)))))))
 
 (request-fixed-constraints fill-in)
 
 
 (defn request-flex-constraints [demands]
   (remove nil?
-          (for [req-id    (keys demands)
-                slot      (req-id demands)]
+          (for [req-id (keys demands)
+                slot   (req-id demands)]
             (let [[channels time-slot] slot]
               (if (< 1 (count channels))
                 ($in [:requestor req-id time-slot] channels)
@@ -142,15 +276,15 @@
   (flatten
     (let [id-map (merge {:_ 0}
                         (zipmap (keys requests) (iterate inc 1)))
-          s2id (for [req-id    (keys requests)
-                     slot      (req-id requests)]
-                 (let [[ch time-slot] slot]
-                   [[ch time-slot] req-id]))
-          re (remove nil?
-                     (for [p slots2req-id]
-                       (let [[[x ts] id] p]
-                         (if (>= 1 (count x))
-                           [(first x) ts id]))))]
+          s2id   (for [req-id (keys requests)
+                       slot   (req-id requests)]
+                   (let [[ch time-slot] slot]
+                     [[ch time-slot] req-id]))
+          re     (remove nil?
+                         (for [p slots2req-id]
+                           (let [[[x ts] id] p]
+                             (if (>= 1 (count x))
+                               [(first x) ts id]))))]
       (for [[[ch ts] req-ids] s2id]
         (if (< 1 (count req-ids))
           (let [ids (into [] (for [k req-ids]
@@ -207,7 +341,7 @@
 
 
 
-(for [[[ch ts] r]  (build-defaults requests)]
+(for [[[ch ts] r] (build-defaults requests)]
   ($in [:cell ch ts] (into []
                            (flatten [0
                                      (for [x r]
@@ -458,12 +592,12 @@
 ; grid [[#{} #{}]
 ;       [#{} #{}]]
 
-(let [model [($in [:cell 0 0] (range 2)) ; :a or :b
-             ($in [:cell 0 1] (range 2)) ; :a or :b
-             ($in [:cell 1 0] (range 2)) ; :a or :b
-             ($in [:cell 1 1] (range 2)) ; :a or :b
-             ($=  [:cell 0 0] 0)         ; :a
-             ($=  [:cell 1 1] 1)]]       ; :b
+(let [model [($in [:cell 0 0] (range 2))                    ; :a or :b
+             ($in [:cell 0 1] (range 2))                    ; :a or :b
+             ($in [:cell 1 0] (range 2))                    ; :a or :b
+             ($in [:cell 1 1] (range 2))                    ; :a or :b
+             ($= [:cell 0 0] 0)                             ; :a
+             ($= [:cell 1 1] 1)]]                           ; :b
 
   (into (sorted-map)
         (solutions model)))
@@ -501,7 +635,7 @@
 ;
 
 
-(let [model [ ; defaults
+(let [model [; defaults
              ($in [:cell 0 0] [0 1 2])
              ($in [:cell 0 1] [0 1 2])
              ($in [:cell 1 0] [0 1 2])
@@ -515,8 +649,8 @@
              ($in [:cell 2 0] [2])
 
              ; fixed requests
-             ($=  [:cell 0 0] 0)
-             ($=  [:cell 1 1] 1)]]
+             ($= [:cell 0 0] 0)
+             ($= [:cell 1 1] 1)]]
   (into (sorted-map)
         (solution model)))
 ; => {[:cell 0 0] 0, [:cell 1 0] 1, [:cell 2 0] 2,
@@ -529,22 +663,22 @@
 
 ; but there are many possible solutions:
 ;
-(let [defaults [ ; defaults
+(let [defaults [; defaults
                 ($in [:cell 0 0] [0 1 2])
                 ($in [:cell 0 1] [0 1 2])
                 ($in [:cell 1 0] [0 1 2])
                 ($in [:cell 1 1] [0 1 2])
                 ($in [:cell 2 0] [0 1 2])]
 
-      flex     [ ; flex-ranges
+      flex     [; flex-ranges
                 ($in [:cell 0 0] [0 1])
                 ($in [:cell 2 1] [0 2])
                 ($in [:cell 1 0] [1 2])
                 ($in [:cell 2 0] [2])]
 
-      fixed    [ ; fixed requests
-                ($=  [:cell 0 0] 0)
-                ($=  [:cell 1 1] 1)]]
+      fixed    [; fixed requests
+                ($= [:cell 0 0] 0)
+                ($= [:cell 1 1] 1)]]
 
   (solutions (concat defaults flex fixed)))
 
@@ -737,11 +871,11 @@
 (defn req-grid [demands]
   (flatten
     (let [id-map (zipmap (keys demands) (iterate inc 1))
-          re (apply merge-with clojure.set/union
-                    (for [[req-id reqs] demands
-                          [cs ts] reqs
-                          c cs]
-                      {[c ts] #{req-id}}))]
+          re     (apply merge-with clojure.set/union
+                        (for [[req-id reqs] demands
+                              [cs ts] reqs
+                              c cs]
+                          {[c ts] #{req-id}}))]
       (for [[[ch ts] req-ids] re]
         (if (< 1 (count req-ids))
           (let [ids (into [] (for [k req-ids]
@@ -825,8 +959,8 @@
                              {[c ts] #{req-id}})))
 
 
-(def slots2req-id (for [req-id    (keys requests)
-                        slot      (req-id requests)]
+(def slots2req-id (for [req-id (keys requests)
+                        slot   (req-id requests)]
                     (let [[ch time-slot] slot]
                       [[ch time-slot] req-id])))
 
@@ -841,15 +975,15 @@
   (flatten
     (let [id-map (merge {:_ 0}
                         (zipmap (keys requests) (iterate inc 1)))
-          s2id (for [req-id    (keys requests)
-                     slot      (req-id requests)]
-                 (let [[ch time-slot] slot]
-                   [[ch time-slot] req-id]))
-          re (remove nil?
-                     (for [p slots2req-id]
-                       (let [[[x ts] id] p]
-                         (if (>= 1 (count x))
-                           [(first x) ts id]))))]
+          s2id   (for [req-id (keys requests)
+                       slot   (req-id requests)]
+                   (let [[ch time-slot] slot]
+                     [[ch time-slot] req-id]))
+          re     (remove nil?
+                         (for [p slots2req-id]
+                           (let [[[x ts] id] p]
+                             (if (>= 1 (count x))
+                               [(first x) ts id]))))]
       (for [[[ch ts] req-ids] s2id]
         (if (< 1 (count req-ids))
           (let [ids (into [] (for [k req-ids]
@@ -892,8 +1026,8 @@
 
 
 (defn requestor-vars [demands]
-  (for [req-id    (keys demands)
-        slot      (req-id demands)]
+  (for [req-id (keys demands)
+        slot   (req-id demands)]
     (let [[_ time-slot] slot]
       [:requestor req-id time-slot])))
 ; => ([:requestor :b] [:requestor :a] [:requestor :c])
@@ -904,8 +1038,8 @@
 ;    this actually seems to work! (p.s. it doesn't [1])
 ;
 (defn request-constraints [demands]
-  (for [req-id    (keys demands)
-        slot      (req-id demands)]
+  (for [req-id (keys demands)
+        slot   (req-id demands)]
     (let [[channels time-slot] slot]
       ($in [:requestor req-id time-slot] channels))))
 
@@ -935,7 +1069,7 @@
 
 ; does this work?
 ;
-(into (sorted-map) (solution all-constraints)) ; => no
+(into (sorted-map) (solution all-constraints))              ; => no
 
 
 ; [1] we don't actually want the :all-different-constraint; a
@@ -995,12 +1129,12 @@
 
 
 (def demands
-  {:12am-4am  8
+  {:12am-4am 8
    :4am-8am  10
-   :8am-12pm  7
+   :8am-12pm 7
    :12pm-4pm 12
-   :4pm-8pm   4
-   :8pm-12am  4})
+   :4pm-8pm  4
+   :8pm-12am 4})
 
 
 (solution
@@ -1082,9 +1216,9 @@
 
 
 (defn grid [demands]
-  (let [channels (into #{}
-                       (for [[ch ts] (requests (first (keys demands)))]
-                         ts))
+  (let [channels   (into #{}
+                         (for [[ch ts] (requests (first (keys demands)))]
+                           ts))
 
         time-slots (into #{}
                          (flatten
@@ -1112,11 +1246,11 @@
     {[ch ts] req-ids}))
 
 (let [id-map (zipmap (keys requests) (range))
-      re (apply merge-with clojure.set/union
-                (for [[req-id reqs] requests
-                      [cs ts] reqs
-                      c cs]
-                  {[c ts] #{req-id}}))]
+      re     (apply merge-with clojure.set/union
+                    (for [[req-id reqs] requests
+                          [cs ts] reqs
+                          c cs]
+                      {[c ts] #{req-id}}))]
   (for [[[ch ts] req-ids] re]
     (let [ids (for [k req-ids]
                 (k id-map))]
@@ -1124,11 +1258,11 @@
 
 
 (let [id-map (zipmap (keys requests) (iterate inc 1))
-      re (apply merge-with clojure.set/union
-                (for [[req-id reqs] requests
-                      [cs ts] reqs
-                      c cs]
-                  {[c ts] #{req-id}}))]
+      re     (apply merge-with clojure.set/union
+                    (for [[req-id reqs] requests
+                          [cs ts] reqs
+                          c cs]
+                      {[c ts] #{req-id}}))]
   (for [[[ch ts] req-ids] re]
     (if (< 1 (count req-ids))
       (let [ids (into [] (for [k req-ids]
@@ -1138,11 +1272,11 @@
 
 
 (let [id-map (zipmap (keys requests) (iterate inc 1))
-      re (apply merge-with clojure.set/union
-                (for [[req-id reqs] requests
-                      [cs ts] reqs
-                      c cs]
-                  {[c ts] #{req-id}}))]
+      re     (apply merge-with clojure.set/union
+                    (for [[req-id reqs] requests
+                          [cs ts] reqs
+                          c cs]
+                      {[c ts] #{req-id}}))]
   (for [[[ch ts] req-ids] re]
     (let [ids (into [] (for [k req-ids]
                          (k id-map)))]
