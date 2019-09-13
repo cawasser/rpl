@@ -62,8 +62,6 @@
 ;
 ;       RESOLVED - no threading!
 ;
-; TODO: any modification cause by the rules engine approach in loco-rules.clj
-;
 ; TODO: sparse matrix for the resource GRID
 ;
 ; TODO: let's get some spec going, so we can generate some tests
@@ -178,7 +176,6 @@
   (vec (repeat time-periods
                (vec (repeat channels empty-val)))))
 
-; TODO: may need to modify (populate-2...) to support rules engine
 ; TODO: modify (populate-2) to support [] as grid
 (defn- populate-2
   "Assigns each of the cells specified as [channel time-unit]
@@ -202,7 +199,7 @@
       (recur pop-fn (pop-fn grid p coordinates) (rest requests)))))
 
 (defn- check-satisfied
-  "return a map of {[slot] #{requestor}} that can be applyed to the grid without
+  "return a map of {[slot] #{requestor}} that can be applied to the grid without
   violating the (sat-rule) predicate, ie, 'we should keep these'
 
       returns - {[slot] #{requestors}}"
