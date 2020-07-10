@@ -216,7 +216,7 @@ data3
 ;         1-@data3--
 ;        |          |
 ;        ^          v
-(swap! data3 assoc,,, :a-new-key {:a 1 :b 2})
+(swap! data3 assoc ,,, :a-new-key {:a 1 :b 2})
 ;       ^    2 (assoc ,,, :a-new-key {:a 1 :b 2})
 ;       |         v
 ;       |         |

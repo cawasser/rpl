@@ -1,10 +1,13 @@
 {:deps
- {clj-time {:mvn/version "0.14.2"}
-  juxt/crux-core {:mvn/version "19.07-1.3.0-alpha"}
-  org.clojure/test.check {:mvn/version "0.10.0-alpha4"}
-  loco {:mvn/version "0.3.1"}
+ {clj-time                       {:mvn/version "0.14.2"}
+  juxt/crux-core                 {:mvn/version "19.07-1.3.0-alpha"}
+  org.clojure/test.check         {:mvn/version "0.10.0-alpha4"}
+  loco                           {:mvn/version "0.3.1"}
   org.clojure/math.combinatorics {:mvn/version "0.1.6"}
-  org.clojure/core.match {:mvn/version "0.3.0"}}
+  org.clojure/core.match         {:mvn/version "0.3.0"}
+
+  dk.ative/docjure               {:mvn/version "1.12.0"}
+  datascript                     {:mvn/version "0.18.10"}}
 
  :aliases
  {:rebl {:extra-deps {
