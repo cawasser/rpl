@@ -1,4 +1,4 @@
-(ns injest
+(ns crux.injest
   (:require [clj-time.core :as t]
             [clj-time.format :as f]
             [crux.api :as crux]))
@@ -86,7 +86,7 @@
       #inst "2016-05-18"]]))
 
 
-  ; places
+; places
 (defn places [node]
   (crux/submit-tx
     node

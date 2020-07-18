@@ -7,7 +7,7 @@ exploration of a variety of interesting topics
 
 ## Crux
 
-[hello.clj](./src/hello.clj) provides a playgroud for experimenting with [Crux]().
+[hello.clj](./src/crux/hello.clj) provides a playground for experimenting with [Crux]().
 
 
 

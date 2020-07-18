@@ -1,9 +1,10 @@
-(ns hello
+(ns crux.hello
   (:require [clj-time.core :as t]
             [clj-time.format :as f]
             [crux.api :as crux]
             [injest :as i]
             [clojure.pprint :as pp]))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -11,7 +12,9 @@
 ;
 ; see https://juxt.pro/crux
 ;
-;
+; see also https://opencrux.com/docs#get-started
+
+
 
 
 
@@ -49,7 +52,7 @@
                  :person/born :person/str
                  :person/int :person/dex
                  :person/hp]
-                [(crux/entity (db) :ids.people/Charles)])
+  [(crux/entity (db) :ids.people/Charles)])
 
 ; suggest something like:
 (comment
@@ -97,8 +100,8 @@
               :where '[[?e :person/str ?s]
                        [(>= ?s ?str)]]
               :args (into []
-                          (for [i s]
-                            {'?str i}))}))
+                      (for [i s]
+                        {'?str i}))}))
 (str-find (db) [40])
 
 (defn dex-find [db s]
@@ -106,8 +109,8 @@
               :where '[[?e :person/dex ?s]
                        [(>= ?s ?str)]]
               :args (into []
-                          (for [i s]
-                            {'?str i}))}))
+                      (for [i s]
+                        {'?str i}))}))
 (dex-find (db) [55])
 
 
