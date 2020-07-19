@@ -288,10 +288,10 @@
      :args  [{'appearance description}]}))
 
 (filter-type :element/metal)
-;;=> #{["Gold"] ["Plutonium"]}
+;=> #{["Gold"] ["Plutonium"]}
 
 (filter-appearance "white solid")
-;;=> #{["Borax" "Sodium tetraborate decahydrate"]}
+;=> #{["Borax" "Sodium tetraborate decahydrate"]}
 
 
 (crux/submit-tx
@@ -303,6 +303,313 @@
 ;;;;;;;;;;;;;;;
 ;
 ; NEPTUNE
+;
+;;;;;;;;;;;;;;;
+
+; using 'valid start time' (first time argument)
+;
+;     transaction time is automatically set
+;
+(crux/submit-tx
+  node
+  [[:crux.tx/put
+    {:crux.db/id :consumer/RJ29sUU
+     :consumer-id :RJ29sUU
+     :first-name "Jay"
+     :last-name "Rose"
+     :cover? true
+     :cover-type :Full}
+    #inst "2114-12-03"]])
+
+
+; now we need both 'valid-start' and 'valid-end' times
+;
+; TODO: does Crux figure out the end time automatically if you just 'put' an update with a different valid time?
+;
+; WARNING: the blog includes 'notes' on these 'puts' which are NOT VALID CLOJURE!
+(crux/submit-tx
+  node
+  [[:crux.tx/put
+    {:crux.db/id :consumer/RJ29sUU
+     :consumer-id :RJ29sUU
+     :first-name "Jay"
+     :last-name "Rose"
+     :cover? true
+     :cover-type :Full}
+    #inst "2113-12-03" ;; Valid time start
+    #inst "2114-12-03"] ;; Valid time end
+
+   [:crux.tx/put
+    {:crux.db/id :consumer/RJ29sUU
+     :consumer-id :RJ29sUU
+     :first-name "Jay"
+     :last-name "Rose"
+     :cover? true
+     :cover-type :Full}
+    #inst "2112-12-03"
+    #inst "2113-12-03"]
+
+   ; TODO: is this really needed? can we determine the 'no coverage' period just from the LACK of a valid response during the given time-frame?
+   ;
+   [:crux.tx/put
+    {:crux.db/id :consumer/RJ29sUU
+     :consumer-id :RJ29sUU
+     :first-name "Jay"
+     :last-name "Rose"
+     :cover? false}
+    #inst "2112-06-03"
+    #inst "2112-12-02"]
+
+   [:crux.tx/put
+    {:crux.db/id :consumer/RJ29sUU
+     :consumer-id :RJ29sUU
+     :first-name "Jay"
+     :last-name "Rose"
+     :cover? true
+     :cover-type :Promotional}
+    #inst "2111-06-03"
+    #inst "2112-06-03"]])
+;
+
+; query a given time
+;
+(crux/q (crux/db node #inst "2115-07-03")
+  '{:find [cover type]
+    :where [[e :consumer-id :RJ29sUU]
+            [e :cover? cover]
+            [e :cover-type type]]})
+;=> #{[true :Full]}
+
+(crux/q (crux/db node #inst "2111-07-03")
+  '{:find [cover type]
+    :where [[e :consumer-id :RJ29sUU]
+            [e :cover? cover]
+            [e :cover-type type]]})
+;=> #{[true :Promotional]}
+
+(crux/q (crux/db node #inst "2112-07-03")
+  '{:find [cover type]
+    :where [[e :consumer-id :RJ29sUU]
+            [e :cover? cover]
+            [e :cover-type type]]})
+;=> #{}
+
+(crux/submit-tx
+  node [[:crux.tx/put
+         (assoc manifest
+            :badges ["SETUP" "PUT" "DATALOG-QUERIES" "BITEMP"])]])
+
+
+;;;;;;;;;;;;;;;
+;
+; SATURN
+;
+;;;;;;;;;;;;;;;
+
+(def saturn-data [{:crux.db/id :gold-harmony
+                   :company-name "Gold Harmony"
+                   :seller? true
+                   :buyer? false
+                   :units/Au 10211
+                   :credits 51}
+
+                  {:crux.db/id :tombaugh-resources
+                   :company-name "Tombaugh Resources Ltd."
+                   :seller? true
+                   :buyer? false
+                   :units/Pu 50
+                   :units/N 3
+                   :units/CH4 92
+                   :credits 51}
+
+                  {:crux.db/id :encompass-trade
+                   :company-name "Encompass Trade"
+                   :seller? true
+                   :buyer? true
+                   :units/Au 10
+                   :units/Pu 5
+                   :units/CH4 211
+                   :credits 1002}
+
+                  {:crux.db/id :blue-energy
+                   :seller? false
+                   :buyer? true
+                   :company-name "Blue Energy"
+                   :credits 1000}])
+
+(easy-ingest node saturn-data)
+
+
+; helper functions
+;
+(defn stock-check
+  ""
+  [company-id item]
+  {:result (crux/q (crux/db node)
+             {:find '[name funds stock]
+              :where ['[e :company-name name]
+                      '[e :credits funds]
+                      ['e item 'stock]]
+              :args [{'e company-id}]})
+   :item item})
+
+(defn format-stock-check
+  "pretty-printer for the results from a stock-check"
+  [{:keys [result item] :as stock-check}]
+  (for [[name funds commod] result]
+    (str "Name: " name ", Funds: " funds ", " item " " commod)))
+
+
+; there are some commodities the Saturn companies want to buy or sell
+;
+; these tx's use core.tx/match to be sure the transaction can/should take place
+;
+; assume this is a sale from Tombaugh to Blue Energy, so they CAN be combined
+;
+(crux/submit-tx
+  node
+  [[:crux.tx/match
+    :blue-energy
+    {:crux.db/id :blue-energy
+     :seller? false
+     :buyer? true
+     :company-name "Blue Energy"
+     :credits 1000}]
+   [:crux.tx/put
+    {:crux.db/id :blue-energy
+     :seller? false
+     :buyer? true
+     :company-name "Blue Energy"
+     :credits 900
+     :units/CH4 10}]
+   [:crux.tx/match
+    :tombaugh-resources
+    {:crux.db/id :tombaugh-resources
+     :company-name "Tombaugh Resources Ltd."
+     :seller? true
+     :buyer? false
+     :units/Pu 50
+     :units/N 3
+     :units/CH4 92
+     :credits 51}]
+   [:crux.tx/put
+    {:crux.db/id :tombaugh-resources
+     :company-name "Tombaugh Resources Ltd."
+     :seller? true
+     :buyer? false
+     :units/Pu 50
+     :units/N 3
+     :units/CH4 82
+     :credits 151}]])
+
+(format-stock-check (stock-check :tombaugh-resources :units/CH4))
+;=> ("Name: Tombaugh Resources Ltd., Funds: 151, :units/CH4 82")
+
+(format-stock-check (stock-check :blue-energy :units/CH4))
+;=> ("Name: Blue Energy, Funds: 900, :units/CH4 10")
+
+; my match experiment - can you do this WRONG?
+;
+; ie., can you forget some of the matches and just cheat?
+;
+(crux/submit-tx
+  node
+  [[:crux.tx/match
+    :blue-energy
+    {:crux.db/id :blue-energy
+     :seller? false
+     :buyer? true
+     :company-name "Blue Energy"
+     :credits 900
+     :units/CH4 10}]
+   [:crux.tx/put
+    {:crux.db/id :blue-energy
+     :seller? false
+     :buyer? true
+     :company-name "Blue Energy"
+     :credits 800
+     :units/CH4 20}]
+
+   [:crux.tx/put
+    {:crux.db/id :tombaugh-resources
+     :company-name "Tombaugh Resources Ltd."
+     :seller? false
+     :buyer? true
+     :units/Pu 50
+     :units/N 3
+     :units/CH4 82
+     :credits 151}]])
+
+; we've created 10 :units/CH4 'out of thin air'  !!!
+;
+(format-stock-check (stock-check :blue-energy :units/CH4))
+;=> ("Name: Blue Energy, Funds: 800, :units/CH4 20")
+;
+(format-stock-check (stock-check :tombaugh-resources :units/CH4))
+;=> ("Name: Tombaugh Resources Ltd., Funds: 151, :units/CH4 82")
+
+; unfortunately, YES, you can cheat, so you need to understand you ACTUAL transaction
+; needs and use the CRUX low-level tools accordingly
+
+
+; a case where one of the "paired" matches fails
+;
+(crux/submit-tx
+  node
+  [[:crux.tx/match
+    :gold-harmony
+    {:crux.db/id :gold-harmony
+     :company-name "Gold Harmony"
+     :seller? true
+     :buyer? false
+     :units/Au 10211
+     :credits 51}]
+   [:crux.tx/put
+    {:crux.db/id :gold-harmony
+     :company-name "Gold Harmony"
+     :seller? true
+     :buyer? false
+     :units/Au 211
+     :credits 51}]
+   [:crux.tx/match
+    :encompass-trade
+    {:crux.db/id :encompass-trade
+     :company-name "Encompass Trade"
+     :seller? true
+     :buyer? true
+     :units/Au 10
+     :units/Pu 5
+     :units/CH4 211
+     :credits 100002}]
+   [:crux.tx/put
+    {:crux.db/id :encompass-trade
+     :company-name "Encompass Trade"
+     :seller? true
+     :buyer? true
+     :units/Au 10010
+     :units/Pu 5
+     :units/CH4 211
+     :credits 1002}]])
+
+; nothing changes
+;
+(format-stock-check (stock-check :gold-harmony :units/Au));
+;=> ("Name: Gold Harmony, Funds: 51, :units/Au 10211")
+
+(format-stock-check (stock-check :encompass-trade :units/Au))
+;=> ("Name: Encompass Trade, Funds: 1002, :units/Au 10")
+
+
+(crux/submit-tx
+  node [[:crux.tx/put
+         (assoc manifest
+            :badges ["SETUP" "PUT" "DATALOG-QUERIES" "BITEMP" "MATCH"])]])
+
+
+
+;;;;;;;;;;;;;;;
+;
+; JUPITER
 ;
 ;;;;;;;;;;;;;;;
 
