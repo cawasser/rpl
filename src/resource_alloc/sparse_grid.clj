@@ -1,4 +1,4 @@
-(ns sparse-grid)
+(ns resource-alloc.sparse-grid)
 
 
 

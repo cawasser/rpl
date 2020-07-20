@@ -1,7 +1,7 @@
-(ns sparse-request-rules
+(ns resource-alloc.sparse-request-rules
   (:require [loco.core :refer :all]
             [loco.constraints :refer :all]
-            [sparse-grid :as sg]))
+            [resource-alloc.sparse-grid :as sg]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;

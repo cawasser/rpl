@@ -1,4 +1,4 @@
-(ns explaining-solver)
+(ns resource-alloc.explaining-solver)
 
 ;
 ; As I started to think about how we might use both the GRID and REQUESTS

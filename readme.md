@@ -45,7 +45,7 @@ a moment, exactly what that phrase means, we _can_ say that it is fundamentally 
 > How do we allocate this resource to make all the requestors happy?
 
 
-(see [allocation-try-2.clj](./src/allocation_try_2.clj))
+(see [allocation-try-2.clj](src/resource_alloc/allocation_try_2.clj))
 
 Let's start with the information model of the resource itself. To keep things as 
 simple as possible, both to get going and to have a solid foundation for enhancements,

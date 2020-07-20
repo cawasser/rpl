@@ -1,6 +1,6 @@
-(ns grid-support
-  (:require [sparse-request-rules :as rules]
-            [sparse-grid :as grid]
+(ns resource-alloc.grid-support
+  (:require [resource-alloc.sparse-request-rules :as rules]
+            [resource-alloc.sparse-grid :as grid]
             [clojure.math.combinatorics :as combo]))
 
 ;;;;;;;;;;;;;;;;

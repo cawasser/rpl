@@ -1,4 +1,4 @@
-(ns allocation-try-2)
+(ns resource-alloc.allocation-try-2)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;
