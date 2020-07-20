@@ -106,3 +106,9 @@ Alex Engleberg. _loco_ is a declarative, functional wrapper around the
 ## Excel Programming
 
 [excel_play.clj](./src/excel_play.clj) provides a playground to work with [docjure](https://github.com/mjul/docjure)
+
+
+
+## Oz
+
+[simple_oz.clj](./src/oz/simple_oz.clj) is a REPL-bases playgorund for [Oz](https://github.com/metasoarous/oz)

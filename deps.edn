@@ -7,7 +7,10 @@
   org.clojure/core.match         {:mvn/version "0.3.0"}
 
   dk.ative/docjure               {:mvn/version "1.12.0"}
-  datascript                     {:mvn/version "0.18.10"}}
+  datascript                     {:mvn/version "0.18.10"}
+
+  metasoarous/oz                 {:mvn/version "1.6.0-alpha11"}
+  cheshire                       {:mvn/version "5.10.0"}}
 
  :aliases
  {:rebl {:extra-deps {
