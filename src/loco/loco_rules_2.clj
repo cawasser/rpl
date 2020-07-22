@@ -3,6 +3,11 @@
             [loco.constraints :refer :all]))
 
 
+
+; https://github.com/flybot-sg/loco is the most up-to-date library
+
+
+
 ; NOTE: the hardest part of logic programming is being sure your rules
 ;       produce a correct answer
 ;

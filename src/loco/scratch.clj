@@ -3,6 +3,9 @@
     [loco.constraints :refer :all]))
 
 
+; https://github.com/flybot-sg/loco is the most up-to-date library
+
+
 
 (defn generate-acceptable-requests-2
       "take a set of requests with possible flexible needs and

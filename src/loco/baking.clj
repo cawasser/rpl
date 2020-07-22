@@ -3,6 +3,8 @@
             [loco.constraints :refer :all]))
 
 
+; https://github.com/flybot-sg/loco is the most up-to-date library
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;
