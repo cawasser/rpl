@@ -1,4 +1,4 @@
-(ns baking
+(ns loco.baking
   (:require [loco.core :refer :all]
             [loco.constraints :refer :all]))
 

@@ -1,4 +1,4 @@
-(ns coloring
+(ns loco.coloring
   (:require [loco.core :refer :all]
             [loco.constraints :refer :all]))
 

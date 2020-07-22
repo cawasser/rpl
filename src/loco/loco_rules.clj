@@ -1,4 +1,4 @@
-(ns loco-rules
+(ns loco.loco-rules
   (:require [loco.core :refer :all]
             [loco.constraints :refer :all]))
 

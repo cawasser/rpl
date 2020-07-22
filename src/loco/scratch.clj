@@ -1,4 +1,4 @@
-(ns scratch
+(ns loco.scratch
   (:require [loco.core :refer :all]
     [loco.constraints :refer :all]))
 
