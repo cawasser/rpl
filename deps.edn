@@ -10,7 +10,9 @@
   datascript                     {:mvn/version "0.18.10"}
 
   metasoarous/oz                 {:mvn/version "1.6.0-alpha11"}
-  cheshire                       {:mvn/version "5.10.0"}}
+  cheshire                       {:mvn/version "5.10.0"}
+
+  frinj                          {:mvn/version "0.2.5"}}
 
  :aliases
  {:rebl {:extra-deps {
