@@ -12,13 +12,13 @@ work _only_ from the REPL.
 
 ### Configuring a REPL using Cursive
 
-Use _Edit Configurations..._ to create create a run configuration. The click the `+` button to
+Use _Edit Configurations..._ to create  a run configuration. The click the `+` button to
 _Add New Configuration_. Select `Clojure REPL` and the `Local`.
 
 In the right-hand panel, give the configuration a name, select `nREPL` and `Run with Deps`. Click
 _Ok_ to save and close th Configuration panel.
 
-Now you can start the REPL using the _run_ VCR control button and after a few seconds a shiny new RELP  
+Now you can start the REPL using the _run_ VCR control button and after a few seconds a shiny new REPL
 will be started and ready for use.
 
 ### Evaluating Code
@@ -37,19 +37,19 @@ be sure to evaluate the namespace for itself to be sure the namespace is availab
 
 ## Resource Allocation
 
-One of our early tasks was to develop a demonstration of "Open Frequency Planning." Setting aside for
+One of our early tasks was to develop a demonstration of "Open Channel Planning." Setting aside for
 a moment, exactly what that phrase means, we _can_ say that it is fundamentally a 
-"resource allocation" problem. We have a constrained resource (frequencies) and we have
+"resource allocation" problem. We have a constrained resource (channel) and we have
 "requestors" who would like to use it. The problem then is: 
 
 > How do we allocate this resource to make all the requestors happy?
 
 
-(see [allocation-try-2.clj](src/resource_alloc/allocation_try_2.clj))
+(see [allocation-try-2.clj](./src/resource_alloc/allocation_try_2.clj))
 
 Let's start with the information model of the resource itself. To keep things as 
 simple as possible, both to get going and to have a solid foundation for enhancements,
-we will model "frequency" as s Clojure vector of abstract fixed-unit "slots": 
+we will model "channels" as s Clojure vector of abstract fixed-unit "slots":
 
 ```[slot-1 slot 2 slot3]```
 
@@ -111,4 +111,4 @@ Alex Engleberg. _loco_ is a declarative, functional wrapper around the
 
 ## Oz
 
-[simple_oz.clj](./src/oz/simple_oz.clj) is a REPL-bases playgorund for [Oz](https://github.com/metasoarous/oz)
+[simple_oz.clj](./src/oz/simple_oz.clj) is a REPL-based playgorund for [Oz](https://github.com/metasoarous/oz)
