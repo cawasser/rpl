@@ -41,3 +41,8 @@
 
 ; remove nils
 (keep identity '(1 2 3 ()))
+
+
+
+
+(slurp "examples/data/cars.json")

@@ -93,8 +93,8 @@
 ; sorting makes it easier to read
 ;
 (into (sorted-map) (solution all-constraints))
-  ; => {[:person 0] 2, [:person 1] 3, [:person 2] 1, [:person 3] 4}
-
+  ; => {:number-of-conflicts 1, [:person 0] 2, [:person 1] 3, [:person 2] 1, [:person 3] 4}
+  ;      note the ERROR!
 
 
 ; let's put it all together into a function that can solve ANY
@@ -262,6 +262,7 @@ number-in-timeslots
   ; for some reason, I get the results in a different order than Alex
   ; shows in his blog
 
+(solution all-constraints :maximize :number-of-conflicts)
 
 
 ; finally, we can combine al this into a nice function

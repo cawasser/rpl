@@ -31,7 +31,9 @@
 
 ;;;;;;;;;;;;;;;;;
 ; Q: can we attach the 'frinj type' as meta-data?
-(def speed ^{:fj [:miles :per :hour]} 10)
+(comment
+  #_(def speed ^{:fj [:miles :per :hour]} 10)
+  ,)
 ; Syntax error reading source: Metadata can only be applied to IMetas
 
 ; so, NO. not to scalars anyway
