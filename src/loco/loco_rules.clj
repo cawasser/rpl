@@ -72,7 +72,7 @@
 ; $all-different? makes sure each :person ends up in a different slot
 ;
 (def all-different-constraint
-  (apply $all-different? person-vars))
+  ($distinct person-vars))
   ; => {:type :distinct, :args ([:person 0] [:person 1] [:person 2] [:person 3])}
 
 
@@ -92,9 +92,11 @@
 ;
 ; sorting makes it easier to read
 ;
-(into (sorted-map) (solution all-constraints))
-  ; => {:number-of-conflicts 1, [:person 0] 2, [:person 1] 3, [:person 2] 1, [:person 3] 4}
-  ;      note the ERROR!
+(solve all-constraints)
+  ; => {[:person 0] 3, [:person 1] 2, [:person 2] 4, [:person 3] 1}
+
+(solve availability-constraints)
+
 
 
 ; let's put it all together into a function that can solve ANY
@@ -102,7 +104,7 @@
 ;
 (defn schedule [availability]
   (->>
-    (solution
+    (solve
       (conj
         (for [i (range (count availability))]
           ($in [:person i] (availability i)))
@@ -121,6 +123,10 @@
   ; => {[:person 0] 1, [:person 1] 4,
   ;     [:person 2] 3, [:person 3] 2,
   ;     [:person 4] 5}
+  ; OR
+  ; => {[:person 0] 5, [:person 1] 2,
+  ;     [:person 2] 1, [:person 3] 3,
+  ;     [:person 4] 4)
 
 
 ; but NOT this one
@@ -248,21 +254,21 @@ number-in-timeslots
 
 ; now we can solve the model
 ;
-(solution all-constraints :minimize :number-of-conflicts)
+(clojure.pprint/pprint
+  (solve all-constraints {:minimize :number-of-conflicts}))
   ; => {:number-of-conflicts 0,
   ;     [:person 0] 3,
-  ;     [:num-people-in-timeslot 1] 1,
   ;     [:person 1] 2,
   ;     [:person 3] 1,
-  ;     [:person 2] 4,
-  ;     [:num-people-in-timeslot 2] 1,
-  ;     [:num-people-in-timeslot 3] 1,
-  ;     [:num-people-in-timeslot 4] 1}
-  ;
-  ; for some reason, I get the results in a different order than Alex
-  ; shows in his blog
+  ;     [:person 2] 4}
+  ; OR
+  ;  => {:number-of-conflicts 0,
+  ;     [:person 0] 3,
+  ;     [:person 1] 2,
+  ;     [:person 3] 4,
+  ;     [:person 2] 1}
 
-(solution all-constraints :maximize :number-of-conflicts)
+(solve all-constraints {:maximize :number-of-conflicts})
 
 
 ; finally, we can combine al this into a nice function
@@ -302,7 +308,7 @@ number-in-timeslots
                                 number-of-conflicts)]
 
     (into (sorted-map)
-          (solution all-constraints :minimize :_number-of-conflicts))))
+          (solve all-constraints {:minimize :_number-of-conflicts}))))
 
 
 

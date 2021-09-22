@@ -2,7 +2,8 @@
  {clj-time                       {:mvn/version "0.14.2"}
   juxt/crux-core                 {:mvn/version "20.07-1.9.2-beta"}
   org.clojure/test.check         {:mvn/version "0.10.0-alpha4"}
-  loco                           {:mvn/version "0.3.1"}
+  ;loco                           {:mvn/version "0.3.1"}
+  flybot/loco                    {:mvn/version "0.4.1"}
   org.clojure/math.combinatorics {:mvn/version "0.1.6"}
   org.clojure/core.match         {:mvn/version "0.3.0"}
 
@@ -12,7 +13,9 @@
   metasoarous/oz                 {:mvn/version "1.6.0-alpha11"}
   cheshire                       {:mvn/version "5.10.0"}
 
-  frinj                          {:mvn/version "0.2.5"}}
+  frinj                          {:mvn/version "0.2.5"}
+
+  aysylu/loom                    {:mvn/version "1.0.2"}}
 
  :aliases
  {:rebl {:extra-deps {
