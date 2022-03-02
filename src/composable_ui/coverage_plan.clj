@@ -214,11 +214,9 @@
 
 
 ; how do we use Loom for our composite?
+;
 (comment
-  ; Loom wants NODES (:components)
-  (def nodes (->> composite-def :components keys (into [])))
-
-  ; and EDGES (:links)
+  ; a Loom digraph only needs EDGES (:links)
   (def edges (->> composite-def
                :links
                (mapcat (fn [[k v]]
@@ -229,10 +227,11 @@
 
 
   ; with THIS set of edges, sources and sinks all look like successors
-  (def g (apply lg/digraph nodes edges))
+  (def g (apply lg/digraph edges))
   (lio/view g)
 
 
+  ;; region
   ; we need a way to turn the sources into predecessors
   ;
   ; two options:
@@ -249,10 +248,11 @@
                                                     :topic/selected-targets :selection}
                         :ui/satellites             {:topic/satellite-data      :data
                                                     :topic/selected-satellites :selection}
+                        :ui/time-slider            {:topic/current-time :value}
 
                         ; transformation functions publish to what?
                         :fn/coverage               {:topic/selected-coverages :selected}
-                        :fn/range                  {:range :topic/time-range}
+                        :fn/range                  {:topic/time-range :range}
 
                         ; topics are inputs into what?
                         :topic/target-data         {:ui/targets :data}
@@ -267,13 +267,13 @@
                                                     :ui/globe        :current-time}
                         :topic/time-range          {:ui/time-slider :range}}})
 
-  (def g2 (apply lg/digraph nodes (->> links-2
-                                    :links
-                                    (mapcat (fn [[k v]]
-                                              (map (fn [[target port :as all]]
-                                                     [k target])
-                                                v)))
-                                    (into []))))
+  (def g2 (apply lg/digraph (->> links-2
+                              :links
+                              (mapcat (fn [[k v]]
+                                        (map (fn [[target port :as all]]
+                                               [k target])
+                                          v)))
+                              (into []))))
   (lio/view g2)
 
 
@@ -289,8 +289,8 @@
 
   ; turns into THIS:
   ;
-  (def expanded-links3 {:ui/targets {:topic/target-data}
-                        :topic/target-data {:ui/targets :data}
+  (def expanded-links3 {:ui/targets             {:topic/target-data}
+                        :topic/target-data      {:ui/targets :data}
                         :topic/selected-targets {:ui/targets :selection}})
 
   ; we'll need to look up the port-types in the meta-data
@@ -302,6 +302,7 @@
   (defn expand-links [links])
 
 
+  ;; endregion
 
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
