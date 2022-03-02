@@ -48,6 +48,13 @@
                "comms" {:provider :kafka}
                "sensor" {:provider :kafka}})
 
+; "providers" is where all the configuration goes
+(def providers {:kafka {}})
+
+; "identities" is where all the passwords and such (that should NEVER be in a repo) go
+(def secrets {:kafka {:id "" :password ""}})
+
+
 (:services system-def)
 (:events system-def)
 (:views system-def)
@@ -84,6 +91,29 @@
 (def wdg (lg/weighted-digraph [:a :b 10] [:a :c 20] [:c :d 30] [:d :b 10]))
 (def rwg (lgen/gen-rand (lg/weighted-graph) 10 20 :max-weight 100))
 (def fg (lg/fly-graph :successors range :weight (constantly 77)))
+
+
+(def server [[:kafka :server] [:websocket :server] [:database :server]])
+(def system (concat [:kafka]
+              [:websocket]
+              [:database]
+              server
+              [[:server :nrepl]]
+              [[:server :scheduler]]
+              [[:websocket :moitoring]]))
+(apply prn system)
+
+(def g (lg/digraph
+         :kafka
+         :websocket
+         :database
+         server
+         ;[:kafka :server]
+         ;[:websocket :server]
+         ;[:database :server]
+         [:server :nrepl]
+         [:server :scheduler]
+         [:websocket :moitoring]))
 
 (lalg/connected-components g)
 
