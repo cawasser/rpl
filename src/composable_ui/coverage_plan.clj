@@ -6,6 +6,9 @@
 
 
 
+; declare some dummy functions so everything compiles
+;; region
+
 (defn subscribe-local [name]
   [:fn/subscribe-local name])
 (defn subscribe-remote [name]
@@ -18,6 +21,7 @@
 (defn v-box [& body]
   (into [] body))
 
+;; endregion
 
 
 ; assume the ui components have the following meta-data:
@@ -217,6 +221,7 @@
 ;
 (comment
   ; a Loom digraph only needs EDGES (:links)
+  ;; region
   (def edges (->> composite-def
                :links
                (mapcat (fn [[k v]]
@@ -229,10 +234,13 @@
   ; with THIS set of edges, sources and sinks all look like successors
   (def g (apply lg/digraph edges))
   (lio/view g)
+  ;; endregion
 
 
+  ; the result isn't quite what we want
+  ;
+  ; we need a way to turn the sources into predecessors when needed, not just successors
   ;; region
-  ; we need a way to turn the sources into predecessors
   ;
   ; two options:
   ;    1. change the format of :links to include the sources as keys (more like willa)
@@ -311,7 +319,7 @@
   ; SUMMARY:
   ;
   ; Option 1 is easier if we use a builder tool, since it already has the Digraph (that's what the user
-  ;         actually builds, but harder to do by hand
+  ;         actually builds), but harder to do by hand
   ;
   ; while
   ;
