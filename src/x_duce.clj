@@ -5,6 +5,7 @@
 
 
 (+ 1 2 3 4 5 6 7 8 9 10)
+
 (apply + '(1 2 3 4 5 6 7 8 9 10))
 
 (reduce + 0 '(1 2 3 4 5 6 7 8 9 10))
@@ -22,6 +23,7 @@
 (my-reduce + 0 '(1))
 (my-reduce + 0 '(1 2))
 (my-reduce + 0 '(1 2 3 4 5 6 7 8 9 10))
+(my-reduce + 10 '(1 2 3 4 5 6 7 8 9 10))
 
 (reduce +  10 '(1 2 3 4 5 6 7 8 9 10))
 
@@ -37,10 +39,10 @@
 
 (reduce + (map #(* 2 %) (filter even? (range 1 11))))
 
-(->> (range 1 11)
-  (filter even?)
-  (map #(* 2 %))
-  (reduce +))
+(->> (range 1 11) ; ->10
+  (filter even?) ; 10->5
+  (map #(* 2 %)) ; 5->5
+  (reduce +)) ; 5->1
 
 
 ; sum the doubles of all the even values
@@ -60,13 +62,20 @@
                      {:one {:two "charlie"}}])
 (def numbers-data (range 1 11))
 
+(map :one some-maps-data)
 
+(map :two (map :one some-maps-data))
+(->> some-maps-data
+  (map :one)
+  (map :two))
+
+(map (fn [x] (:two (:one x))) some-maps-data)
 
 (def my-fn (comp :two :one))
 
 (map my-fn some-maps-data)
 
-; comp applies the function right-to-left (most of the itime...)
+; comp applies the function right-to-left (most of the time...)
 (map #(-> % :one :two) some-maps-data)
 
 
@@ -78,8 +87,16 @@
 ; back to double the evens
 (def double-even-xforms (comp (filter even?) (map #(* 2 %))))
 
+; kind of likk
+(partial map #(* 2 %))
+
+(reduce + 0 (into [] double-even-xforms numbers-data))
+
 (reduce + 0
-  ((fn [x] (->> x (filter even?) (map #(* 2 %))))
+  ((fn [x]
+     (->> x
+       (filter even?)
+       (map #(* 2 %))))
    numbers-data))
 
 ; why is this comp working left-to-right? transducers!
@@ -152,16 +169,23 @@
 (filter-evens (range 10))
 ; (0 2 4 6 8)
 
+(->> (range 10)
+  (increment-all ,)
+  (filter-evens ,)
+  (double-all ,))
 
-(def transducer
+
+(def x-ducerrrrr
   (comp
     (increment-all)
     (filter-evens)
     (double-all)))
 
-(into [] transducer (range 10))
+(into [] x-ducerrrrr (range 10))
 
 
+
+(sequence (map dec) (range 10))
 
 (defn increment-all
   ([]
@@ -176,7 +200,7 @@
 
 (defn increment-all
   ([]
-   (map inc))
+   (map dec))
   ([coll]
    (map inc coll)))
 
@@ -228,6 +252,24 @@
 (defn product
   ([coll]
    (reduce * 1 coll)))
+
+
+(into [] (comp
+           (increment-all)
+           (filter-evens)
+           (double-all))
+  (range 10))
+
+(->> (range 10)
+  (map inc)
+  (filter even?)
+  (map #(* 2 %)))
+
+(->> (range 10)
+  (map inc)
+  (filter even?)
+  (map #(* 2 %))
+  (reduce * 1))
 
 (->> (range 10)
   (map inc)
@@ -377,6 +419,89 @@
              (student-names)
              (lowercase-names)
              (slugify-names))))
+
+
+
+
+; now to think about Kafka/Event-Handling
+
+; workhorse functions, work on a single event
+(defn compute-answer [event]
+  (assoc event :answer (reduce + (:inputs event))))
+
+(defn validate-event [event]
+  (assoc event :valid true))
+
+(defn authorize-event [event]
+  (assoc event :authorize true))
+
+
+; transducers, work on a collection of 0 or more events
+(defn compute
+  ([] (map compute-answer))
+  ([coll]
+   (sequence (compute) coll)))
+
+(defn validate
+  ([] (map validate-event))
+  ([coll]
+   (sequence (validate) coll)))
+
+(defn authorize
+  ([] (map authorize-event))
+  ([coll]
+   (sequence (authorize) coll)))
+
+
+; wire together the "prep"
+(def prep-events (comp (validate) (authorize)))
+
+
+; test inputs
+(def events [{:event 1 :inputs [1 2 3 4 5]}
+             {:event 2 :inputs [10 20 30 40 50]}])
+
+(into [] prep-events [])
+(into [] prep-events [{:event 100 :inputs [11 22 33 44 55]}])
+(into [] prep-events events)
+(transduce prep-events conj events)
+
+
+(into [] (comp prep-events (compute)) [])
+(into [] (comp prep-events (compute)) [{:event 100 :inputs [11 22 33 44 55]}])
+(into [] (comp prep-events (compute)) events)
+(transduce (comp prep-events (compute)) conj events)
+
+
+; build an "output" event from an "input" event
+(defn output-event [{:keys [event answer] :as all}]
+  {:event event :output answer})
+
+(defn c-o-c-event [event]
+  (assoc event :c-o-c "dummy-coc"))
+
+
+(defn output
+  ([] (map output-event))
+  ([coll]
+   (sequence (output) coll)))
+
+(defn c-o-c
+  ([] (map c-o-c-event))
+  ([coll]
+   (sequence (c-o-c) coll)))
+
+
+
+(def build-output (comp (output) (c-o-c)))
+
+(into [] build-output [{:event 100 :answer 100}])
+
+
+
+
+; a more complete pipeline
+(transduce (comp prep-events (compute) build-output) conj events)
 
 
 
