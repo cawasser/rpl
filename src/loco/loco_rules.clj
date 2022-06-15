@@ -47,7 +47,7 @@
 ; functions?
 ;
 ; this is because Clojure "functional programming" uses referential
-; integrity, which in practical terms, means we can substitute a
+; transparency, which in practical terms, means we can substitute a
 ; symbol's value for it's name in all other code without changing any
 ; means
 ;
@@ -58,6 +58,8 @@
 
 
 ; now we tie the two together into a loco "constraint"
+;
+; (kind of like a 'where' clause)
 ;
 (def availability-constraints
   (for [i (range (count availability))]
@@ -155,10 +157,10 @@
 ;
 (def people-in-timeslot-vars
   (for [i timeslots] [:_num-people-in-timeslot i]))
-  ; => ([:num-people-in-timeslot 1]
-  ;     [:num-people-in-timeslot 2]
-  ;     [:num-people-in-timeslot 3]
-  ;     [:num-people-in-timeslot 4])
+  ; => ([:_num-people-in-timeslot 1]
+  ;     [:_num-people-in-timeslot 2]
+  ;     [:_num-people-in-timeslot 3]
+  ;     [:_num-people-in-timeslot 4])
 
 
 
@@ -167,10 +169,10 @@
 (def conflict-constraints
   (for [i timeslots]
     ($in [:_num-people-in-timeslot i] 0 2)))
-  ; => ({:type :int-domain, :can-init-var true, :name [:num-people-in-timeslot 1], :domain {:min 0, :max 2}}
-  ;     {:type :int-domain, :can-init-var true, :name [:num-people-in-timeslot 2], :domain {:min 0, :max 2}}
-  ;     {:type :int-domain, :can-init-var true, :name [:num-people-in-timeslot 3], :domain {:min 0, :max 2}}
-  ;     {:type :int-domain, :can-init-var true, :name [:num-people-in-timeslot 4], :domain {:min 0, :max 2}})
+  ; => ({:type :int-domain, :can-init-var true, :name [:_num-people-in-timeslot 1], :domain {:min 0, :max 2}}
+  ;     {:type :int-domain, :can-init-var true, :name [:_num-people-in-timeslot 2], :domain {:min 0, :max 2}}
+  ;     {:type :int-domain, :can-init-var true, :name [:_num-people-in-timeslot 3], :domain {:min 0, :max 2}}
+  ;     {:type :int-domain, :can-init-var true, :name [:_num-people-in-timeslot 4], :domain {:min 0, :max 2}})
 
 
 ; loco includes a cardinality constraint to bind each
@@ -191,25 +193,25 @@
 timeslots
   ; => (1 2 3 4)
 people-in-timeslot-vars
-  ; => ([:num-people-in-timeslot 1]
-  ;     [:num-people-in-timeslot 2]
-  ;     [:num-people-in-timeslot 3]
-  ;     [:num-people-in-timeslot 4])
+  ; => ([:_num-people-in-timeslot 1]
+  ;     [:_num-people-in-timeslot 2]
+  ;     [:_num-people-in-timeslot 3]
+  ;     [:_num-people-in-timeslot 4])
 (zipmap timeslots people-in-timeslot-vars)
-  ; => {1 [:num-people-in-timeslot 1],
-  ;     2 [:num-people-in-timeslot 2],
-  ;     3 [:num-people-in-timeslot 3],
-  ;     4 [:num-people-in-timeslot 4]}
+  ; => {1 [:_num-people-in-timeslot 1],
+  ;     2 [:_num-people-in-timeslot 2],
+  ;     3 [:_num-people-in-timeslot 3],
+  ;     4 [:_num-people-in-timeslot 4]}
 
 
 number-in-timeslots
   ; => {:type :cardinality,
   ;     :variables ([:person 0] [:person 1] [:person 2] [:person 3]),
   ;     :values (1 2 3 4),
-  ;     :occurrences ([:num-people-in-timeslot 1]
-  ;                   [:num-people-in-timeslot 2]
-  ;                   [:num-people-in-timeslot 3]
-  ;                   [:num-people-in-timeslot 4]),
+  ;     :occurrences ([:_num-people-in-timeslot 1]
+  ;                   [:_num-people-in-timeslot 2]
+  ;                   [:_num-people-in-timeslot 3]
+  ;                   [:_num-people-in-timeslot 4]),
   ;     :closed nil}
 
 
@@ -232,8 +234,8 @@ number-in-timeslots
 ;     [:num-people-in-timeslot 2], etc."
 ;
 (def number-of-conflicts
-  [($in :number-of-conflicts 0 (count timeslots))
-   ($cardinality people-in-timeslot-vars {2 :number-of-conflicts})])
+  [($in :_number-of-conflicts 0 (count timeslots))
+   ($cardinality people-in-timeslot-vars {2 :_number-of-conflicts})])
 ; this just combines the 2 constraints into a single vector...
 
 
@@ -254,8 +256,7 @@ number-in-timeslots
 
 ; now we can solve the model
 ;
-(clojure.pprint/pprint
-  (solve all-constraints {:minimize :number-of-conflicts}))
+(solve all-constraints {:minimize :_number-of-conflicts})
   ; => {:number-of-conflicts 0,
   ;     [:person 0] 3,
   ;     [:person 1] 2,
@@ -268,7 +269,7 @@ number-in-timeslots
   ;     [:person 3] 4,
   ;     [:person 2] 1}
 
-(solve all-constraints {:maximize :number-of-conflicts})
+(solve all-constraints {:maximize :_number-of-conflicts})
 
 
 ; finally, we can combine al this into a nice function
@@ -320,5 +321,56 @@ number-in-timeslots
    [1 4]
    [1 4]])
   ; => {[:person 0] 3, [:person 1] 1, [:person 2] 4, [:person 3] 4}
+
+
+
+
+
+
+; more loco rule types - looks like $* is broken somehow...
+
+(def model
+  [($in :x 1 6)  ; x is in the domain ranging from 1 to 6, inclusive
+   ($in :y 3 7)  ; y is in the domain ranging from 3 to 7, inclusive
+   ($= ($+ :x :y) 10)])
+(solve model)
+
+
+(def model-2
+  [($in :a 1 6)
+   ($in :b 3 7)
+   ($in :c 1 5)
+   ($= ($* ($* :a :b) :c) 50)])
+(solve model-2)
+
+
+(def model-3 [($in :a 1 10)
+              ($in :b 4 8)
+              ($in :c 1 5)
+              ($in :d 3 10)
+              ($= ($+ :a ($* :b :c)) :d)])
+(solve model-3)
+
+
+; see also https://www.youtube.com/watch?v=TA9DBG8x-ys
+
+
+(solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
+        ($= :x :y) ($!= 5 :y) ($< :a 3) ($= ($+ :x :y :a) 10)])
+
+(solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
+        ($and
+          ($not ($= :x :y))
+          ($= :x :a))])
+
+(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+        ($= 1 ($+ :p :q :r :s))])
+(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+        ($= 2 ($+ :p :q :r :s))])
+(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+        ($= 3 ($+ :p :q :r :s))])
+(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+        ($= 4 ($+ :p :q :r :s))])
+
 
 

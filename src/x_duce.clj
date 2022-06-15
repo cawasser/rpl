@@ -5,11 +5,11 @@
             [jackdaw.client.log :as jcl]
             [jackdaw.serdes.edn :refer [serde]]
             [jackdaw.streams :as js]
-            [willa.streams :refer [transduce-stream]]
+            [willa.streams :as ws]
             [willa.core :as w]))
 
 
-;; region ; let's start simple
+;; region ; let's start simple (Brian Sunter)
 ; see https://briansunter.com/blog/transducers-clojure/
 
 
@@ -140,7 +140,7 @@
 ;; endregion
 
 
-;; region ; how do we make our own functions into transducers?
+;; region ; how do we make our own functions into transducers? (Abhinav Omprakash)
 
 ; see https://www.abhinavomprakash.com/posts/writing-transducer-friendly-code/
 
@@ -355,9 +355,10 @@
 (product transducer (range 10))
 ; 122880
 
+;; endregion
 
 
-
+;; region ; building abstractions via transducers (Abhinav Omprakash)
 
 (def students
   [{:student-name "Luke Skywalker"
@@ -419,7 +420,6 @@
 
 
 
-
 ;; Displaying student names in the UI
 (->> students
   student-names
@@ -471,7 +471,7 @@
 
 
 ; wire together the "prep"
-(def prep-events (comp (validate) (authorize)))
+(def check (comp (validate) (authorize)))
 
 
 ; test inputs
@@ -482,20 +482,20 @@
 (into [] (compute) events)
 
 
-(into [] prep-events [])
-(into [] prep-events [[100 {:event 100 :inputs [11 22 33 44 55]}]])
-(into [] prep-events events)
-(transduce prep-events conj events)
+(into [] check [])
+(into [] check [[100 {:event 100 :inputs [11 22 33 44 55]}]])
+(into [] check events)
+(transduce check conj events)
 
 
-(into [] (comp prep-events (compute)) [])
-(into [] (comp prep-events (compute)) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
-(into [] (comp prep-events (compute)) events)
-(transduce (comp prep-events (compute)) conj events)
+(into [] (comp check (compute)) [])
+(into [] (comp check (compute)) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
+(into [] (comp check (compute)) events)
+(transduce (comp check (compute)) conj events)
 
 
 ; build an "output" event from an "input" event
-(defn output-event [[k {:keys [event answer] :as all}]]
+(defn output-event [[k {:keys [event answer]}]]
   [k {:event event :output answer}])
 
 (defn c-o-c-event [[k event]]
@@ -522,7 +522,7 @@
 
 
 ; a more complete pipeline (prep -> compute -> output)
-(def event-pipeline (comp prep-events (compute) build-output))
+(def event-pipeline (comp check (compute) build-output))
 
 (transduce event-pipeline conj events)
 
@@ -597,12 +597,12 @@
 (def admin-client (ja/->AdminClient kafka-config))
 
 
-(def event-pipeline (comp prep-events (compute) build-output))
+(def event-pipeline (comp check (compute) build-output))
 
 
 (defn event-topology [builder]
   (-> (js/kstream builder rpl-event-topic)
-    (transduce-stream event-pipeline)
+    (ws/transduce-stream event-pipeline)
     (js/to rpl-answer-topic)))
 
 
@@ -643,7 +643,7 @@
 ;; endregion
 
 
-;; region ; willa?
+;; region ; willa? (Dave Martin)
 
 (def willa-topology
   {:entities {:topic/event-in        (assoc rpl-event-topic ::w/entity-type :topic)
@@ -683,3 +683,10 @@
 
 ;; endregion
 
+
+;; region ; finally, we need the "service-def" parameter as context for the pipeline
+
+; see "Parametrized transducers" at https://www.astrecipes.net/blog/2016/11/24/transducers-how-to/
+
+
+;; endregion
