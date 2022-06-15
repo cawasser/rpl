@@ -5,7 +5,8 @@
             [jackdaw.client.log :as jcl]
             [jackdaw.serdes.edn :refer [serde]]
             [jackdaw.streams :as js]
-            [willa.streams :refer [transduce-stream]]))
+            [willa.streams :refer [transduce-stream]]
+            [willa.core :as w]))
 
 
 ;; region ; let's start simple
@@ -521,20 +522,15 @@
 
 
 ; a more complete pipeline (prep -> compute -> output)
-(transduce (comp
-             prep-events
-             (compute)
-             build-output)
-  conj events)
+(def event-pipeline (comp prep-events (compute) build-output))
+
+(transduce event-pipeline conj events)
 
 ;; endregion
 
 
 ;; region ; let's pretend a core/async channel is a kafka topic
-(def topic (async/chan 1 (comp
-                           prep-events
-                           (compute)
-                           build-output)))
+(def topic (async/chan 1 event-pipeline))
 
 (async/go
   (async/onto-chan! topic events))
@@ -601,10 +597,8 @@
 (def admin-client (ja/->AdminClient kafka-config))
 
 
-(def event-pipeline (comp
-                      prep-events
-                      (compute)
-                      build-output))
+(def event-pipeline (comp prep-events (compute) build-output))
+
 
 (defn event-topology [builder]
   (-> (js/kstream builder rpl-event-topic)
@@ -620,7 +614,6 @@
 
 (defn stop! [kafka-streams-app]
   (js/close kafka-streams-app))
-
 
 (comment
   (ja/create-topics! admin-client [rpl-event-topic rpl-answer-topic])
@@ -648,3 +641,45 @@
 
 
 ;; endregion
+
+
+;; region ; willa?
+
+(def willa-topology
+  {:entities {:topic/event-in        (assoc rpl-event-topic ::w/entity-type :topic)
+              :stream/process-events {::w/entity-type :kstream
+                                      ::w/xform       event-pipeline}
+              :topic/answer-out      (assoc rpl-answer-topic ::w/entity-type :topic)}
+   :workflow [[:topic/event-in :stream/process-events]
+              [:stream/process-events :topic/answer-out]]})
+
+
+(comment
+  (ja/create-topics! admin-client [rpl-event-topic rpl-answer-topic])
+
+  (def kafka-streams-app
+    (let [builder (js/streams-builder)]
+      (w/build-topology! builder willa-topology)
+      (doto (js/kafka-streams builder kafka-config)
+        (js/start))))
+
+
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+  (make-event! [15 20 25 30])
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+  (make-event! [1 2 3 4 5 6 7 8 9 10])
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+  (stop! kafka-streams-app)
+
+  (ja/delete-topics! admin-client [rpl-event-topic rpl-answer-topic])
+
+  ())
+
+;; endregion
+
