@@ -15,12 +15,19 @@
 
   frinj                          {:mvn/version "0.2.5"}
 
-  aysylu/loom                    {:mvn/version "1.0.2"}}
+  aysylu/loom                    {:mvn/version "1.0.2"}
+
+  fundingcircle/jackdaw          {:mvn/version "0.8.0"}
+  willa/willa                    {:mvn/version "0.2.2"}}
 
  :aliases
  {:rebl {:extra-deps {
                       org.clojure/clojure    {:mvn/version "1.10.0"}
                       org.clojure/core.async {:mvn/version "0.4.490"}
                       com.cognitect/rebl     {:local/root "/Users/cawasser/Desktop/Clojure/REBL/REBL-0.9.218/REBL-0.9.218.jar"}}
-         :main-opts  ["-m" "cognitect.rebl"]}}}
+         :main-opts  ["-m" "cognitect.rebl"]}}
+
+ :mvn/repos {"confluent" {:url "https://packages.confluent.io/maven/"}
+             "clojars"   {:url "https://clojars.org/repo/"}
+             "central"   {:url "https://repo1.maven.org/maven2/"}}}
 

@@ -1,6 +1,14 @@
 (ns x-duce
-  (:require [clojure.core.async :as async]))
+  (:require [clojure.core.async :as async]
+            [jackdaw.admin :as ja]
+            [jackdaw.client :as jc]
+            [jackdaw.client.log :as jcl]
+            [jackdaw.serdes.edn :refer [serde]]
+            [jackdaw.streams :as js]
+            [willa.streams :refer [transduce-stream]]))
 
+
+;; region ; let's start simple
 ; see https://briansunter.com/blog/transducers-clojure/
 
 
@@ -25,7 +33,7 @@
 (my-reduce + 0 '(1 2 3 4 5 6 7 8 9 10))
 (my-reduce + 10 '(1 2 3 4 5 6 7 8 9 10))
 
-(reduce +  10 '(1 2 3 4 5 6 7 8 9 10))
+(reduce + 10 '(1 2 3 4 5 6 7 8 9 10))
 
 (reduce + (range 1 11))
 
@@ -39,10 +47,10 @@
 
 (reduce + (map #(* 2 %) (filter even? (range 1 11))))
 
-(->> (range 1 11) ; ->10
-  (filter even?) ; 10->5
-  (map #(* 2 %)) ; 5->5
-  (reduce +)) ; 5->1
+(->> (range 1 11)                                           ; ->10
+  (filter even?)                                            ; 10->5
+  (map #(* 2 %))                                            ; 5->5
+  (reduce +))                                               ; 5->1
 
 
 ; sum the doubles of all the even values
@@ -87,7 +95,7 @@
 ; back to double the evens
 (def double-even-xforms (comp (filter even?) (map #(* 2 %))))
 
-; kind of likk
+; kind of like
 (partial map #(* 2 %))
 
 (reduce + 0 (into [] double-even-xforms numbers-data))
@@ -108,13 +116,13 @@
 
 
 (reduce + 0 (into [] double-even-xforms numbers-data))
-(def x-form (comp (mapcat :parse-json-file-reducible)
-              (filter :valid-entry?)
-              (keep :transform-entry-if-relevant)
-              (partition-all 1000)
-              (map :save-into-database)))
-(transduce double-even-xforms +                0   (range 1 11))
-(transduce x-form             (constantly nil) nil :files)
+;(def x-form (comp (mapcat :parse-json-file-reducible)
+;              (filter :valid-entry?)
+;              (keep :transform-entry-if-relevant)
+;              (partition-all 1000)
+;              (map :save-into-database)))
+(transduce double-even-xforms + 0 (range 1 11))
+;(transduce x-form             (constantly nil) nil :files)
 
 
 (def c (async/chan 1 double-even-xforms))
@@ -128,7 +136,10 @@
     (println n)
     (recur (async/<!! c))))
 
+;; endregion
 
+
+;; region ; how do we make our own functions into transducers?
 
 ; see https://www.abhinavomprakash.com/posts/writing-transducer-friendly-code/
 
@@ -170,9 +181,9 @@
 ; (0 2 4 6 8)
 
 (->> (range 10)
-  (increment-all ,)
-  (filter-evens ,)
-  (double-all ,))
+  (increment-all,)
+  (filter-evens,)
+  (double-all,))
 
 
 (def x-ducerrrrr
@@ -344,15 +355,15 @@
 
 (def students
   [{:student-name "Luke Skywalker"
-    :discipline "Jedi"}
+    :discipline   "Jedi"}
    {:student-name "Hermione Granger"
-    :discipline "Magic"}])
+    :discipline   "Magic"}])
 
 (defn student-name [student]
   (:student-name student))
 
 (defn discipline [student]
-  (:discipline  student))
+  (:discipline student))
 
 
 
@@ -385,12 +396,12 @@
 
 ;; for the sake of completeness
 (defn capitalize-names
-  ([] (map  clojure.string/capitalize))
+  ([] (map clojure.string/capitalize))
   ([students]
    (sequence (capitalize-names) students)))
 
 (defn lowercase-names
-  ([] (map  clojure.string/lower-case))
+  ([] (map clojure.string/lower-case))
   ([students]
    (sequence (lowercase-names) students)))
 
@@ -420,10 +431,10 @@
              (lowercase-names)
              (slugify-names))))
 
+;; endregion
 
 
-
-; now to think about Kafka/Event-Handling
+;; region ; now, to think about Kafka/Event-Handling
 
 ; workhorse functions, work on a single event
 (defn compute-answer [event]
@@ -460,6 +471,28 @@
 ; test inputs
 (def events [{:event 1 :inputs [1 2 3 4 5]}
              {:event 2 :inputs [10 20 30 40 50]}])
+
+(map compute-answer events)
+(into [] (compute) events)
+
+
+
+; what about kafka-ike events (key/event)?
+(defn compute-answer-k [[k event]]
+  [k (assoc event :answer (reduce + (:inputs event)))])
+(defn compute-k
+  ([] (map compute-answer-k))
+  ([coll]
+   (sequence (compute-k) coll)))
+
+(def kafka-events [[1 {:event 1 :inputs [1 2 3 4 5]}]
+                   [2 {:event 2 :inputs [10 20 30 40 50]}]])
+
+(map compute-answer-k kafka-events)
+(into [] (compute-k) kafka-events)
+
+
+
 
 (into [] prep-events [])
 (into [] prep-events [{:event 100 :inputs [11 22 33 44 55]}])
@@ -500,8 +533,129 @@
 
 
 
-; a more complete pipeline
-(transduce (comp prep-events (compute) build-output) conj events)
+; a more complete pipeline (prep -> compute -> output)
+(transduce (comp
+             prep-events
+             (compute)
+             build-output)
+  conj events)
+
+;; endregion
+
+
+;; region ; let's pretend a core/async channel is a kafka topic
+(def topic (async/chan 1 (comp
+                           prep-events
+                           (compute)
+                           build-output)))
+
+(async/go
+  (async/onto-chan! topic events))
+
+
+(loop [n (async/<!! topic)]
+  (when n
+    (println n)
+    (recur (async/<!! topic))))
+
+;; endregion
+
+
+;; region ; are we up to trying this with kafka for real?
+
+; docker run --rm -p 2181:2181 -p 3030:3030 -p 8081-8083:8081-8083 -p 9581-9585:9581-9585 -p 9092:9092 -e ADV_HOST=localhost landoop/fast-data-dev:latest &
+
+
+(def kafka-config
+  {"application.id"            "kafka-rpl"
+   "bootstrap.servers"         "localhost:9092"
+   "default.key.serde"         "jackdaw.serdes.EdnSerde"
+   "default.value.serde"       "jackdaw.serdes.EdnSerde"
+   "cache.max.bytes.buffering" "0"})
+(def serdes
+  {:key-serde   (serde)
+   :value-serde (serde)})
+
+(def rpl-event-topic
+  (merge {:topic-name         "rpl-event-topic"
+          :partition-count    1
+          :replication-factor 1
+          :topic-config       {}}
+    serdes))
+(def rpl-answer-topic
+  (merge {:topic-name         "rpl-answer-topic"
+          :partition-count    1
+          :replication-factor 1
+          :topic-config       {}}
+    serdes))
+
+(defn make-event! [inputs]
+  (let [id (rand-int 10000)]
+    (with-open [producer (jc/producer kafka-config serdes)]
+      @(jc/produce! producer
+         rpl-event-topic
+         id {:event id :inputs inputs}))))
+
+(defn view-messages [topic]
+  (with-open [consumer (jc/subscribed-consumer (assoc kafka-config
+                                                 "group.id" (str (java.util.UUID/randomUUID)))
+                         [topic])]
+    (jc/seek-to-beginning-eager consumer)
+    (->> (jcl/log-until-inactivity consumer 100)
+      (map :value)
+      doall)))
 
 
 
+(def admin-client (ja/->AdminClient kafka-config))
+
+
+(def event-pipeline (comp
+                      prep-events
+                      (compute)
+                      build-output))
+
+(defn event-topology [builder]
+  (-> (js/kstream builder rpl-event-topic)
+    (transduce-stream event-pipeline)
+    (js/to rpl-answer-topic)))
+
+
+
+
+(defn start! []
+  (let [builder (js/streams-builder)]
+    (event-topology builder)
+    (doto (js/kafka-streams builder kafka-config)
+      (js/start))))
+
+(defn stop! [kafka-streams-app]
+  (js/close kafka-streams-app))
+
+
+(comment
+  (ja/create-topics! admin-client [rpl-event-topic rpl-answer-topic])
+
+  (def microservice (start!))
+
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+  (make-event! [15 20 25 30])
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+  (make-event! [1 2 3 4 5 6 7 8 9 10])
+  (view-messages rpl-event-topic)
+  (view-messages rpl-answer-topic)
+
+
+  (stop! microservice)
+
+  (ja/delete-topics! admin-client [rpl-event-topic rpl-answer-topic])
+
+
+  ())
+
+
+;; endregion
