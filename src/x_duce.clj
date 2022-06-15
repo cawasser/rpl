@@ -186,13 +186,18 @@
   (double-all,))
 
 
-(def x-ducerrrrr
-  (comp
-    (increment-all)
-    (filter-evens)
-    (double-all)))
+(comment
 
-(into [] x-ducerrrrr (range 10))
+  (def x-ducerrrrr
+    (comp
+      (increment-all)
+      (filter-evens)
+      (double-all)))
+
+  (into [] x-ducerrrrr (range 10))
+
+
+  ())
 
 
 
@@ -437,14 +442,14 @@
 ;; region ; now, to think about Kafka/Event-Handling
 
 ; workhorse functions, work on a single event
-(defn compute-answer [event]
-  (assoc event :answer (reduce + (:inputs event))))
+(defn compute-answer [[k event]]
+  [k (assoc event :answer (reduce + (:inputs event)))])
 
-(defn validate-event [event]
-  (assoc event :valid true))
+(defn validate-event [[k event]]
+  [k (assoc event :valid true)])
 
-(defn authorize-event [event]
-  (assoc event :authorize true))
+(defn authorize-event [[k event]]
+  [k (assoc event :authorize true)])
 
 
 ; transducers, work on a collection of 0 or more events
@@ -469,49 +474,31 @@
 
 
 ; test inputs
-(def events [{:event 1 :inputs [1 2 3 4 5]}
-             {:event 2 :inputs [10 20 30 40 50]}])
+(def events [[1 {:event 1 :inputs [1 2 3 4 5]}]
+             [2 {:event 2 :inputs [10 20 30 40 50]}]])
 
 (map compute-answer events)
 (into [] (compute) events)
 
 
-
-; what about kafka-ike events (key/event)?
-(defn compute-answer-k [[k event]]
-  [k (assoc event :answer (reduce + (:inputs event)))])
-(defn compute-k
-  ([] (map compute-answer-k))
-  ([coll]
-   (sequence (compute-k) coll)))
-
-(def kafka-events [[1 {:event 1 :inputs [1 2 3 4 5]}]
-                   [2 {:event 2 :inputs [10 20 30 40 50]}]])
-
-(map compute-answer-k kafka-events)
-(into [] (compute-k) kafka-events)
-
-
-
-
 (into [] prep-events [])
-(into [] prep-events [{:event 100 :inputs [11 22 33 44 55]}])
+(into [] prep-events [[100 {:event 100 :inputs [11 22 33 44 55]}]])
 (into [] prep-events events)
 (transduce prep-events conj events)
 
 
 (into [] (comp prep-events (compute)) [])
-(into [] (comp prep-events (compute)) [{:event 100 :inputs [11 22 33 44 55]}])
+(into [] (comp prep-events (compute)) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
 (into [] (comp prep-events (compute)) events)
 (transduce (comp prep-events (compute)) conj events)
 
 
 ; build an "output" event from an "input" event
-(defn output-event [{:keys [event answer] :as all}]
-  {:event event :output answer})
+(defn output-event [[k {:keys [event answer] :as all}]]
+  [k {:event event :output answer}])
 
-(defn c-o-c-event [event]
-  (assoc event :c-o-c "dummy-coc"))
+(defn c-o-c-event [[k event]]
+  [k (assoc event :c-o-c "dummy-coc")])
 
 
 (defn output
@@ -528,7 +515,7 @@
 
 (def build-output (comp (output) (c-o-c)))
 
-(into [] build-output [{:event 100 :answer 100}])
+(into [] build-output [[100 {:event 100 :answer 100}]])
 
 
 
@@ -562,6 +549,11 @@
 
 
 ;; region ; are we up to trying this with kafka for real?
+
+
+; see https://github.com/DaveWM/willa
+; and https://blog.davemartin.me/posts/kafka-streams-the-clojure-way/
+
 
 ; docker run --rm -p 2181:2181 -p 3030:3030 -p 8081-8083:8081-8083 -p 9581-9585:9581-9585 -p 9092:9092 -e ADV_HOST=localhost landoop/fast-data-dev:latest &
 
@@ -606,7 +598,6 @@
       doall)))
 
 
-
 (def admin-client (ja/->AdminClient kafka-config))
 
 
@@ -619,8 +610,6 @@
   (-> (js/kstream builder rpl-event-topic)
     (transduce-stream event-pipeline)
     (js/to rpl-answer-topic)))
-
-
 
 
 (defn start! []
