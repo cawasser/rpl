@@ -2,14 +2,11 @@
   (:require [loco.core :as l]
             [loco.constraints :refer :all]
             [rolling-stones.core :as sat]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [criterium.core :as c]))
 
 
 ;; region ; setup
-(def rows 9)
-(def cols 9)
-(def values 9)
-
 
 (def worlds-hardest-puzzle
   [[8 - - - - - - - -]
@@ -60,8 +57,8 @@
 
 (defn render [board]
   (let [lookup (zipmap (map (juxt :r :c) board) board)
-        board  (for [r (range rows)
-                     c (range cols)]
+        board  (for [r (range 9)
+                     c (range 9)]
                  {:r r :c c :x (:x (get lookup [r c]))})
         rows   (for [row (partition-by :r board)]
                  (->> (map #(or (:x %) ".") row)
@@ -130,42 +127,67 @@
 ; see https://programming-puzzler.blogspot.com/2014/03/sudoku-in-loco.html
 
 
-(def basic-model
+(defn one-number-per-square-l []
+  (for [i (range 9) j (range 9)]
+    ($in [:grid i j] 1 9)))
+
+
+(defn each-number-once-per-row-l []
+  (for [i (range 9)]
+    ($distinct (for [j (range 9)] [:grid i j]))))
+
+
+(defn each-number-once-per-column-l []
+  (for [j (range 9)]
+    ($distinct (for [i (range 9)] [:grid i j]))))
+
+
+(defn each-number-once-per-box-l []
+  (for [section1 [[0 1 2] [3 4 5] [6 7 8]]
+        section2 [[0 1 2] [3 4 5] [6 7 8]]]
+    ($distinct (for [i section1, j section2] [:grid i j]))))
+
+
+(def basic-model-l
   (concat
     ; range-constraints
-    (for [i (range 9) j (range 9)]
-      ($in [:grid i j] 1 9))
+    (one-number-per-square-l)
 
     ; row-constraints
-    (for [i (range 9)]
-      ($distinct (for [j (range 9)] [:grid i j])))
+    (each-number-once-per-row-l)
 
     ; col-constraints
-    (for [j (range 9)]
-      ($distinct (for [i (range 9)] [:grid i j])))
+    (each-number-once-per-column-l)
 
     ; section-constraints
-    (for [section1 [[0 1 2] [3 4 5] [6 7 8]]
-          section2 [[0 1 2] [3 4 5] [6 7 8]]]
-      ($distinct (for [i section1, j section2] [:grid i j])))))
-
-
-(defn solve-sudoku [grid]
-  (l/solve
-    (concat basic-model
-      (for [i (range 9), j (range 9)
-            :let [hint (get-in grid [i j])]
-            :when (number? hint)]
-        ($= [:grid i j] hint)))))
+    (each-number-once-per-box-l)))
 
 
 
+(defn solve-l [grid]
+  (first
+    (l/solve
+      (concat basic-model-l
+        (for [i (range 9), j (range 9)
+              :let [hint (get-in grid [i j])]
+              :when (number? hint)]
+          ($= [:grid i j] hint))))))
 
-(-> worlds-hardest-puzzle
-  solve-sudoku
-  first
-  loco-result->form-2
-  render)
+
+(comment
+  (-> worlds-hardest-puzzle
+    solve-l
+    ;first
+    loco-result->form-2
+    render)
+
+  (c/with-progress-reporting
+    (c/quick-bench (Thread/sleep 1000)))
+
+  (c/with-progress-reporting
+    (c/bench (solve-l worlds-hardest-puzzle-2)))
+
+  ())
 
 
 ; let's "look inside"
@@ -173,14 +195,17 @@
 
   (def grid worlds-hardest-puzzle)
 
-  (count basic-model)
+  (count basic-model-l)
+  (count (one-number-per-square-l))
+  (count (each-number-once-per-row-l))
+  (count (each-number-once-per-column-l))
+  (count (each-number-once-per-box-l))
 
-  (count (concat basic-model
+  (count (concat basic-model-l
            (for [i (range 9), j (range 9)
                  :let [hint (get-in grid [i j])]
                  :when (number? hint)]
              ($= [:grid i j] hint))))
-
 
   ())
 
@@ -204,42 +229,34 @@
 ; see https://gist.github.com/stathissideris/90b727b3f7a435908fa82029f0f6b3ff
 
 
-(defn possible-square-values
-  "All the possible values in a square"
-  [r c]
-  (for [x (map inc (range values))]
-    {:r r :c c :x x}))
+(defn one-number-per-square-rs []
+  (for [r (range 9) c (range 9)]
+    (sat/exactly 1 (for [x (map inc (range 9))] {:r r :c c :x x}))))
 
 
-(defn one-number-per-square []
-  (for [r (range rows)
-        c (range cols)]
-    (sat/exactly 1 (possible-square-values r c))))
-
-
-(defn each-number-once-per-row []
+(defn each-number-once-per-row-rs []
   (apply
     concat
-    (for [row (range rows)]
-      (for [x (map inc (range values))]
+    (for [row (range 9)]
+      (for [x (map inc (range 9))]
         (sat/exactly
            1
-           (for [c (range cols)]
+           (for [c (range 9)]
                {:r row :c c :x x}))))))
 
 
-(defn each-number-once-per-column []
+(defn each-number-once-per-column-rs []
   (apply
     concat
-    (for [col (range cols)]
-      (for [x (map inc (range values))]
+    (for [col (range 9)]
+      (for [x (map inc (range 9))]
         (sat/exactly
            1
-           (for [r (range rows)]
+           (for [r (range 9)]
                {:r r :c col :x x}))))))
 
 
-(defn box-coords [d-row d-col]
+(defn box-coords-rs [d-row d-col]
   (apply
     concat
     (for [r (range 3)]
@@ -247,47 +264,67 @@
         {:r (+ r d-row) :c (+ c d-col)}))))
 
 
-(defn each-number-once-per-box []
+(defn each-number-once-per-box-rs []
   (apply
     concat
-    (for [x (map inc (range values))]
+    (for [x (map inc (range 9))]
       (for [d-row (range 0 8 3)
             d-col (range 0 8 3)]
         (sat/exactly
            1
-           (for [{:keys [r c]} (box-coords d-row d-col)]
+           (for [{:keys [r c]} (box-coords-rs d-row d-col)]
                {:r r :c c :x x}))))))
 
 
-(defn solve [known]
+(def basic-model-rs
+  (concat
+    ; range-constraints
+    (one-number-per-square-rs)
+
+    ; row-constraints
+    (each-number-once-per-row-rs)
+
+    ; col-constraints
+    (each-number-once-per-column-rs)
+
+    ; section-constraints
+    (each-number-once-per-box-rs)))
+
+
+(defn solve-rs [known]
   (filter
     sat/positive?
     (sat/solve-symbolic-cnf
-       (concat (one-number-per-square)
-           (each-number-once-per-row)
-           (each-number-once-per-column)
-           (each-number-once-per-box)
+       (concat basic-model-rs
            (map vector known)))))
 
 
-(-> worlds-hardest-puzzle
-  form-1->form-2
-  solve
-  render)
+(comment
+  (-> worlds-hardest-puzzle
+    form-1->form-2
+    solve-rs
+    render)
+
+  (let [w (form-1->form-2 worlds-hardest-puzzle)]
+    (c/with-progress-reporting
+      (c/bench
+        (solve-rs w))))
+
+  ())
 
 
 ; let's "look inside"
 (comment
   (def known worlds-hardest-puzzle-2)
 
-  (count (concat (one-number-per-square)
-           (each-number-once-per-row)
-           (each-number-once-per-column)
-           (each-number-once-per-box)
+  (count basic-model-rs)
+  (count (one-number-per-square-rs))
+  (count (each-number-once-per-row-rs))
+  (count (each-number-once-per-column-rs))
+  (count (each-number-once-per-box-rs))
+
+  (count (concat basic-model-rs
            (map vector known)))
-
-
-
 
 
   ())
