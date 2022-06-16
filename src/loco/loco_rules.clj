@@ -16,7 +16,7 @@
 ; https://programming-puzzler.blogspot.com/2014/03/appointment-scheduling-in-clojure-with.html?m=1
 ;
 ; Mark uses the Clojure library "loco" (https://github.com/aengelberg/loco) written
-; by his father(?)
+; by his son
 ;
 ; I recommend you open the article and follow along in the REPL
 ;
@@ -38,7 +38,7 @@
   [[1 2 3 4]
    [2 3]
    [1 4]
-   [1 4]])
+   [1]])
   ; => [[1 2 3 4] [2 3] [1 4] [1 4]]
 
 
@@ -116,12 +116,12 @@
 
 ; we can solve this problem
 ;
-(schedule
-  [[1 3 5]
-   [2 4 5]
-   [1 3 4]
-   [2 3 4]
-   [3 4 5]])
+(def a (schedule
+         [[1 3 5]
+          [2 4 5]
+          [1 3 4]
+          [2 3 4]
+          [3 4 5]]))
   ; => {[:person 0] 1, [:person 1] 4,
   ;     [:person 2] 3, [:person 3] 2,
   ;     [:person 4] 5}
@@ -130,15 +130,28 @@
   ;     [:person 2] 1, [:person 3] 3,
   ;     [:person 4] 4)
 
+(meta a)
 
 ; but NOT this one
 ;
-(schedule
-  [[1 2 3 4]
-   [1 4]
-   [1 4]
-   [1 4]])
+(def s (schedule
+         [[1 2 3 4]
+          [1 4]
+          [1 4]
+          [1 4]]))
   ; => {}
+
+(defn find-solutions [ier]
+  (let [s (schedule ier)]
+    (if (empty? s)
+      {:error-with (last ier) :solution? (find-solutions (->> ier drop-last (into [])))} ;(find-solutions (drop-last ier))
+      s)))
+
+
+(def ier [[1 2 3 4] [1 4] [1 4] [1 4]])
+(find-solutions ier)
+(schedule ier)
+
 
 ; there is no way to find a solution where each person is in a
 ; different slot given the availability
@@ -326,6 +339,12 @@ number-in-timeslots
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; more loco rule types - looks like $* is broken somehow...
 

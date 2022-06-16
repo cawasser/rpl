@@ -1,0 +1,58 @@
+(ns rs.r-s
+  (:require [rolling-stones.core :as sat :refer [! at-least at-most exactly
+                                                 AND OR XOR IFF IMP NOR NAND]]))
+
+
+; :p AND (:p OR :q) AND ((NOT :p) OR :q OR (NOT :r))
+(sat/solve [[1] [1 2] [-1 2 -3]])
+
+
+(meta (sat/solve [[1] [1 2] [-1 2 -3]]))
+
+
+(sat/solutions [[1] [1 2] [-1 2 -3]])
+
+
+(sat/solve [[1] [-1]])
+
+
+; "at least" 3 must be true...
+(sat/solutions [[-1 2 -3] [1 2 3 4 5]
+                (at-least 3 [2 3 4 5])])
+
+
+; now, the same thing but using SYMBOLS (and having r-s convert them into numbers)
+(sat/solve-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
+
+(sat/solutions-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
+
+
+(sat/solutions-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]
+                             (at-least 2 [:p :q :r])])
+
+
+; in r-s, anything can be a "symbol":
+;    :p => {:name "Bob"}
+;    :q => [2 6]
+;    :r => (! #{4})
+(sat/solve-symbolic-cnf [[{:name "Bob"}] [{:name "Bob"} [2 6]]
+                         [(! {:name "Bob"}) [2 6] (! #{4})]])
+
+
+
+(sat/solve-symbolic-formula (XOR (AND :p :q (! :r)) (IFF :p (IMP :q :r))))
+
+
+(sat/solutions-symbolic-formula (XOR (AND :p :q (! :r)) (IFF :p (IMP :q :r))))
+
+
+(sat/solve-symbolic-formula [(XOR :p :q) (NAND :q :r) (at-most 1 [:p :q :r])])
+
+
+
+
+
+
+
+
+
