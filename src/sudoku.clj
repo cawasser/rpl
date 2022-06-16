@@ -167,6 +167,23 @@
   loco-result->form-2
   render)
 
+
+; let's "look inside"
+(comment
+
+  (def grid worlds-hardest-puzzle)
+
+  (count basic-model)
+
+  (count (concat basic-model
+           (for [i (range 9), j (range 9)
+                 :let [hint (get-in grid [i j])]
+                 :when (number? hint)]
+             ($= [:grid i j] hint))))
+
+
+  ())
+
 ;; endregion
 
 
@@ -259,13 +276,16 @@
   render)
 
 
-
-
+; let's "look inside"
 (comment
-  (render puzzle)
-  (render (solve puzzle))
+  (def known worlds-hardest-puzzle-2)
 
-  (render (solve worlds-hardest-puzzle-2))
+  (count (concat (one-number-per-square)
+           (each-number-once-per-row)
+           (each-number-once-per-column)
+           (each-number-once-per-box)
+           (map vector known)))
+
 
 
 
