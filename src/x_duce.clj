@@ -217,7 +217,7 @@
 
 (defn increment-all
   ([]
-   (map dec))
+   (map inc))
   ([coll]
    (map inc coll)))
 
@@ -361,13 +361,13 @@
 ;; region ; building abstractions via transducers (Abhinav Omprakash)
 
 (def students
-  [{:student-name "Luke Skywalker"
+  [{:student {:name "Luke Skywalker"}
     :discipline   "Jedi"}
-   {:student-name "Hermione Granger"
+   {:student {:name "Hermione Granger"}
     :discipline   "Magic"}])
 
 (defn student-name [student]
-  (:student-name student))
+  (get-in student [:student :name]))
 
 (defn discipline [student]
   (:discipline student))
@@ -437,6 +437,11 @@
              (lowercase-names)
              (slugify-names))))
 
+
+(def xd (comp (student-names) (capitalize-names) (slugify-names)))
+
+(into [] xd students)
+
 ;; endregion
 
 
@@ -478,7 +483,7 @@
 (def events [[1 {:event 1 :inputs [1 2 3 4 5]}]
              [2 {:event 2 :inputs [10 20 30 40 50]}]])
 
-(map compute-answer events)
+(into [] (map compute-answer events))
 (into [] (compute) events)
 
 
@@ -521,7 +526,7 @@
 
 
 
-; a more complete pipeline (prep -> compute -> output)
+; a more complete pipeline (check -> compute -> output)
 (def event-pipeline (comp check (compute) build-output))
 
 (transduce event-pipeline conj events)
@@ -684,9 +689,169 @@
 ;; endregion
 
 
+;; region ; AstRecipes
+
+; see https://www.astrecipes.net/blog/2016/11/24/transducers-how-to/
+
+
+(defn plain-filter-odd [xf]
+  (fn
+    ;; START
+    ([]          (xf))
+    ;; STOP
+    ([result]    (xf result))
+    ;; PROCESS
+    ([result input]
+     (cond
+       (odd? input) (xf result (inc input))      ;; apply xf to result adding 1 to input
+       :ELSE        result))))                    ;; do nothing - return result
+
+(->> (range 10)
+  (into [] plain-filter-odd))
+(into [] plain-filter-odd (range 10))
+; [2 4 6 8 10]
+
+
+
+(defn filter-evens-1 [xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result input]
+     (cond
+       (even? input) (xf result input)
+       :ELSE        result))))
+
+(defn filter-evens-2
+  ([]
+   (filter even?))
+  ([coll]
+   (sequence (filter-evens-2) coll)))
+
+
+
+(defn map-inc-1 [xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result input] (xf result (inc input)))))
+
+
+(into [] filter-evens-1 (range 10))
+(into [] map-inc-1 (range 10))
+(into [] (filter-evens-2) (range 10))
+
+(def t (comp filter-evens-1 map-inc-1))
+(into [] t (range 10))
+
+
+;; endregion
+
+
 ;; region ; finally, we need the "service-def" parameter as context for the pipeline
 
 ; see "Parametrized transducers" at https://www.astrecipes.net/blog/2016/11/24/transducers-how-to/
+
+; need the context defined BEFORE we wire-up the transducer
+(def context {:validate :inputs})
+
+
+
+(defn compute-answer [[k event]]
+  [k (assoc event :answer (reduce + (:inputs event)))])
+
+(defn authorize-event [[k event]]
+  [k (assoc event :authorize true)])
+
+
+; transducers, work on a collection of 0 or more events
+(defn compute
+  ([] (map compute-answer))
+  ([coll]
+   (sequence (compute) coll)))
+
+
+(defn validate [ctx xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result [k event]]
+     (xf result [k (assoc event
+                     :valid (if ((:validate ctx) event)
+                              true false))]))))
+
+
+(defn authorize
+  ([] (map authorize-event))
+  ([coll]
+   (sequence (authorize) coll)))
+
+
+; wire together the "prep"
+(def check (comp (partial validate context) (authorize)))
+
+
+; test inputs
+(def events [[1 {:event 1 :inputs [1 2 3 4 5]}]
+             [2 {:event 2 :inputs [10 20 30 40 50]}]])
+
+(into [] (map compute-answer events))
+(into [] (compute) events)
+
+
+(:inputs {:event 1 :inputs [1 2 3 4 5]})
+(if ((:validate {:validate :inputs}) {:event 1 :inputs [1 2 3 4 5]})
+  true false)
+(if ((:validate {:validate :inputs}) {:event 1})
+  true false)
+
+(into [] check [])
+(into [] check [[100 {:event 100 :inputs [11 22 33 44 55]}]])
+(into [] check [[100 {:event 100}]])
+(into [] check events)
+(transduce check conj events)
+
+
+(into [] (comp check (compute)) [])
+(into [] (comp check (compute)) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
+(into [] (comp check (compute)) events)
+(transduce (comp check (compute)) conj events)
+
+
+(->> events
+  (into [] check))
+
+; build an "output" event from an "input" event
+(defn output-event [[k {:keys [event answer]}]]
+  [k {:event event :output answer}])
+
+(defn c-o-c-event [[k event]]
+  [k (assoc event :c-o-c "dummy-coc")])
+
+
+(defn output
+  ([] (map output-event))
+  ([coll]
+   (sequence (output) coll)))
+
+(defn c-o-c
+  ([] (map c-o-c-event))
+  ([coll]
+   (sequence (c-o-c) coll)))
+
+
+
+(def build-output (comp (output) (c-o-c)))
+
+(into [] build-output [[100 {:event 100 :answer 100}]])
+
+
+
+
+; a more complete pipeline (check -> compute -> output)
+(def event-pipeline (comp check (compute) build-output))
+
+(transduce event-pipeline conj events)
 
 
 ;; endregion
