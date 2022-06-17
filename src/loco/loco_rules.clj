@@ -116,12 +116,12 @@
 
 ; we can solve this problem
 ;
-(def a (schedule
-         [[1 3 5]
-          [2 4 5]
-          [1 3 4]
-          [2 3 4]
-          [3 4 5]]))
+(schedule
+  [[1 3 5]
+   [2 4 5]
+   [1 3 4]
+   [2 3 4]
+   [3 4 5]])
   ; => {[:person 0] 1, [:person 1] 4,
   ;     [:person 2] 3, [:person 3] 2,
   ;     [:person 4] 5}
@@ -130,32 +130,34 @@
   ;     [:person 2] 1, [:person 3] 3,
   ;     [:person 4] 4)
 
-(meta a)
-
 ; but NOT this one
 ;
-(def s (schedule
-         [[1 2 3 4]
-          [1 4]
-          [1 4]
-          [1 4]]))
+(schedule
+  [[1 2 3 4]
+   [1 4]
+   [1 4]
+   [1 4]])
   ; => {}
-
-(defn find-solutions [ier]
-  (let [s (schedule ier)]
-    (if (empty? s)
-      {:error-with (last ier) :solution? (find-solutions (->> ier drop-last (into [])))} ;(find-solutions (drop-last ier))
-      s)))
-
-
-(def ier [[1 2 3 4] [1 4] [1 4] [1 4]])
-(find-solutions ier)
-(schedule ier)
-
 
 ; there is no way to find a solution where each person is in a
 ; different slot given the availability
 ;
+
+
+; can we run different "version" until we get a solution?
+(defn find-solutions [ier]
+  (let [s (schedule ier)]
+    (if (empty? s)
+      {:error-with (last ier) :solution? (find-solutions (->> ier drop-last (into [])))}
+      s)))
+
+
+(def ier [[1 2 3 4] [1 4] [1 4] [1 4]])
+(def ier [[1 2 3 4] [1 4] [1 4] [1 4] [1 4]])
+(find-solutions ier)
+(schedule ier)
+
+
 
 
 ; Mark's second example
@@ -355,41 +357,46 @@ number-in-timeslots
 (solve model)
 
 
-(def model-2
-  [($in :a 1 6)
-   ($in :b 3 7)
-   ($in :c 1 5)
-   ($= ($* ($* :a :b) :c) 50)])
-(solve model-2)
+(comment
+  (def model-2
+    [($in :a 1 6)
+     ($in :b 3 7)
+     ($in :c 1 5)
+     ($= ($* ($* :a :b) :c) 50)])
+  (solve model-2)
 
 
-(def model-3 [($in :a 1 10)
-              ($in :b 4 8)
-              ($in :c 1 5)
-              ($in :d 3 10)
-              ($= ($+ :a ($* :b :c)) :d)])
-(solve model-3)
+  (def model-3 [($in :a 1 10)
+                ($in :b 4 8)
+                ($in :c 1 5)
+                ($in :d 3 10)
+                ($= ($+ :a ($* :b :c)) :d)])
+  (solve model-3)
 
 
-; see also https://www.youtube.com/watch?v=TA9DBG8x-ys
+
+  ; see also https://www.youtube.com/watch?v=TA9DBG8x-ys
 
 
-(solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
-        ($= :x :y) ($!= 5 :y) ($< :a 3) ($= ($+ :x :y :a) 10)])
+  (solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
+          ($= :x :y) ($!= 5 :y) ($< :a 3) ($= ($+ :x :y :a) 10)])
 
-(solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
-        ($and
-          ($not ($= :x :y))
-          ($= :x :a))])
+  (solve [($in :x 1 10) ($in :y 1 10) ($in :a 1 10)
+          ($and
+            ($not ($= :x :y))
+            ($= :x :a))])
 
-(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
-        ($= 1 ($+ :p :q :r :s))])
-(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
-        ($= 2 ($+ :p :q :r :s))])
-(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
-        ($= 3 ($+ :p :q :r :s))])
-(solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
-        ($= 4 ($+ :p :q :r :s))])
+  (solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+          ($= 1 ($+ :p :q :r :s))])
+  (solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+          ($= 2 ($+ :p :q :r :s))])
+  (solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+          ($= 3 ($+ :p :q :r :s))])
+  (solve [($in :p 0 1) ($in :q 0 1) ($in :r 0 1) ($in :s 0 1)
+          ($= 4 ($+ :p :q :r :s))])
+
+
+  ())
 
 
 
