@@ -31,6 +31,7 @@
 ;   http://tanders.github.io/clojure2minizinc/tutorial.html#undefined
 ;
 
+;;region ; Mark's first example
 
 ; this vector represents the acceptable time slots for 4 people
 ;
@@ -157,10 +158,10 @@
 (find-solutions ier)
 (schedule ier)
 
+;; endregion
 
 
-
-; Mark's second example
+;; region ; Mark's second example
 
 ; we'll reuse a bunch of code form above, but we need to add a new
 ; concept
@@ -338,9 +339,9 @@ number-in-timeslots
   ; => {[:person 0] 3, [:person 1] 1, [:person 2] 4, [:person 3] 4}
 
 
+;; endregion
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -348,7 +349,7 @@ number-in-timeslots
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; more loco rule types - looks like $* is broken somehow...
+;; region ; more loco rule types - looks like $* is broken somehow...
 
 (def model
   [($in :x 1 6)  ; x is in the domain ranging from 1 to 6, inclusive
@@ -399,4 +400,6 @@ number-in-timeslots
   ())
 
 
+
+;; endregion
 

@@ -3,6 +3,8 @@
                                                  AND OR XOR IFF IMP NOR NAND]]))
 
 
+;; region ; integer encoding
+
 ; :p AND (:p OR :q) AND ((NOT :p) OR :q OR (NOT :r))
 (sat/solve [[1] [1 2] [-1 2 -3]])
 
@@ -20,8 +22,10 @@
 (sat/solutions [[-1 2 -3] [1 2 3 4 5]
                 (at-least 3 [2 3 4 5])])
 
+;; endregion
 
-; now, the same thing but using SYMBOLS (and having r-s convert them into numbers)
+
+;; region ; now, the same thing but using SYMBOLS (and having r-s convert them into numbers)
 (sat/solve-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
 
 (sat/solutions-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
@@ -49,7 +53,7 @@
 (sat/solve-symbolic-formula [(XOR :p :q) (NAND :q :r) (at-most 1 [:p :q :r])])
 
 
-
+;; endregion
 
 
 
