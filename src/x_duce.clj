@@ -753,22 +753,20 @@
 ; see "Parametrized transducers" at https://www.astrecipes.net/blog/2016/11/24/transducers-how-to/
 
 ; need the context defined BEFORE we wire-up the transducer
-(def context {:validate :inputs})
+(def context {:validate :inputs :authorize :approved
+              :output-key :output
+              :c-o-c "dummy-coc-09fa09"})
 
-
-
-(defn compute-answer [[k event]]
-  [k (assoc event :answer (reduce + (:inputs event)))])
-
-(defn authorize-event [[k event]]
-  [k (assoc event :authorize true)])
 
 
 ; transducers, work on a collection of 0 or more events
-(defn compute
-  ([] (map compute-answer))
-  ([coll]
-   (sequence (compute) coll)))
+(defn compute [xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result [k event]]
+     (xf result [k (assoc event
+                     :answer (reduce + (:inputs event)))]))))
 
 
 (defn validate [ctx xf]
@@ -781,22 +779,25 @@
                               true false))]))))
 
 
-(defn authorize
-  ([] (map authorize-event))
-  ([coll]
-   (sequence (authorize) coll)))
+(defn authorize [ctx xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result [k event]]
+     (xf result [k (assoc event
+                     :auth (if (:authorize ctx)
+                             (:authorize ctx) :reject))]))))
 
 
 ; wire together the "prep"
-(def check (comp (partial validate context) (authorize)))
+(def check (comp (partial validate context) (partial authorize context)))
 
 
 ; test inputs
 (def events [[1 {:event 1 :inputs [1 2 3 4 5]}]
              [2 {:event 2 :inputs [10 20 30 40 50]}]])
 
-(into [] (map compute-answer events))
-(into [] (compute) events)
+(into [] compute events)
 
 
 (:inputs {:event 1 :inputs [1 2 3 4 5]})
@@ -812,44 +813,47 @@
 (transduce check conj events)
 
 
-(into [] (comp check (compute)) [])
-(into [] (comp check (compute)) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
-(into [] (comp check (compute)) events)
-(transduce (comp check (compute)) conj events)
-
+(into [] (comp check compute) [])
+(into [] (comp check compute) [[100 {:event 100 :inputs [11 22 33 44 55]}]])
+(into [] (comp check compute) events)
+(transduce (comp check compute) conj events)
 
 (->> events
   (into [] check))
 
 ; build an "output" event from an "input" event
-(defn output-event [[k {:keys [event answer]}]]
-  [k {:event event :output answer}])
-
-(defn c-o-c-event [[k event]]
-  [k (assoc event :c-o-c "dummy-coc")])
-
-
-(defn output
-  ([] (map output-event))
-  ([coll]
-   (sequence (output) coll)))
-
-(defn c-o-c
-  ([] (map c-o-c-event))
-  ([coll]
-   (sequence (c-o-c) coll)))
+;(defn output-event [[k {:keys [event answer]}]]
+;  [k {:event event :output answer}])
+;
+;(defn c-o-c-event [[k event]]
+;  [k (assoc event :c-o-c "dummy-coc")])
 
 
+(defn output [ctx xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result [k {:keys [event answer]}]]
+     (xf result [k {:event event (:output-key ctx) answer}]))))
 
-(def build-output (comp (output) (c-o-c)))
+
+(defn c-o-c [ctx xf]
+  (fn
+    ([]          (xf))
+    ([result]    (xf result))
+    ([result [k event]]
+     (xf result [k (assoc event :c-o-c (:c-o-c ctx))]))))
+
+
+
+(def build-output (comp (partial output context) (partial c-o-c context)))
 
 (into [] build-output [[100 {:event 100 :answer 100}]])
 
 
 
-
 ; a more complete pipeline (check -> compute -> output)
-(def event-pipeline (comp check (compute) build-output))
+(def event-pipeline (comp check compute build-output))
 
 (transduce event-pipeline conj events)
 
