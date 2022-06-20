@@ -12,7 +12,8 @@
 
 
 ; combine a transducer pipeline (for streaming data) with
-; a loco-based solver for a sudoku puzzle with a microservice topology (using willa)
+; a loco-based solver for a sudoku puzzle with a microservice
+; topology (using willa)
 
 
 ;; region ; setup
@@ -309,5 +310,33 @@
 
   ())
 
+;; endregion
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; region ; now to make this a "real" microservice, perhaps as part RCCST or Rocky-Road.
+;
+;
+; ISSUES:
+;
+; - what is the UI to create the "event"
+;     - is the "New" button part of the ui-component,
+;     - or is it a separate component that publishes "show/hide" to the "edit" control
+;
+; - should we support both an async function in the Gateway (server) as well as an async "Event"
+;     - how do we wire the "request" ot the "reply"?
+;
+; - how do we describe this/these concept(s) in the UI-component DAG?
+;     - is this a "new" type (:fn/remote, maybe?)
+;     - or do we define the "event" as a type (:event/remote, maybe?)
+;
+;
+;
+;
+;
 ;; endregion
 

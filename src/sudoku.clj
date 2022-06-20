@@ -196,16 +196,27 @@
   (def grid worlds-hardest-puzzle)
 
   (count basic-model-l)
+  ; => 108
+
+  ; how did we get here?
   (count (one-number-per-square-l))
+  ; => 81 , 1 per cell
   (count (each-number-once-per-row-l))
+  ; => 9, 1 per row
   (count (each-number-once-per-column-l))
+  ; => 9, 1 per column
   (count (each-number-once-per-box-l))
+  ; => 9, 1 per "3x3 block"
+
+  ; => 81 + 9 + 9 + 9 = 108
 
   (count (concat basic-model-l
            (for [i (range 9), j (range 9)
                  :let [hint (get-in grid [i j])]
                  :when (number? hint)]
              ($= [:grid i j] hint))))
+  ; => plus 1 for each filled cell (21)in the starting grid
+  ; => 129
 
   ())
 
@@ -315,16 +326,27 @@
 
 ; let's "look inside"
 (comment
-  (def known worlds-hardest-puzzle-2)
+  (def grid worlds-hardest-puzzle-2)
 
   (count basic-model-rs)
+  ; => 324
+
+  ; how did we get here?
   (count (one-number-per-square-rs))
+  ; => 81, 1 per cell
   (count (each-number-once-per-row-rs))
+  ; => 81, 9 per cell (1 "yes" & 8 "no") to cover the range
   (count (each-number-once-per-column-rs))
+  ; => 81, 9 per cell (1 "yes" & 8 "no") to cover the range
   (count (each-number-once-per-box-rs))
+  ; => 81, 9 per cell (1 "yes" & 8 "no") to cover the range
+
+  ; => 81 + 81 + 81 + 81 = 324
 
   (count (concat basic-model-rs
-           (map vector known)))
+           (map vector grid)))
+  ; => plus 1 for each filled cell (21) in the starting grid
+  ; => 333
 
 
   ())
