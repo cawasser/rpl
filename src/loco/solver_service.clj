@@ -12,7 +12,7 @@
 
 
 ; combine a transducer pipeline (for streaming data) with
-; a loco-based solver for a sudoku puzzle with a microservice
+; a loco-based solver for a sudoku puzzle as part of a microservice
 ; topology (using willa)
 
 
@@ -42,6 +42,8 @@
    [5 0 4   0 0 9   7 3 0]
    [8 3 0   0 0 7   0 4 0]
    [0 0 2   0 0 0   8 0 0]])
+(def broken-puzzle
+  [[0 0 8   0 0 0   5 0 0]])
 
 
 (s/def :puzzle/cell number?)
@@ -148,6 +150,7 @@
   (solve puzzle-1)
 
   (->solution s)
+  (->solution [])
 
   (def r (into []
            (for [row (->> s
@@ -176,9 +179,11 @@
   (fn
     ([] (xf))
     ([result] (xf result))
-    ([result [k {:keys [puzzle] :as event}]]
+    ([result [k {:keys [puzzle valid] :as event}]]
      (xf result [k (assoc event
-                     :answer (solve puzzle))]))))
+                     :answer (if valid
+                               (solve puzzle)
+                               []))]))))
 
 
 (defn validate [xf]
@@ -215,6 +220,10 @@
   (transduce pipeline conj
     [[99 {:event 99 :puzzle worlds-hardest-puzzle}]
      [2 {:event 2 :puzzle puzzle-1}]])
+
+
+  (transduce pipeline conj
+    [[1000 {:event 1000 :puzle broken-puzzle}]])
 
   ())
 
@@ -303,6 +312,8 @@
   (get-solution! puzzle-1)
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
+
+  (get-solution! broken-puzzle)
 
   (stop! kafka-streams-app)
 
