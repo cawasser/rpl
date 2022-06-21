@@ -40,6 +40,30 @@
    {:r 7, :c 7, :x 1}
    {:r 8, :c 1, :x 9}
    {:r 8, :c 6, :x 4}])
+(def empty-puzzle
+  [[- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]])
+
+; see https://www.youtube.com/watch?v=wUnnXwLTbnA
+; however, there are some additional rules we are NOT capturing
+;
+(def dutch-miracle
+  [[- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [- - - - - - - - -]
+   [1 - 2 - - - - - -]])
 
 
 (defn form-1->form-2 [puzzle]
@@ -182,10 +206,19 @@
     render)
 
   (c/with-progress-reporting
-    (c/quick-bench (Thread/sleep 1000)))
-
-  (c/with-progress-reporting
     (c/bench (solve-l worlds-hardest-puzzle-2)))
+
+  (-> empty-puzzle
+    solve-l
+    ;first
+    loco-result->form-2
+    render)
+
+  (-> dutch-miracle
+    solve-l
+    ;first
+    loco-result->form-2
+    render)
 
   ())
 
@@ -215,7 +248,7 @@
                  :let [hint (get-in grid [i j])]
                  :when (number? hint)]
              ($= [:grid i j] hint))))
-  ; => plus 1 for each filled cell (21)in the starting grid
+  ; => plus 1 for each filled cell (21) in the starting grid
   ; => 129
 
   ())
@@ -320,6 +353,12 @@
     (c/with-progress-reporting
       (c/bench
         (solve-rs w))))
+
+
+  (-> dutch-miracle
+    form-1->form-2
+    solve-rs
+    render)
 
   ())
 

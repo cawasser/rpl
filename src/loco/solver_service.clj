@@ -124,7 +124,7 @@
                        {:r r :c c :x val}))
                 (sort-by (juxt :r :c))
                 (partition-by :r))]
-      (->> (map #(or (:x %) -) row)
+      (->> (map #(or (:x %) 0) row)
         (into [])))))
 
 
@@ -180,6 +180,7 @@
     ([] (xf))
     ([result] (xf result))
     ([result [k {:keys [puzzle valid] :as event}]]
+     (println "valid?" valid)
      (xf result [k (assoc event
                      :answer (if valid
                                (solve puzzle)
@@ -210,12 +211,14 @@
 
 (comment
   (transduce compute conj
-    [[1 {:event 1 :puzzle worlds-hardest-puzzle}]])
+    [[1 {:event 1 :puzzle worlds-hardest-puzzle :valid true}]])
+  (transduce compute conj
+    [[1 {:event 1 :puzzle worlds-hardest-puzzle :valid false}]])
   (into [] validate
     [[1 {:event 1 :puzzle worlds-hardest-puzzle}]])
   (into [] output
     [[1 {:event 1 :puzzle worlds-hardest-puzzle
-         :solution (solve worlds-hardest-puzzle)}]])
+         :answer (solve worlds-hardest-puzzle)}]])
 
   (transduce pipeline conj
     [[99 {:event 99 :puzzle worlds-hardest-puzzle}]
@@ -223,7 +226,11 @@
 
 
   (transduce pipeline conj
-    [[1000 {:event 1000 :puzle broken-puzzle}]])
+    [[1000 {:event 1000 :puzzle broken-puzzle}]])
+
+
+  (into [] validate
+    [[1000 {:event 1000 :puzzle broken-puzzle}]])
 
   ())
 
@@ -334,12 +341,12 @@
 ;
 ; ISSUES:
 ;
-; - what is the UI to create the "event"
+; - what is the UI to create the "puzzle/event"
 ;     - is the "New" button part of the ui-component,
 ;     - or is it a separate component that publishes "show/hide" to the "edit" control
 ;
 ; - should we support both an async function in the Gateway (server) as well as an async "Event"
-;     - how do we wire the "request" ot the "reply"?
+;     - how do we wire the "request" to the "reply"?
 ;
 ; - how do we describe this/these concept(s) in the UI-component DAG?
 ;     - is this a "new" type (:fn/remote, maybe?)

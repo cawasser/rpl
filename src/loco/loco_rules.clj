@@ -195,7 +195,7 @@
 ; [:num-people-in-timeslot i] variable to the number of
 ; times i occurs among the variables [:person 1], [:person 2]
 ;
-($cardinality [:x :y :z] {1 :number-of-ones})
+;($cardinality [:x :y :z] {1 :number-of-ones})
   ; => {:type :cardinality, :variables [:x :y :z], :values (1), :occurrences (:number-of-ones), :closed nil}
 
 
@@ -237,17 +237,18 @@ number-in-timeslots
 ;    "To minimize the number of conflicts, we need to count the number
 ;     of conflicts.
 ;
-;     Let the variable :number-of-conflicts stand for the number of
+;     Let the variable :_number-of-conflicts stand for the number of
 ;     timeslot conflicts we have. We need two constraints on
-;     :number-of-conflicts.
+;     :_number-of-conflicts.
 ;
 ;     The first constraint just sets up the finite domain that the
 ;     variable could range over (i.e., 0 to the total number of
 ;     timeslots). We need to do this because in Loco, every variable
-;     must be declared somewhere in the model. The second constraint
+;     must be declared somewhere in the model.
+;
+;     The second constraint
 ;     binds :number-of-conflicts to the number of times 2 appears in
-;     the variables [:num-people-in-timeslot 1],
-;     [:num-people-in-timeslot 2], etc."
+;     the variables [:_num-people-in-timeslot 1], [:_num-people-in-timeslot 2], etc."
 ;
 (def number-of-conflicts
   [($in :_number-of-conflicts 0 (count timeslots))
