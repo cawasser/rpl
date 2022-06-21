@@ -348,6 +348,12 @@
 ; - should we support both an async function in the Gateway (server) as well as an async "Event"
 ;     - how do we wire the "request" to the "reply"?
 ;
+; - what is the fundamental nature of what is happening "on the server"/"in the system"?
+;     - does it look/work like a function?
+;     - is it just the notion of the UI "requesting", "sending" or "writing" some data?
+;          - how does the (potential) result "come back"? just a subscription?
+;          - how does the "request" to the "reply/result"?
+;
 ; - how do we describe this/these concept(s) in the UI-component DAG?
 ;     - is this a "new" type (:fn/remote, maybe?)
 ;     - or do we define the "event" as a type (:event/remote, maybe?)
