@@ -341,25 +341,52 @@
 ;
 ; ISSUES:
 ;
-; - what is the UI to create the "puzzle/event"
+; 1. what is the UI to create the "puzzle/event"
 ;     - is the "New" button part of the ui-component,
 ;     - or is it a separate component that publishes "show/hide" to the "edit" control
 ;
-; - should we support both an async function in the Gateway (server) as well as an async "Event"
+; 2. should we support both an async function in the Gateway (server) as well as an async "Event"
 ;     - how do we wire the "request" to the "reply"?
 ;
-; - what is the fundamental nature of what is happening "on the server"/"in the system"?
-;     - does it look/work like a function?
-;     - is it just the notion of the UI "requesting", "sending" or "writing" some data?
+; 3. since we have the notion of :port/source and :port/sinks at the :ui-component level in the dag, and we
+;    have the notion of :source/xxx at both the client and server level should we also have the
+;    notion of :sink at the server level?
+;     - so, should we have :sink/local and :sink/remote as viable entities/components
+;     - what about associating the :sink/xxx value to a related :source/xxx value (async processing)
+;       see also #2
+;
+; 4. what is the fundamental nature of what is happening "on the server"/"in the system"?
+;     - does it look/work like a function? *should* it?!
+;     - is it just the notion of the UI "requesting", "sending,"  "posting", or "writing" some data?
 ;          - how does the (potential) result "come back"? just a subscription?
-;          - how does the "request" to the "reply/result"?
+;          - how does the "request" relate to the "reply/result"?
+;          - if a "request" is semantically different from "post", do we really need 2 notions here?
 ;
-; - how do we describe this/these concept(s) in the UI-component DAG?
+; 5. how do we describe this/these concept(s) in the UI-component DAG?
 ;     - is this a "new" type (:fn/remote, maybe?)
-;     - or do we define the "event" as a type (:event/remote, maybe?)
+;     - or do we define the "event" as a type (:event/remote, maybe?) (see also #3)
 ;
 ;
 ;
+;
+;
+; let's layout what we've defined already:
+;
+;    1. :source/remote - a source of data that resides in the "system", identified by a universal ID
+;    2. :source/local  - a source od data that resides within the implementation of the DAG on the client
+;    3. :source/fn     - a source of data computed by the "named function", function resides within the client
+;    4. :ui/component  - a ui component that visualizes data provided to  its :port/sink(s)
+;
+;  possible new "elements"
+;
+;    a. :sink/remote - a sink (destination) for data that resides in the "system", semantically this is just a
+;                       value with no expectation of a "reply"
+;    b. :sink/remote - a sink for data that resides only within the implementation DAG on the client,
+;                      semantically this is just a value with no expectation of a "reply")
+;    c. :fn/remote   - a sync/async function that resides in the "system", semantically this expects a
+;                      "request" and produces a "reply"
+;    d. :fn/local    - a sync/async function that resides in the DAG on the client, semantically this expects a
+;                      "request" and produces a "reply"
 ;
 ;
 ;; endregion
