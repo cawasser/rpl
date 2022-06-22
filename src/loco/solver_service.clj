@@ -1,13 +1,12 @@
 (ns loco.solver-service
   (:require [clojure.spec.alpha :as s]
-            [loco.constraints :refer :all]
-            [loco.core :as l]
             [jackdaw.admin :as ja]
             [jackdaw.client :as jc]
             [jackdaw.client.log :as jcl]
             [jackdaw.serdes.edn :refer [serde]]
             [jackdaw.streams :as js]
-            [willa.streams :as ws]
+            [loco.constraints :refer :all]
+            [loco.core :as l]
             [willa.core :as w]))
 
 
@@ -31,19 +30,19 @@
 
 ; see https://imprimesudoku.blogspot.com/2014/07/medium-sudoku-21-30.html
 (def puzzle-1
-  [[0 0 8   0 0 0   5 0 0]
-   [0 5 0   1 0 0   0 6 7]
-   [0 2 7   5 0 0   3 0 8]
+  [[0 0 8 0 0 0 5 0 0]
+   [0 5 0 1 0 0 0 6 7]
+   [0 2 7 5 0 0 3 0 8]
 
-   [7 0 0   3 0 1   0 0 0]
-   [2 1 5   0 0 0   6 8 3]
-   [0 0 0   8 0 5   0 0 9]
+   [7 0 0 3 0 1 0 0 0]
+   [2 1 5 0 0 0 6 8 3]
+   [0 0 0 8 0 5 0 0 9]
 
-   [5 0 4   0 0 9   7 3 0]
-   [8 3 0   0 0 7   0 4 0]
-   [0 0 2   0 0 0   8 0 0]])
+   [5 0 4 0 0 9 7 3 0]
+   [8 3 0 0 0 7 0 4 0]
+   [0 0 2 0 0 0 8 0 0]])
 (def broken-puzzle
-  [[0 0 8   0 0 0   5 0 0]])
+  [[0 0 8 0 0 0 5 0 0]])
 
 
 (s/def :puzzle/cell number?)
@@ -217,7 +216,7 @@
   (into [] validate
     [[1 {:event 1 :puzzle worlds-hardest-puzzle}]])
   (into [] output
-    [[1 {:event 1 :puzzle worlds-hardest-puzzle
+    [[1 {:event  1 :puzzle worlds-hardest-puzzle
          :answer (solve worlds-hardest-puzzle)}]])
 
   (transduce pipeline conj
@@ -291,10 +290,10 @@
 
 
 (def sudoku-service
-  {:entities {:topic/event-in        (assoc rpl-puzzle-topic ::w/entity-type :topic)
+  {:entities {:topic/event-in      (assoc rpl-puzzle-topic ::w/entity-type :topic)
               :stream/solve-puzzle {::w/entity-type :kstream
                                     ::w/xform       sudoku-pipeline}
-              :topic/answer-out      (assoc rpl-solution-topic ::w/entity-type :topic)}
+              :topic/answer-out    (assoc rpl-solution-topic ::w/entity-type :topic)}
    :workflow [[:topic/event-in :stream/solve-puzzle]
               [:stream/solve-puzzle :topic/answer-out]]})
 
@@ -372,22 +371,92 @@
 ;
 ; let's layout what we've defined already:
 ;
-;    1. :source/remote - a source of data that resides in the "system", identified by a universal ID
-;    2. :source/local  - a source od data that resides within the implementation of the DAG on the client
+;    1. :source/remote - a source of data that resides in the "system", identified by a universal ID, implements via
+;                        a subscription to the "gateway server" as well as a re-frame subscription to :sources in the app-db
+;    2. :source/local  - a source of data that resides within the implementation of the DAG on the client, implemented
+;                        using re-frame subscription and event to app-db data
 ;    3. :source/fn     - a source of data computed by the "named function", function resides within the client
-;    4. :ui/component  - a ui component that visualizes data provided to  its :port/sink(s)
+;                        currently implements via re-frame subscriptions wired into the app-db
+;    4. :ui/component  - a ui component that visualizes data provided to its :port/sink(s), (allows editing via :port/source(s))
 ;
 ;  possible new "elements"
 ;
-;    a. :sink/remote - a sink (destination) for data that resides in the "system", semantically this is just a
-;                       value with no expectation of a "reply"
-;    b. :sink/remote - a sink for data that resides only within the implementation DAG on the client,
-;                      semantically this is just a value with no expectation of a "reply")
+;    a. :sink/remote - a sink (destination, "posting") for data that resides in the "system", semantically this is just a
+;                      value with no expectation of a "reply"
+;    b. :sink/local  - a sink for data that resides only within the implementation DAG on the client,
+;                      semantically this is just a value with no expectation of a "reply") might be mostly useful for testing
 ;    c. :fn/remote   - a sync/async function that resides in the "system", semantically this expects a
 ;                      "request" and produces a "reply"
 ;    d. :fn/local    - a sync/async function that resides in the DAG on the client, semantically this expects a
 ;                      "request" and produces a "reply"
 ;
 ;
+; Q: should a :sink/local keep history (be a log) of all values or only the last value?
+;
+; Q: should we move to :fn/local for the "pink" boxes? but what about "real" synchronous functions?
+;
+; Q: what about stateFUL vs stateLESS functions? many :source/fn are stateless, but many are stateful.
+;
+;
+;
 ;; endregion
+
+
+;; Example - using :source/:sink
+
+(def sudoku-solver-ui-1
+  {:components {:ui/puzzle-list        {:type :ui/component :name :puzzle-list}
+                :source/solved-puzzles {:type :source/remote :name :topic/solved-puzzles}
+                :sink/puzzles-to-solve {:type :sink/remote :name :topic/puzzles-to-solve}}
+
+   :links      {:topic/solved-puzzle {:value {:ui/puzzle-list :data}}
+                :ui/puzzle-list      {:new-puzzle {:topic/puzzles-to-solve :data}}}})
+
+(def sudoku-solver-service
+  {:entities {:input/puzzles-to-solve {:name :topic/puzzles-to-solve ::w/entity-type :topic}
+              :stream/solver          {::w/entity-type :kstream
+                                       ::w/xform       :sudoku-pipeline}
+              :output/solved-puzzles  {:name :topic/solved-puzzles :w/entity-type :topic}}
+
+   :workflow [[:input/puzzles-to-solve :stream/solver
+               :stream/solver :input/solved-puzzles]]})
+
+
+;       sudoku-solver-ui-1             kafka-config                   sudoku-solver-service
+;   ------------------------       ---------------------          ----------------------------
+;
+;    :source/solved-puzzles <----- :topic/solved-puzzles <-------- :output/solved-puzzles
+;          |                                                                ^
+;          V                                                                |
+;    :ui/puzzle-list                                               :stream/solver (:sudoku-pipeline)
+;          |                                                                ^
+;          V                                                                |
+;    :sink/puzzle-to-solve  -----> :topic/puzzle-to-solve  ------> :input/puzzles-to-solve
+
+; Example #2
+
+(def sudoku-solver-ui-2
+  {:components {:ui/puzzle-list        {:type :ui/component :name :puzzle-list}
+                :source/solved-puzzles {:type :source/local :name :topic/solved-puzzles}
+                :fn/puzzle-to-solve    {:type :fn/remote :url "/puzzle-to-solve"}}
+
+   :links      {:fn/puzzle-to-solve    {:value {:source/solved-puzzles :data}}
+                :source/solved-puzzles {:data {:ui/puzzle-list :data}}
+                :ui/puzzle-list        {:new-puzzle {:fn/puzzles-to-solve :data}}}})
+
+(def server-routes
+  {"/puzzle-to-solve" sudoku-pipeline})
+
+
+;       sudoku-solver-ui-2             server-routes
+;   ------------------------       ---------------------
+;
+;    :source/solved-puzzles <----- "/puzzle-to-solve" (sudoku-pipeline)
+;          |                        ^
+;          V                       /
+;    :ui/puzzle-list              /
+;          |                     /
+;          V                    /
+;    :fn/puzzle-to-solve  -----/
+
 
