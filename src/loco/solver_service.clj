@@ -330,10 +330,10 @@
 ;; endregion
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; region ; now to make this a "real" microservice, perhaps as part RCCST or Rocky-Road.
 ;
@@ -402,7 +402,9 @@
 ;; endregion
 
 
-;; Example - using :source/:sink
+;; region ; Thought Experiments
+;
+;; Experiment #1 - using :source/:sink
 
 (def sudoku-solver-ui-1
   {:components {:ui/puzzle-list        {:type :ui/component :name :puzzle-list}
@@ -433,7 +435,7 @@
 ;          V                                                                |
 ;    :sink/puzzle-to-solve  -----> :topic/puzzle-to-solve  ------> :input/puzzles-to-solve
 
-; Example #2
+; Experiment #2 - using :fn/remote
 
 (def sudoku-solver-ui-2
   {:components {:ui/puzzle-list        {:type :ui/component :name :puzzle-list}
@@ -452,11 +454,30 @@
 ;   ------------------------       ---------------------
 ;
 ;    :source/solved-puzzles <----- "/puzzle-to-solve" (sudoku-pipeline)
-;          |                        ^
-;          V                       /
-;    :ui/puzzle-list              /
-;          |                     /
-;          V                    /
-;    :fn/puzzle-to-solve  -----/
+;          |                             ^
+;          V                            /
+;    :ui/puzzle-list                   /
+;          |                          /
+;          V                         /
+;    :fn/puzzle-to-solve  ----------/
 
 
+
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;
+;
+;
+; THIS raises the question:
+;
+;     Are a :fn/remote really the same things as a :sink/remote->:source/remote pair, just implemented
+;     with an asynchronous WebAPI call rather than event-streams/queues?
+;
+;   If we can argue that they ARE the same, then we don't need both, we just need a way to define how
+;     each "side" interfaces with the actual implementation (the implementation  gets defined separately)
+;
+;
+;
+;
+
+;; endregion
