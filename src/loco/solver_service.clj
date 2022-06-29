@@ -435,6 +435,9 @@
 ;          V                                                                |
 ;    :sink/puzzle-to-solve  -----> :topic/puzzle-to-solve  ------> :input/puzzles-to-solve
 
+
+
+
 ; Experiment #2 - using :fn/remote
 
 (def sudoku-solver-ui-2
@@ -470,11 +473,11 @@
 ;
 ; THIS raises the question:
 ;
-;     Are a :fn/remote really the same things as a :sink/remote->:source/remote pair, just implemented
+;     Is a :fn/remote really the same thing as a :sink/remote->:source/remote pair, just implemented
 ;     with an asynchronous WebAPI call rather than event-streams/queues?
 ;
 ;   If we can argue that they ARE the same, then we don't need both, we just need a way to define how
-;     each "side" interfaces with the actual implementation (the implementation  gets defined separately)
+;     each "side" interfaces with the actual implementation (the implementation gets defined separately)
 ;
 ;
 ;
