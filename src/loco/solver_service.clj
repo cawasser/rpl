@@ -179,11 +179,10 @@
     ([] (xf))
     ([result] (xf result))
     ([result [k {:keys [valid] :as event}]]
-     (let [in-param (in-kw event)]
-       (xf result [k (assoc event
-                       out-kw (if valid
-                                (compute-fn in-param)
-                                []))])))))
+     (xf result [k (assoc event
+                     out-kw (if valid
+                              (compute-fn (in-kw event))
+                              []))]))))
 
 
 (defn validate [xf]
