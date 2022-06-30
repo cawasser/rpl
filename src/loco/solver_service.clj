@@ -6,8 +6,8 @@
             [jackdaw.serdes.edn :refer [serde]]
             [jackdaw.streams :as js]
             [loco.constraints :refer :all]
-            [loco.core :as l]
-            [willa.core :as w]))
+            [willa.core :as w]
+            [loco.sudoku-solver :as ss]))
 
 
 ; combine a transducer pipeline (for streaming data) with
@@ -15,174 +15,20 @@
 ; topology (using willa)
 
 
-;; region ; setup
-
-(def worlds-hardest-puzzle
-  [[8 0 0 0 0 0 0 0 0]
-   [0 0 3 6 0 0 0 0 0]
-   [0 7 0 0 9 0 2 0 0]
-   [0 5 0 0 0 7 0 0 0]
-   [0 0 0 0 4 5 7 0 0]
-   [0 0 0 1 0 0 0 3 0]
-   [0 0 1 0 0 0 0 6 8]
-   [0 0 8 5 0 0 0 1 0]
-   [0 9 0 0 0 0 4 0 0]])
-
-; see https://imprimesudoku.blogspot.com/2014/07/medium-sudoku-21-30.html
-(def puzzle-1
-  [[0 0 8 0 0 0 5 0 0]
-   [0 5 0 1 0 0 0 6 7]
-   [0 2 7 5 0 0 3 0 8]
-
-   [7 0 0 3 0 1 0 0 0]
-   [2 1 5 0 0 0 6 8 3]
-   [0 0 0 8 0 5 0 0 9]
-
-   [5 0 4 0 0 9 7 3 0]
-   [8 3 0 0 0 7 0 4 0]
-   [0 0 2 0 0 0 8 0 0]])
-(def broken-puzzle
-  [[0 0 8 0 0 0 5 0 0]])
-
-
-(s/def :puzzle/cell number?)
-(s/def :puzzle/row (s/coll-of :puzzle/cell))
-(s/def :puzzle/puzzle (s/coll-of :puzzle/row))
-
-(comment
-  (s/valid? :puzzle/cell 5)
-  (s/valid? :puzzle/cell -)
-  (s/valid? :puzzle/cell "-")
-
-  (s/valid? :puzzle/row [8 0 0 0 0 0 0 0 0])
-  (s/valid? :puzzle/row [8 0 0 :keyword 0 0 0 0 0])
-  (s/valid? :puzzle/row {:row 0 :cell 0 :x 8})
-  (s/valid? :puzzle/row "invalid")
-
-  (s/valid? :puzzle/puzzle worlds-hardest-puzzle)
-  (s/valid? :puzzle/puzzle puzzle-1)
-
-  ())
-
-;; endregion
-
-
-;; region ; sudoku solver
-
-
-(defn one-number-per-square-l []
-  (for [i (range 9) j (range 9)]
-    ($in [:grid i j] 1 9)))
-
-
-(defn each-number-once-per-row-l []
-  (for [i (range 9)]
-    ($distinct (for [j (range 9)] [:grid i j]))))
-
-
-(defn each-number-once-per-column-l []
-  (for [j (range 9)]
-    ($distinct (for [i (range 9)] [:grid i j]))))
-
-
-(defn each-number-once-per-box-l []
-  (for [section1 [[0 1 2] [3 4 5] [6 7 8]]
-        section2 [[0 1 2] [3 4 5] [6 7 8]]]
-    ($distinct (for [i section1, j section2] [:grid i j]))))
-
-
-(def basic-model
-  (concat
-    ; range-constraints
-    (one-number-per-square-l)
-
-    ; row-constraints
-    (each-number-once-per-row-l)
-
-    ; col-constraints
-    (each-number-once-per-column-l)
-
-    ; section-constraints
-    (each-number-once-per-box-l)))
-
-
-(defn solve [grid]
-  (first
-    (l/solve
-      (concat basic-model
-        (for [i (range 9), j (range 9)
-              :let [hint (get-in grid [i j])]
-              :when (and (number? hint) (contains? (set (range 1 10)) hint))]
-          ($= [:grid i j] hint))))))
-
-
-(defn ->solution [sol]
-  (into []
-    (for [row (->> sol
-                (map (fn [[[_ r c] val]]
-                       {:r r :c c :x val}))
-                (sort-by (juxt :r :c))
-                (partition-by :r))]
-      (->> (map #(or (:x %) 0) row)
-        (into [])))))
-
-
-
-(comment
-  (solve worlds-hardest-puzzle)
-
-  ; => {[:grid 2 2] 5,
-  ;     [:grid 0 2] 2,
-  ;     [:grid 2 8] 3,
-  ;     [:grid 4 7] 2,
-  ;     [:grid 6 2] 1,
-  ;     [:grid 4 2] 9,
-  ;     [:grid 7 1] 3,
-  ;     [:grid 0 4] 5,
-  ;     [:grid 8 6] 4,
-  ;     [:grid 7 6] 9,
-  ;     [:grid 7 0] 4,
-  ;     etc...
-
-
-  (def s (solve worlds-hardest-puzzle))
-  (solve puzzle-1)
-
-  (->solution s)
-  (->solution [])
-
-  (def r (into []
-           (for [row (->> s
-                       (map (fn [[[_ r c] val]]
-                              {:r r :c c :x val}))
-                       (sort-by (juxt :r :c))
-                       (partition-by :r))]
-             (->> (map #(or (:x %) -) row)
-               (into [])))))
-
-
-  (->> s
-    (map (fn [[[_ r c] val]]
-           {:r r :c c :x val}))
-    (sort-by (juxt :r :c))
-    (partition-by :r))
-
-  ())
-
-;; endregion
-
 
 ;; region ; the transducers
 
-(defn compute [compute-fn in-kw out-kw xf]
+(defn dummy-solve [[k event]]
+  [k (assoc event
+       :answer [42])])
+
+
+(defn compute-xd [compute-fn xf]
   (fn
     ([] (xf))
     ([result] (xf result))
-    ([result [k {:keys [valid] :as event}]]
-     (xf result [k (assoc event
-                     out-kw (if valid
-                              (compute-fn (in-kw event))
-                              []))]))))
+    ([result event]
+     (xf result (compute-fn event)))))
 
 
 (defn validate [xf]
@@ -198,37 +44,43 @@
   (fn
     ([] (xf))
     ([result] (xf result))
-    ([result [k {:keys [answer] :as event}]]
-     (xf result [k (-> event
-                     (assoc :solution (->solution answer))
-                     (dissoc :answer :valid))]))))
+    ([result [k event]]
+     (xf result [k (-> event (dissoc :valid))]))))
 
 
-(def pipeline (comp validate (partial compute solve :puzzle :answer) output))
+(def pipeline (comp validate (partial compute-xd ss/compute-fn) output))
+;(def pipeline (comp validate (partial compute-xd dummy-solve) output))
 
 
 (comment
-  (transduce compute conj
-    [[1 {:event 1 :puzzle worlds-hardest-puzzle :valid true}]])
-  (transduce compute conj
-    [[1 {:event 1 :puzzle worlds-hardest-puzzle :valid false}]])
+  (transduce (partial compute-xd ss/compute-fn) conj
+    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid true}]])
+  (transduce (partial compute-xd ss/compute-fn) conj
+    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid false}]])
+
+
+  (dummy-solve ss/worlds-hardest-puzzle)
+
+  (transduce (partial compute-xd dummy-solve) conj
+    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid true}]])
+
   (into [] validate
-    [[1 {:event 1 :puzzle worlds-hardest-puzzle}]])
+    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle}]])
   (into [] output
-    [[1 {:event  1 :puzzle worlds-hardest-puzzle
-         :answer (solve worlds-hardest-puzzle)}]])
+    [[1 {:event  1 :puzzle ss/worlds-hardest-puzzle
+         :answer (ss/compute-fn ss/worlds-hardest-puzzle)}]])
 
   (transduce pipeline conj
-    [[99 {:event 99 :puzzle worlds-hardest-puzzle}]
-     [2 {:event 2 :puzzle puzzle-1}]])
+    [[99 {:event 99 :puzzle ss/worlds-hardest-puzzle}]
+     [2 {:event 2 :puzzle ss/puzzle-1}]])
 
 
   (transduce pipeline conj
-    [[1000 {:event 1000 :puzzle broken-puzzle}]])
+    [[1000 {:event 1000 :puzzle ss/broken-puzzle}]])
 
 
   (into [] validate
-    [[1000 {:event 1000 :puzzle broken-puzzle}]])
+    [[1000 {:event 1000 :puzzle ss/broken-puzzle}]])
 
   ())
 
@@ -263,19 +115,16 @@
     serdes))
 
 
-(defn stop! [kafka-streams-app]
-  (js/close kafka-streams-app))
-
 (def admin-client (ja/->AdminClient kafka-config))
 
-(defn get-solution! [puzzle]
+(defn- get-solution! [puzzle]
   (let [id (rand-int 10000)]
     (with-open [producer (jc/producer kafka-config serdes)]
       @(jc/produce! producer
          rpl-puzzle-topic
          id {:event id :puzzle puzzle}))))
 
-(defn view-messages [topic]
+(defn- view-messages [topic]
   (with-open [consumer (jc/subscribed-consumer (assoc kafka-config
                                                  "group.id" (str (java.util.UUID/randomUUID)))
                          [topic])]
@@ -285,40 +134,50 @@
       doall)))
 
 
-(def sudoku-pipeline (comp validate (partial compute solve :puzzle :answer) output))
+
+(def micro-service-pipeline (comp validate (partial compute-xd ss/compute-fn) output))
 
 
-(def sudoku-service
+(def micro-service-def
   {:entities {:topic/event-in      (assoc rpl-puzzle-topic ::w/entity-type :topic)
               :stream/solve-puzzle {::w/entity-type :kstream
-                                    ::w/xform       sudoku-pipeline}
+                                    ::w/xform       micro-service-pipeline}
               :topic/answer-out    (assoc rpl-solution-topic ::w/entity-type :topic)}
    :workflow [[:topic/event-in :stream/solve-puzzle]
               [:stream/solve-puzzle :topic/answer-out]]})
 
 
+
+(defn start! []
+  (let [builder (js/streams-builder)]
+    (w/build-topology! builder micro-service-def)
+    (doto (js/kafka-streams builder kafka-config)
+      (js/start))))
+
+
+(defn stop! [kafka-streams-app]
+  (js/close kafka-streams-app))
+
+
+
+
 (comment
   (ja/create-topics! admin-client [rpl-puzzle-topic rpl-solution-topic])
 
-  (def kafka-streams-app
-    (let [builder (js/streams-builder)]
-      (w/build-topology! builder sudoku-service)
-      (doto (js/kafka-streams builder kafka-config)
-        (js/start))))
-
+  (def kafka-streams-app (start!))
 
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
 
-  (get-solution! worlds-hardest-puzzle)
+  (get-solution! ss/worlds-hardest-puzzle)
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
 
-  (get-solution! puzzle-1)
+  (get-solution! ss/puzzle-1)
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
 
-  (get-solution! broken-puzzle)
+  (get-solution! ss/broken-puzzle)
 
   (stop! kafka-streams-app)
 
@@ -449,7 +308,7 @@
                 :ui/puzzle-list        {:new-puzzle {:fn/puzzles-to-solve :data}}}})
 
 (def server-routes
-  {"/puzzle-to-solve" sudoku-pipeline})
+  {"/puzzle-to-solve" micro-service-pipeline})
 
 
 ;       sudoku-solver-ui-2             server-routes
