@@ -174,16 +174,16 @@
 
 ;; region ; the transducers
 
-(defn compute [compute-fn k-w xf]
+(defn compute [compute-fn in-kw out-kw xf]
   (fn
     ([] (xf))
     ([result] (xf result))
-    ([result [k {:keys [puzzle valid] :as event}]]
-     (println "valid?" valid)
-     (xf result [k (assoc event
-                     k-w (if valid
-                           (compute-fn puzzle)
-                           []))]))))
+    ([result [k {:keys [valid] :as event}]]
+     (let [in-param (in-kw event)]
+       (xf result [k (assoc event
+                       out-kw (if valid
+                                (compute-fn in-param)
+                                []))])))))
 
 
 (defn validate [xf]
@@ -205,7 +205,7 @@
                      (dissoc :answer :valid))]))))
 
 
-(def pipeline (comp validate (partial compute solve :answer) output))
+(def pipeline (comp validate (partial compute solve :puzzle :answer) output))
 
 
 (comment
@@ -286,7 +286,7 @@
       doall)))
 
 
-(def sudoku-pipeline (comp validate (partial compute solve :answer) output))
+(def sudoku-pipeline (comp validate (partial compute solve :puzzle :answer) output))
 
 
 (def sudoku-service
