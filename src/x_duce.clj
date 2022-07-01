@@ -125,6 +125,7 @@
 (transduce double-even-xforms + 0 (range 1 11))
 ;(transduce x-form             (constantly nil) nil :files)
 
+(transduce double-even-xforms conj [] (range 1 11))
 
 (def c (async/chan 1 double-even-xforms))
 

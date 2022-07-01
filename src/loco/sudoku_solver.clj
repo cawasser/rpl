@@ -116,7 +116,7 @@
         (into [])))))
 
 
-(defn compute-fn [[k {:keys [valid puzzle] :as event}]]
+(defn compute-fn [ctx [k {:keys [valid puzzle] :as event}]]
   [k (if (and valid puzzle)
        (assoc event
          :answer (-> puzzle
@@ -145,7 +145,7 @@
   ;     etc...
 
 
-  (compute-fn worlds-hardest-puzzle)
+  (compute-fn {} worlds-hardest-puzzle)
   (def s (solve worlds-hardest-puzzle))
   (solve puzzle-1)
 

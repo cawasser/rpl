@@ -7,7 +7,8 @@
             [jackdaw.streams :as js]
             [loco.constraints :refer :all]
             [willa.core :as w]
-            [loco.sudoku-solver :as ss]))
+            [loco.sudoku-solver :as ss]
+            [loco.dummy-solver :as ds]))
 
 
 ; combine a transducer pipeline (for streaming data) with
@@ -16,75 +17,24 @@
 
 
 
-;; region ; the transducers
-
-(defn dummy-solve [[k event]]
+(defn- validate-fn [ctx [k {:keys [puzzle] :as event}]]
   [k (assoc event
-       :answer [42])])
+       :valid (s/valid? :puzzle/puzzle puzzle))])
 
 
-(defn compute-xd [compute-fn xf]
+(defn- output-fn [ctx [k event]]
+  [k (-> event (dissoc :valid))])
+
+
+
+; the transducer
+
+(defn the-xd [the-fn xf]
   (fn
     ([] (xf))
     ([result] (xf result))
     ([result event]
-     (xf result (compute-fn event)))))
-
-
-(defn validate [xf]
-  (fn
-    ([] (xf))
-    ([result] (xf result))
-    ([result [k {:keys [puzzle] :as event}]]
-     (xf result [k (assoc event
-                     :valid (s/valid? :puzzle/puzzle puzzle))]))))
-
-
-(defn output [xf]
-  (fn
-    ([] (xf))
-    ([result] (xf result))
-    ([result [k event]]
-     (xf result [k (-> event (dissoc :valid))]))))
-
-
-(def pipeline (comp validate (partial compute-xd ss/compute-fn) output))
-;(def pipeline (comp validate (partial compute-xd dummy-solve) output))
-
-
-(comment
-  (transduce (partial compute-xd ss/compute-fn) conj
-    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid true}]])
-  (transduce (partial compute-xd ss/compute-fn) conj
-    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid false}]])
-
-
-  (dummy-solve ss/worlds-hardest-puzzle)
-
-  (transduce (partial compute-xd dummy-solve) conj
-    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle :valid true}]])
-
-  (into [] validate
-    [[1 {:event 1 :puzzle ss/worlds-hardest-puzzle}]])
-  (into [] output
-    [[1 {:event  1 :puzzle ss/worlds-hardest-puzzle
-         :answer (ss/compute-fn ss/worlds-hardest-puzzle)}]])
-
-  (transduce pipeline conj
-    [[99 {:event 99 :puzzle ss/worlds-hardest-puzzle}]
-     [2 {:event 2 :puzzle ss/puzzle-1}]])
-
-
-  (transduce pipeline conj
-    [[1000 {:event 1000 :puzzle ss/broken-puzzle}]])
-
-
-  (into [] validate
-    [[1000 {:event 1000 :puzzle ss/broken-puzzle}]])
-
-  ())
-
-;; endregion
+     (xf result (the-fn event)))))
 
 
 ;; region ; willa-based microservice
@@ -134,18 +84,16 @@
       doall)))
 
 
-
-(def micro-service-pipeline (comp validate (partial compute-xd ss/compute-fn) output))
-
-
 (def micro-service-def
   {:entities {:topic/event-in      (assoc rpl-puzzle-topic ::w/entity-type :topic)
               :stream/solve-puzzle {::w/entity-type :kstream
-                                    ::w/xform       micro-service-pipeline}
+                                    ::w/xform       (comp
+                                                      (partial the-xd (partial validate-fn {}))
+                                                      (partial the-xd (partial ss/compute-fn {}))
+                                                      (partial the-xd (partial output-fn {})))}
               :topic/answer-out    (assoc rpl-solution-topic ::w/entity-type :topic)}
    :workflow [[:topic/event-in :stream/solve-puzzle]
               [:stream/solve-puzzle :topic/answer-out]]})
-
 
 
 (defn start! []
@@ -306,6 +254,7 @@
    :links      {:fn/puzzle-to-solve    {:value {:source/solved-puzzles :data}}
                 :source/solved-puzzles {:data {:ui/puzzle-list :data}}
                 :ui/puzzle-list        {:new-puzzle {:fn/puzzles-to-solve :data}}}})
+(def micro-service-pipeline {})
 
 (def server-routes
   {"/puzzle-to-solve" micro-service-pipeline})
