@@ -6,9 +6,10 @@
             [jackdaw.serdes.edn :refer [serde]]
             [jackdaw.streams :as js]
             [loco.constraints :refer :all]
-            [willa.core :as w]
+            [loco.dummy-solver :as ds]
             [loco.sudoku-solver :as ss]
-            [loco.dummy-solver :as ds]))
+            [willa.core :as w]
+            [willa.viz :as wv]))
 
 
 ; combine a transducer pipeline (for streaming data) with
@@ -57,6 +58,12 @@
           :replication-factor 1
           :topic-config       {}}
     serdes))
+(def rpl-puzzle-topic2
+  (merge {:topic-name         "rpl-puzzle-topic2"
+          :partition-count    1
+          :replication-factor 1
+          :topic-config       {}}
+    serdes))
 (def rpl-solution-topic
   (merge {:topic-name         "rpl-solution-topic"
           :partition-count    1
@@ -67,11 +74,11 @@
 
 (def admin-client (ja/->AdminClient kafka-config))
 
-(defn- get-solution! [puzzle]
+(defn- get-solution! [topic puzzle]
   (let [id (rand-int 10000)]
     (with-open [producer (jc/producer kafka-config serdes)]
       @(jc/produce! producer
-         rpl-puzzle-topic
+         topic
          id {:event id :puzzle puzzle}))))
 
 (defn- view-messages [topic]
@@ -85,15 +92,23 @@
 
 
 (def micro-service-def
-  {:entities {:topic/event-in      (assoc rpl-puzzle-topic ::w/entity-type :topic)
-              :stream/solve-puzzle {::w/entity-type :kstream
-                                    ::w/xform       (comp
-                                                      (partial the-xd (partial validate-fn {}))
-                                                      (partial the-xd (partial ss/compute-fn {}))
-                                                      (partial the-xd (partial output-fn {})))}
-              :topic/answer-out    (assoc rpl-solution-topic ::w/entity-type :topic)}
+  {:entities {:topic/event-in       (assoc rpl-puzzle-topic ::w/entity-type :topic)
+              :topic/event2-in      (assoc rpl-puzzle-topic2 ::w/entity-type :topic)
+              :stream/solve-puzzle  {::w/entity-type :kstream
+                                     ::w/xform       (comp
+                                                       (partial the-xd (partial validate-fn {}))
+                                                       (partial the-xd (partial loco.sudoku-solver/compute-fn {}))
+                                                       (partial the-xd (partial output-fn {})))}
+              :stream/solve-puzzle2 {::w/entity-type :kstream
+                                     ::w/xform       (comp
+                                                       (partial the-xd (partial validate-fn {}))
+                                                       (partial the-xd (partial loco.dummy-solver/compute-fn {}))
+                                                       (partial the-xd (partial output-fn {})))}
+              :topic/answer-out     (assoc rpl-solution-topic ::w/entity-type :topic)}
    :workflow [[:topic/event-in :stream/solve-puzzle]
-              [:stream/solve-puzzle :topic/answer-out]]})
+              [:topic/event-in :stream/solve-puzzle2]
+              [:stream/solve-puzzle :topic/answer-out]
+              [:stream/solve-puzzle2 :topic/answer-out]]})
 
 
 (defn start! []
@@ -110,26 +125,68 @@
 
 
 (comment
-  (ja/create-topics! admin-client [rpl-puzzle-topic rpl-solution-topic])
+
+  (wv/view-topology micro-service-def)
+
+  (ja/create-topics! admin-client [rpl-puzzle-topic rpl-puzzle-topic2 rpl-solution-topic])
 
   (def kafka-streams-app (start!))
 
   (view-messages rpl-puzzle-topic)
+  (view-messages rpl-puzzle-topic2)
   (view-messages rpl-solution-topic)
 
-  (get-solution! ss/worlds-hardest-puzzle)
+  (get-solution! rpl-puzzle-topic ss/worlds-hardest-puzzle)
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
 
-  (get-solution! ss/puzzle-1)
+  (get-solution! rpl-puzzle-topic ss/puzzle-1)
   (view-messages rpl-puzzle-topic)
   (view-messages rpl-solution-topic)
 
-  (get-solution! ss/broken-puzzle)
+  (get-solution! rpl-puzzle-topic2 ss/broken-puzzle)
 
   (stop! kafka-streams-app)
 
-  (ja/delete-topics! admin-client [rpl-puzzle-topic rpl-solution-topic])
+  (ja/delete-topics! admin-client [rpl-puzzle-topic rpl-puzzle-topic2 rpl-solution-topic])
+
+  ())
+
+
+
+; play with resolving functions from "qualified" keywords
+(comment
+  (defn f [n] (* n n n))
+  ((ns-resolve *ns* (symbol (name :f))) 10)
+
+
+
+  (symbol (namespace :loco.sudoku-solver/compute-fn))
+  (symbol (name :loco.sudoku-solver/compute-fn))
+
+  (def kw :loco.sudoku-solver/compute-fn)
+  (def kw ::ss/compute-fn)
+  (def user-ns (symbol (namespace kw)))
+  (def user-fn (symbol (name kw)))
+
+  (ns-resolve user-ns user-fn)
+
+  (defn resolve [kw]
+    (try
+      (let [user-ns (symbol (namespace kw))
+            user-fn (symbol (name kw))]
+        (or (ns-resolve user-ns user-fn)
+          (throw (Exception.))))
+      (catch Throwable e
+        (throw (ex-info (str "Could not resolve symbol on the classpath,
+      did you require the file that contains the symbol " kw "?") {:kw kw})))))
+
+  (resolve :loco.sudoku-solver/compute-fn)
+  (resolve ::ss/compute-fn)
+  (resolve ::ds/compute-fn)
+
+
+
 
   ())
 
