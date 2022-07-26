@@ -92,23 +92,31 @@
 
 
 (def micro-service-def
-  {:entities {:topic/event-in       (assoc rpl-puzzle-topic ::w/entity-type :topic)
-              :topic/event2-in      (assoc rpl-puzzle-topic2 ::w/entity-type :topic)
-              :stream/solve-puzzle  {::w/entity-type :kstream
-                                     ::w/xform       (comp
-                                                       (partial the-xd (partial validate-fn {}))
-                                                       (partial the-xd (partial loco.sudoku-solver/compute-fn {}))
-                                                       (partial the-xd (partial output-fn {})))}
-              :stream/solve-puzzle2 {::w/entity-type :kstream
-                                     ::w/xform       (comp
-                                                       (partial the-xd (partial validate-fn {}))
-                                                       (partial the-xd (partial loco.dummy-solver/compute-fn {}))
-                                                       (partial the-xd (partial output-fn {})))}
-              :topic/answer-out     (assoc rpl-solution-topic ::w/entity-type :topic)}
+  {:entities {:topic/event-in      (assoc rpl-puzzle-topic ::w/entity-type :topic)
+              :stream/solve-puzzle {::w/entity-type :kstream
+                                    ::w/xform       (partial the-xd (partial loco.sudoku-solver/compute-fn {}))}
+              :topic/answer-out    (assoc rpl-solution-topic ::w/entity-type :topic)}
    :workflow [[:topic/event-in :stream/solve-puzzle]
-              [:topic/event-in :stream/solve-puzzle2]
-              [:stream/solve-puzzle :topic/answer-out]
-              [:stream/solve-puzzle2 :topic/answer-out]]})
+              [:stream/solve-puzzle :topic/answer-out]]})
+
+#_(def micro-service-def
+    {:entities {:topic/event-in       (assoc rpl-puzzle-topic ::w/entity-type :topic)
+                :topic/event2-in      (assoc rpl-puzzle-topic2 ::w/entity-type :topic)
+                :stream/solve-puzzle  {::w/entity-type :kstream
+                                       ::w/xform       (comp
+                                                         (partial the-xd (partial validate-fn {}))
+                                                         (partial the-xd (partial loco.sudoku-solver/compute-fn {}))
+                                                         (partial the-xd (partial output-fn {})))}
+                :stream/solve-puzzle2 {::w/entity-type :kstream
+                                       ::w/xform       (comp
+                                                         (partial the-xd (partial validate-fn {}))
+                                                         (partial the-xd (partial loco.dummy-solver/compute-fn {}))
+                                                         (partial the-xd (partial output-fn {})))}
+                :topic/answer-out     (assoc rpl-solution-topic ::w/entity-type :topic)}
+     :workflow [[:topic/event-in :stream/solve-puzzle]
+                [:topic/event-in :stream/solve-puzzle2]
+                [:stream/solve-puzzle :topic/answer-out]
+                [:stream/solve-puzzle2 :topic/answer-out]]})
 
 
 (defn start! []
@@ -125,6 +133,8 @@
 
 
 (comment
+
+  (reify)
 
   (wv/view-topology micro-service-def)
 

@@ -1,30 +1,35 @@
 {:deps
- {clj-time                       {:mvn/version "0.14.2"}
-  juxt/crux-core                 {:mvn/version "20.07-1.9.2-beta"}
-  org.clojure/test.check         {:mvn/version "0.10.0-alpha4"}
+ {clj-time                        {:mvn/version "0.14.2"}
+  juxt/crux-core                  {:mvn/version "20.07-1.9.2-beta"}
+  org.clojure/test.check          {:mvn/version "0.10.0-alpha4"}
 
   ;loco                           {:mvn/version "0.3.1"}
-  flybot/loco                    {:mvn/version "0.4.1"}
-  rolling-stones/rolling-stones  {:mvn/version "1.0.2"}
-  criterium/criterium            {:mvn/version "0.4.6"}
+  flybot/loco                     {:mvn/version "0.4.1"}
+  rolling-stones/rolling-stones   {:mvn/version "1.0.2"}
+  criterium/criterium             {:mvn/version "0.4.6"}
 
-  org.clojure/math.combinatorics {:mvn/version "0.1.6"}
-  org.clojure/core.match         {:mvn/version "0.3.0"}
+  org.clojure/math.combinatorics  {:mvn/version "0.1.6"}
+  org.clojure/core.match          {:mvn/version "0.3.0"}
 
-  dk.ative/docjure               {:mvn/version "1.12.0"}
-  datascript                     {:mvn/version "0.18.10"}
+  dk.ative/docjure                {:mvn/version "1.12.0"}
+  datascript                      {:mvn/version "0.18.10"}
 
-  metasoarous/oz                 {:mvn/version "1.6.0-alpha11"}
-  cheshire                       {:mvn/version "5.10.0"}
+  metasoarous/oz                  {:mvn/version "1.6.0-alpha11"}
+  cheshire                        {:mvn/version "5.10.0"}
 
-  frinj                          {:mvn/version "0.2.5"}
+  frinj                           {:mvn/version "0.2.5"}
 
-  aysylu/loom                    {:mvn/version "1.0.2"}
+  aysylu/loom                     {:mvn/version "1.0.2"}
 
-  fundingcircle/jackdaw          {:mvn/version "0.6.4"}     ;"0.8.0"}
-  willa/willa                    {:mvn/version "0.2.2"}
+  fundingcircle/jackdaw           {:mvn/version "0.6.4"}    ;"0.8.0"
+  willa/willa                     {:mvn/version "0.2.2"}
+  com.brunobonacci/safely         {:mvn/version "0.7.0-alpha3"}
+  digest/digest                   {:mvn/version "1.4.10"}
+  cprop/cprop                     {:mvn/version "0.1.18"}
+  com.stuartsierra/component      {:mvn/version "1.1.0"}
+  com.stuartsierra/component.repl {:mvn/version "1.0.0"}
 
-  instaparse/instaparse          {:mvn/version "1.4.12"}}
+  instaparse/instaparse           {:mvn/version "1.4.12"}}
 
  :aliases
  {:rebl {:extra-deps {
