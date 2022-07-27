@@ -1,3 +1,5 @@
+; # loco.sudoku-solver
+
 (ns loco.sudoku-solver
   (:require [clojure.spec.alpha :as s]
             [loco.constraints :refer :all]

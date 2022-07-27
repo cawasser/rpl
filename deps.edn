@@ -29,7 +29,9 @@
   com.stuartsierra/component      {:mvn/version "1.1.0"}
   com.stuartsierra/component.repl {:mvn/version "1.0.0"}
 
-  instaparse/instaparse           {:mvn/version "1.4.12"}}
+  instaparse/instaparse           {:mvn/version "1.4.12"}
+
+  io.github.nextjournal/clerk     {:mvn/version "0.8.451"}}
 
  :aliases
  {:rebl {:extra-deps {

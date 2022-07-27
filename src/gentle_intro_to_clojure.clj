@@ -215,8 +215,6 @@ false
 
 ; Data, not text, sometimes described as "Data is Code. Code is Data."
 
-(1 2 3 4)
-'(1 2 3 4)
 
 
 
