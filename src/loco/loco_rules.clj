@@ -2,6 +2,17 @@
   (:require [loco.core :refer :all]
             [loco.constraints :refer :all]))
 
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;
+;; NOTE: Do NOT load the entire file into the REPL.
+;;       Evaluate each form as you go!
+;;
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 
 ; https://github.com/flybot-sg/loco is the most up-to-date library
 
@@ -40,8 +51,12 @@
    [2 3]
    [1 4]
    [1]])
-  ; => [[1 2 3 4] [2 3] [1 4] [1 4]]
+; => [[1 2 3 4] [2 3] [1 4] [1]]
 
+
+(def person-vars
+  (for [i (range (count availability))] [:person i]))
+  ; => ([:person 0] [:person 1] [:person 2] [:person 3])
 
 
 ; notice how we can treat "variable" definitions as if we were defining
@@ -52,10 +67,6 @@
 ; symbol's value for it's name in all other code without changing any
 ; means
 ;
-(def person-vars
-  (for [i (range (count availability))] [:person i]))
-  ; => ([:person 0] [:person 1] [:person 2] [:person 3])
-
 
 
 ; now we tie the two together into a loco "constraint"
@@ -68,7 +79,7 @@
   ; => ({:type :int-domain, :can-init-var true, :name [:person 0], :domain [1 2 3 4]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 1], :domain [2 3]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 2], :domain [1 4]}
-  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1 4]})
+  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1]})
 
 
 
@@ -87,7 +98,7 @@
   ;     {:type :int-domain, :can-init-var true, :name [:person 0], :domain [1 2 3 4]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 1], :domain [2 3]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 2], :domain [1 4]}
-  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1 4]})
+  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1]})
 
 
 
@@ -96,52 +107,46 @@
 ; sorting makes it easier to read
 ;
 (solve all-constraints)
-  ; => {[:person 0] 3, [:person 1] 2, [:person 2] 4, [:person 3] 1}
+  ; => ({[:person 0] 3, [:person 1] 2, [:person 2] 4, [:person 3] 1}
+  ;     {[:person 0] 2, [:person 1] 3, [:person 2] 4, [:person 3] 1}
+  ; (count ...) -> 2
+
 
 (solve availability-constraints)
+  ; => basically and "all permutations", because we do NOT have "distinct"
+  ; (count ..) => 16,  i.e., 4*2*2*1 = 16
 
 
 
 ; let's put it all together into a function that can solve ANY
 ; availability question
 ;
-(defn schedule [availability]
+(defn schedule [possibilities]
   (->>
     (solve
       (conj
-        (for [i (range (count availability))]
-          ($in [:person i] (availability i)))
+        (for [i (range (count possibilities))]
+          ($in [:person i] (possibilities i)))
         ($distinct
-          (for [i (range (count availability))] [:person i]))))
-    (into (sorted-map))))
+          (for [i (range (count possibilities))] [:person i]))))))
 
-; we can solve this problem
+
+; we can solve our original problem
 ;
-(schedule
-  [[1 3 5]
-   [2 4 5]
-   [1 3 4]
-   [2 3 4]
-   [3 4 5]])
-  ; => {[:person 0] 1, [:person 1] 4,
-  ;     [:person 2] 3, [:person 3] 2,
-  ;     [:person 4] 5}
-  ; OR
-  ; => {[:person 0] 5, [:person 1] 2,
-  ;     [:person 2] 1, [:person 3] 3,
-  ;     [:person 4] 4)
+(schedule availability)
+
+; or this problem
+;
+(schedule [[1 3 5] [2 4 5] [1 3 4] [2 3 4] [3 4 5]])
+  ; => (11 answers...)
 
 ; but NOT this one
 ;
-(schedule
-  [[1 2 3 4]
-   [1 4]
-   [1 4]
-   [1 4]])
-  ; => {}
+(schedule [[1 2 3 4] [1 4] [1 4] [1 4]])
+  ; => ()
 
-; there is no way to find a solution where each person is in a
-; different slot given the availability
+; see how there is no way to find a solution where each person is in a
+; different slot given the possibilities offered?
 ;
 
 
@@ -149,7 +154,8 @@
 (defn find-solutions [ier]
   (let [s (schedule ier)]
     (if (empty? s)
-      {:error-with (last ier) :solution? (find-solutions (->> ier drop-last (into [])))}
+      {:error-with (last ier)
+       :solution? {:with (drop-last ier) :returns (find-solutions (->> ier drop-last (into [])))}}
       s)))
 
 
@@ -163,13 +169,17 @@
 
 ;; region ; Mark's second example
 
-; we'll reuse a bunch of code form above, but we need to add a new
+; how can we support "over subscribing"? i.e., people may need to "double-up"
+
+; we'll reuse a bunch of code from above, but we need to add a new
 ; concept
 ;
 (def timeslots (distinct (apply concat availability)))
   ; => (1 2 3 4)
 
 ;  we need to keep track of how many people are in each slot
+;
+;     note: the underscore ("_") means "don't include this in the results"
 ;
 (def people-in-timeslot-vars
   (for [i timeslots] [:_num-people-in-timeslot i]))
@@ -181,6 +191,8 @@
 
 
 ; so we can create a constraint on that number
+;
+;     note: we want to allow "double-up" so we could have 0, 1, or 2 people in each time-slot
 ;
 (def conflict-constraints
   (for [i timeslots]
@@ -195,8 +207,8 @@
 ; [:num-people-in-timeslot i] variable to the number of
 ; times i occurs among the variables [:person 1], [:person 2]
 ;
-;($cardinality [:x :y :z] {1 :number-of-ones})
-  ; => {:type :cardinality, :variables [:x :y :z], :values (1), :occurrences (:number-of-ones), :closed nil}
+; e.g., ($cardinality [:x :y :z] {1 :number-of-ones})
+;          => {:type :cardinality, :variables [:x :y :z], :values (1), :occurrences (:number-of-ones), :closed nil}
 
 
 ; zipmap () is really cool, is takes 2 vectors and combines then as
@@ -243,7 +255,7 @@ number-in-timeslots
 ;
 ;     The first constraint just sets up the finite domain that the
 ;     variable could range over (i.e., 0 to the total number of
-;     timeslots). We need to do this because in Loco, every variable
+;     timeslots). We need to do this because in Loco, every variable (with its range of values)
 ;     must be declared somewhere in the model.
 ;
 ;     The second constraint
@@ -260,7 +272,7 @@ number-in-timeslots
 ;    "We built the constraints in parts; now building the model is simply a
 ;     matter of concat-ing all the constraints together. (Note that
 ;     number-in-timeslots is a single constraint, so we concatenate
-;     [number-in-timeslots] in with the other lists of constraints)."
+;     [number-in-timeslots] in with the other collections of constraints)."
 ;
 (def all-constraints (concat availability-constraints
                              conflict-constraints
@@ -274,6 +286,9 @@ number-in-timeslots
 ; now we can solve the model
 ;
 (solve all-constraints {:minimize :_number-of-conflicts})
+
+(solve all-constraints {:minimize :_number-of-conflicts})
+
   ; => {:number-of-conflicts 0,
   ;     [:person 0] 3,
   ;     [:person 1] 2,
