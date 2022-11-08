@@ -24,7 +24,7 @@
 ; to get a handle on rule programming, we'll start by following an
 ; article from 2014 by Mark Engleberg
 ;
-; https://programming-puzzler.blogspot.com/2014/03/appointment-scheduling-in-clojure-with.html?m=1
+; https://programming-puzzler.blogspot.com/2014/03/appointment-scheduling-in-clojure-with.html
 ;
 ; Mark uses the Clojure library "loco" (https://github.com/aengelberg/loco) written
 ; by his son
@@ -46,11 +46,7 @@
 
 ; this vector represents the acceptable time slots for 4 people
 ;
-(def availability
-  [[1 2 3 4]
-   [2 3]
-   [1 4]
-   [1]])
+(def availability [[1 2 3 4] [2 3] [1 4] [1]])
 ; => [[1 2 3 4] [2 3] [1 4] [1]]
 
 
@@ -169,7 +165,12 @@
 
 ;; region ; Mark's second example
 
-; how can we support "over subscribing"? i.e., people may need to "double-up"
+; let's alter the problem a bit, making it so we can't have everyone in a differnt time-slot
+
+(def availability [[1 2 3 4] [1 4] [1 4] [1 4]])
+
+
+; how can we support "over subscribing"? i.e., people may need to "double-up" in the same time-slot
 
 ; we'll reuse a bunch of code from above, but we need to add a new
 ; concept
@@ -177,7 +178,7 @@
 (def timeslots (distinct (apply concat availability)))
   ; => (1 2 3 4)
 
-;  we need to keep track of how many people are in each slot
+;  because we need to keep track of how many people are in each slot
 ;
 ;     note: the underscore ("_") means "don't include this in the results"
 ;
@@ -190,7 +191,7 @@
 
 
 
-; so we can create a constraint on that number
+; we can create a rule to constrain the number of people in each slot (i.e, no more than 2)
 ;
 ;     note: we want to allow "double-up" so we could have 0, 1, or 2 people in each time-slot
 ;
@@ -203,7 +204,7 @@
   ;     {:type :int-domain, :can-init-var true, :name [:_num-people-in-timeslot 4], :domain {:min 0, :max 2}})
 
 
-; loco includes a cardinality constraint to bind each
+; loco includes a "cardinality" constraint to bind each
 ; [:num-people-in-timeslot i] variable to the number of
 ; times i occurs among the variables [:person 1], [:person 2]
 ;
@@ -271,8 +272,8 @@ number-in-timeslots
 
 ;    "We built the constraints in parts; now building the model is simply a
 ;     matter of concat-ing all the constraints together. (Note that
-;     number-in-timeslots is a single constraint, so we concatenate
-;     [number-in-timeslots] in with the other collections of constraints)."
+;     number-in-timeslots is a single constraint, so we wrap it with a vector (a collection)
+;     as "[number-in-timeslots]" in with the other collections of constraints)."
 ;
 (def all-constraints (concat availability-constraints
                              conflict-constraints
@@ -286,22 +287,10 @@ number-in-timeslots
 ; now we can solve the model
 ;
 (solve all-constraints {:minimize :_number-of-conflicts})
-
-(solve all-constraints {:minimize :_number-of-conflicts})
-
-  ; => {:number-of-conflicts 0,
-  ;     [:person 0] 3,
-  ;     [:person 1] 2,
-  ;     [:person 3] 1,
-  ;     [:person 2] 4}
-  ; OR
-  ;  => {:number-of-conflicts 0,
-  ;     [:person 0] 3,
-  ;     [:person 1] 2,
-  ;     [:person 3] 4,
-  ;     [:person 2] 1}
+  ; => {[:person 0] 3, [:person 1] 4, [:person 3] 4, [:person 2] 1}
 
 (solve all-constraints {:maximize :_number-of-conflicts})
+  ; => {[:person 0] 4, [:person 1] 4, [:person 3] 1, [:person 2] 1}
 
 
 ; finally, we can combine al this into a nice function
@@ -340,8 +329,7 @@ number-in-timeslots
                                 [number-in-timeslots]
                                 number-of-conflicts)]
 
-    (into (sorted-map)
-          (solve all-constraints {:minimize :_number-of-conflicts}))))
+    (solve all-constraints {:minimize :_number-of-conflicts})))
 
 
 
@@ -352,7 +340,7 @@ number-in-timeslots
    [1 4]
    [1 4]
    [1 4]])
-  ; => {[:person 0] 3, [:person 1] 1, [:person 2] 4, [:person 3] 4}
+  ; => {[:person 0] 3, [:person 1] 4, [:person 3] 4, [:person 2] 1}
 
 
 ;; endregion
