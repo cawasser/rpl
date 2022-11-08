@@ -46,8 +46,8 @@
 
 ; this vector represents the acceptable time slots for 4 people
 ;
-(def availability [[1 2 3 4] [2 3] [1 4] [1]])
-; => [[1 2 3 4] [2 3] [1 4] [1]]
+(def availability [[1 2 3 4] [2 3] [1 4] [1 4]])
+; => [[1 2 3 4] [2 3] [1 4] [1 4]]
 
 
 (def person-vars
@@ -103,14 +103,16 @@
 ; sorting makes it easier to read
 ;
 (solve all-constraints)
-  ; => ({[:person 0] 3, [:person 1] 2, [:person 2] 4, [:person 3] 1}
+  ; => ({[:person 0] 3, [:person 1] 2, [:person 2] 1, [:person 3] 4}
+  ;     {[:person 0] 2, [:person 1] 3, [:person 2] 1, [:person 3] 4}
   ;     {[:person 0] 2, [:person 1] 3, [:person 2] 4, [:person 3] 1}
-  ; (count ...) -> 2
+  ;     {[:person 0] 3, [:person 1] 2, [:person 2] 4, [:person 3] 1})
+  ; (count ...) -> 4
 
 
 (solve availability-constraints)
   ; => basically and "all permutations", because we do NOT have "distinct"
-  ; (count ..) => 16,  i.e., 4*2*2*1 = 16
+  ; (count ..) => 16,  i.e., 4*2*2*2 = 32
 
 
 
@@ -245,7 +247,7 @@ number-in-timeslots
 
 
 
-; I'll let Alex explain things from here
+; I'll let Mark explain things from here
 ;
 ;    "To minimize the number of conflicts, we need to count the number
 ;     of conflicts.
@@ -273,7 +275,7 @@ number-in-timeslots
 ;    "We built the constraints in parts; now building the model is simply a
 ;     matter of concat-ing all the constraints together. (Note that
 ;     number-in-timeslots is a single constraint, so we wrap it with a vector (a collection)
-;     as "[number-in-timeslots]" in with the other collections of constraints)."
+;     as '[number-in-timeslots]' in with the other collections of constraints)."
 ;
 (def all-constraints (concat availability-constraints
                              conflict-constraints
