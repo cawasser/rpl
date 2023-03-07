@@ -18,24 +18,26 @@
 
 (sat/solve [[1] [-1]])
 
+(count (sat/solutions [[-1 2 -3] [1 2 3 4 5]]))
 
 ; "at least" 3 must be true...
-(sat/solutions [[-1 2 -3] [1 2 3 4 5]
-                (at-least 3 [2 3 4 5])])
-(sat/solutions [[-1 2 -3] [1 2 3 4 5]
-                (at-most 2 [2 3 4 5])])
-(sat/solutions [[-1 2 -3] [1 2 3 4 5]
-                (exactly 2 [2 3 4 5])])
+(count (sat/solutions [[-1 2 -3] [1 2 3 4 5]
+                       (at-least 3 [2 3 4 5])]))
+(count (sat/solutions [[-1 2 -3] [1 2 3 4 5]
+                       (at-most 2 [2 3 4 5])]))
+(count (sat/solutions [[-1 2 -3] [1 2 3 4 5]
+                       (exactly 2 [2 3 4 5])]))
 
-(sat/solutions [[-1 2 -3] [1 2 3 4 5]])
 
 ;; endregion
 
 
  ;; region ; now, the same thing but using SYMBOLS (and having r-s convert them into numbers)
 (sat/solve-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
+(sat/solve [[1] [1 2] [-1 2 -3]])
 
 (sat/solutions-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]])
+(sat/solutions [[1] [1 2] [-1 2 -3]])
 
 
 (sat/solutions-symbolic-cnf [[:p] [:p :q] [(! :p) :q (! :r)]

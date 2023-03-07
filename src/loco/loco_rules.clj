@@ -46,12 +46,15 @@
 
 ; this vector represents the acceptable time slots for 4 people
 ;
+;                      p1      p2    p3    p4
 (def availability [[1 2 3 4] [2 3] [1 4] [1 4]])
 ; => [[1 2 3 4] [2 3] [1 4] [1 4]]
 
 
+; in loco, "variables" are names by vectors, like subscripting
 (def person-vars
-  (for [i (range (count availability))] [:person i]))
+  (for [i (range (count availability))]
+    [:person i]))
   ; => ([:person 0] [:person 1] [:person 2] [:person 3])
 
 
@@ -69,13 +72,16 @@
 ;
 ; (kind of like a 'where' clause)
 ;
+; "$in" means the value of the
+; variable must be IN the vector of numbers
+;
 (def availability-constraints
   (for [i (range (count availability))]
     ($in [:person i] (availability i))))
   ; => ({:type :int-domain, :can-init-var true, :name [:person 0], :domain [1 2 3 4]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 1], :domain [2 3]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 2], :domain [1 4]}
-  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1]})
+  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1 4]})
 
 
 
@@ -94,7 +100,7 @@
   ;     {:type :int-domain, :can-init-var true, :name [:person 0], :domain [1 2 3 4]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 1], :domain [2 3]}
   ;     {:type :int-domain, :can-init-var true, :name [:person 2], :domain [1 4]}
-  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1]})
+  ;     {:type :int-domain, :can-init-var true, :name [:person 3], :domain [1 4]})
 
 
 
@@ -111,8 +117,9 @@
 
 
 (solve availability-constraints)
-  ; => basically and "all permutations", because we do NOT have "distinct"
-  ; (count ..) => 16,  i.e., 4*2*2*2 = 32
+  ; => basically "all permutations", including "invalid" ones,
+  ;      because we do NOT have "distinct"
+  ; (count ..) => 32,  i.e., 4*2*2*2 = 32
 
 
 
@@ -120,13 +127,12 @@
 ; availability question
 ;
 (defn schedule [possibilities]
-  (->>
-    (solve
-      (conj
-        (for [i (range (count possibilities))]
-          ($in [:person i] (possibilities i)))
-        ($distinct
-          (for [i (range (count possibilities))] [:person i]))))))
+  (solve
+    (conj
+      (for [i (range (count possibilities))]
+        ($in [:person i] (possibilities i)))
+      ($distinct
+        (for [i (range (count possibilities))] [:person i])))))
 
 
 ; we can solve our original problem
@@ -153,7 +159,8 @@
   (let [s (schedule ier)]
     (if (empty? s)
       {:error-with (last ier)
-       :solution? {:with (drop-last ier) :returns (find-solutions (->> ier drop-last (into [])))}}
+       :solution? {:with (drop-last ier)
+                   :returns (find-solutions (->> ier drop-last (into [])))}}
       s)))
 
 
@@ -167,12 +174,16 @@
 
 ;; region ; Mark's second example
 
-; let's alter the problem a bit, making it so we can't have everyone in a differnt time-slot
+;  we can't have everyone in a different time-slot
 
 (def availability [[1 2 3 4] [1 4] [1 4] [1 4]])
 
+(def availability-constraints
+  (for [i (range (count availability))]
+    ($in [:person i] (availability i))))
 
-; how can we support "over subscribing"? i.e., people may need to "double-up" in the same time-slot
+; how can we support "over subscribing"?
+;     i.e., people may need to "double-up" in the same time-slot
 
 ; we'll reuse a bunch of code from above, but we need to add a new
 ; concept
@@ -214,7 +225,7 @@
 ;          => {:type :cardinality, :variables [:x :y :z], :values (1), :occurrences (:number-of-ones), :closed nil}
 
 
-; zipmap () is really cool, is takes 2 vectors and combines then as
+; zipmap () is really cool, is takes 2 vectors and combines them as
 ; key/value pairs in a hash-map (evaluate each parameter in the repl)
 ;
 (def number-in-timeslots
@@ -266,8 +277,8 @@ number-in-timeslots
 ;     the variables [:_num-people-in-timeslot 1], [:_num-people-in-timeslot 2], etc."
 ;
 (def number-of-conflicts
-  [($in :_number-of-conflicts 0 (count timeslots))
-   ($cardinality people-in-timeslot-vars {2 :_number-of-conflicts})])
+  [($in :number-of-conflicts 0 (count timeslots))
+   ($cardinality people-in-timeslot-vars {2 :number-of-conflicts})])
 ; this just combines the 2 constraints into a single vector...
 
 
@@ -288,10 +299,10 @@ number-in-timeslots
 
 ; now we can solve the model
 ;
-(solve all-constraints {:minimize :_number-of-conflicts})
+(solve all-constraints {:minimize :number-of-conflicts})
   ; => {[:person 0] 3, [:person 1] 4, [:person 3] 4, [:person 2] 1}
 
-(solve all-constraints {:maximize :_number-of-conflicts})
+(solve all-constraints {:maximize :number-of-conflicts})
   ; => {[:person 0] 4, [:person 1] 4, [:person 3] 1, [:person 2] 1}
 
 

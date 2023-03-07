@@ -17,7 +17,7 @@
    [- - - 1 - - - 3 -]
    [- - 1 - - - - 6 8]
    [- - 8 5 - - - 1 -]
-   [- 9 - - - - 4 - -]])
+   [- 9 - - - - 4 - -]]) ; as vec of vecs
 (def worlds-hardest-puzzle-2
   [{:r 0, :c 0, :x 8}
    {:r 1, :c 2, :x 3}
@@ -39,7 +39,7 @@
    {:r 7, :c 3, :x 5}
    {:r 7, :c 7, :x 1}
    {:r 8, :c 1, :x 9}
-   {:r 8, :c 6, :x 4}])
+   {:r 8, :c 6, :x 4}]) ; as vec of hash-maps
 (def empty-puzzle
   [[- - - - - - - - -]
    [- - - - - - - - -]
@@ -354,6 +354,10 @@
       (c/bench
         (solve-rs w))))
 
+  (-> empty-puzzle
+    form-1->form-2
+    solve-rs
+    render)
 
   (-> dutch-miracle
     form-1->form-2
