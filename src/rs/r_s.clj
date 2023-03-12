@@ -51,7 +51,7 @@
 (sat/solve-symbolic-cnf [[{:name "Bob"}] [{:name "Bob"} [2 6]]
                          [(! {:name "Bob"}) [2 6] (! #{4})]])
 
-
+(sat/solve-symbolic-formula (AND :p (OR :p :q) (OR (! :p) :q (! :r))))
 
 (sat/solve-symbolic-formula (XOR (AND :p :q (! :r)) (IFF :p (IMP :q :r))))
 
@@ -59,7 +59,7 @@
 (sat/solutions-symbolic-formula (XOR (AND :p :q (! :r)) (IFF :p (IMP :q :r))))
 
 
-(sat/solve-symbolic-formula [(XOR :p :q) (NAND :q :r) (at-most 1 [:p :q :r])])
+(sat/solve-symbolic-formula [(XOR :p :q) (NAND :q :r) (at-least 2 [:p :q :r])])
 
 
 ;; endregion

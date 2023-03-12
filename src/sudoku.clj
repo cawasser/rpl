@@ -6,6 +6,90 @@
             [criterium.core :as c]))
 
 
+;; region ; AN IMPORTANT POINT
+
+; Abstraction is NOT about "Hiding" details. Hiding is hiding and abstraction
+; is something different, that's why we use two different words.
+;
+;        Same thing = Same words
+;        Different things = Different words
+;
+; This might be seen as a nitpick, but it really is important. Too many (most?) people
+; in our industry get this wrong
+;
+; Abstraction is opposite of hiding; it is the EXPOSING of the fundamental properties of
+; a group of related entities/concepts/etc.
+;
+; So, Abstraction is about ignoring the surface details that make things APPEAR different,
+; treating many things as the SAME.
+;
+;
+; Take a chair, a stool, and a sofa. You can sit on them all. Why do we see them as different?
+;
+;   1. Chairs have 4 legs, stools have 3
+;   2. Chairs and sofas have a back rest, stools do not
+;   3. Sofas are upholstered, chairs and stools aren't
+;   4. Stools are shorter than chairs
+;
+; But what about chairs with 5 legs? Stools that have cushioned seats, or backrests? Bar
+; stools that are taller than regular chairs?
+;
+; These all seem like SURFACE differences. Focus instead on what makes all these things similar:
+;
+;     They are ALL designed for humans to sit upon.
+;
+; Another example:
+;
+;    Monitoring Satellites
+;    Monitoring Car Engines
+;    Monitoring Web Server
+;
+; Or the one the underpins Clojure: the Sequence Abstraction (first, next, rest)
+;
+;    Lists
+;    Vectors
+;    Hash Maps
+;    Sets
+;
+;   but also...
+;
+;    Java Collection types
+;    File System Directories
+;    DBMS Query Results
+;    Kafka Streams (or really any kind of stream)
+;    Strings
+;
+; The Nouns are less important the Verbs (or adverbs).
+;
+; So the purpose/goal of "Abstraction" is to look for similarities of:
+;
+;   1. Purpose
+;   2. Role in the overall system
+;   3. Functionality provided
+;   4. Construction/Physical properties
+;        - careful here, as this can easily lead to considering surface differences
+;
+;
+; "System Design Architecture" : the minimum set of Abstractions necessary to support every
+; requirement of the system intent and implementation
+;
+;
+
+;; endregion
+
+
+;; region ; Sudoku rules
+
+; 9x9 grid of cells
+; every cell must have a number between 1 and 9 (inclusive)
+; each row has ONE-EACH (1 9),
+; each column has ONE-EACH (1 9),
+; each "box" (a 3x3 subsection) has ONE-EACH (1 9)
+; start with some set of cells already filled, find all the rest of the numbers
+
+;; endregion
+
+
 ;; region ; setup
 
 (def worlds-hardest-puzzle
@@ -17,7 +101,7 @@
    [- - - 1 - - - 3 -]
    [- - 1 - - - - 6 8]
    [- - 8 5 - - - 1 -]
-   [- 9 - - - - 4 - -]]) ; as vec of vecs
+   [- 9 - - - - 4 - -]]) ; as vec of vecs (form-1)
 (def worlds-hardest-puzzle-2
   [{:r 0, :c 0, :x 8}
    {:r 1, :c 2, :x 3}
@@ -39,7 +123,7 @@
    {:r 7, :c 3, :x 5}
    {:r 7, :c 7, :x 1}
    {:r 8, :c 1, :x 9}
-   {:r 8, :c 6, :x 4}]) ; as vec of hash-maps
+   {:r 8, :c 6, :x 4}]) ; as vec of hash-maps (form-2)
 (def empty-puzzle
   [[- - - - - - - - -]
    [- - - - - - - - -]
@@ -239,7 +323,7 @@
   (count (each-number-once-per-column-l))
   ; => 9, 1 per column
   (count (each-number-once-per-box-l))
-  ; => 9, 1 per "3x3 block"
+  ; => 9, 1 per "3x3 box"
 
   ; => 81 + 9 + 9 + 9 = 108
 
@@ -397,3 +481,10 @@
 ;; endregion
 
 
+
+(comment
+  (memoize (+ 1 2 3 4 5))
+
+
+
+  ())

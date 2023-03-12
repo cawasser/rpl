@@ -166,6 +166,7 @@
 
 (def ier [[1 2 3 4] [1 4] [1 4] [1 4]])
 (def ier [[1 2 3 4] [1 4] [1 4] [1 4] [1 4]])
+(def ier [[1 4] [1 4] [1 4]])
 (find-solutions ier)
 (schedule ier)
 
@@ -263,9 +264,9 @@ number-in-timeslots
 ;    "To minimize the number of conflicts, we need to count the number
 ;     of conflicts.
 ;
-;     Let the variable :_number-of-conflicts stand for the number of
+;     Let the variable :number-of-conflicts stand for the number of
 ;     timeslot conflicts we have. We need two constraints on
-;     :_number-of-conflicts.
+;     :number-of-conflicts.
 ;
 ;     The first constraint just sets up the finite domain that the
 ;     variable could range over (i.e., 0 to the total number of

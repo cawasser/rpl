@@ -36,22 +36,22 @@
 
 (reduce + 10 '(1 2 3 4 5 6 7 8 9 10))
 
-(reduce + (range 1 11))
+(reduce + 0 (range 1 11))
 
 
-(reduce + (filter even? (range 1 11)))
+(reduce + 0 (filter even? (range 1 11)))
 
 (->> (range 1 11)
   (filter even?)
-  (reduce +))
+  (reduce + 0))
 
 
-(reduce + (map #(* 2 %) (filter even? (range 1 11))))
+(reduce + 0 (map #(* 2 %) (filter even? (range 1 11))))
 
 (->> (range 1 11)                                           ; ->10
   (filter even?)                                            ; 10->5
   (map #(* 2 %))                                            ; 5->5
-  (reduce +))                                               ; 5->1
+  (reduce + 0))                                             ; 5->1
 
 
 ; sum the doubles of all the even values
@@ -122,10 +122,11 @@
 ;              (keep :transform-entry-if-relevant)
 ;              (partition-all 1000)
 ;              (map :save-into-database)))
-(transduce double-even-xforms + 0 (range 1 11))
+
+(transduce double-even-xforms + 0 numbers-data)
 ;(transduce x-form             (constantly nil) nil :files)
 
-(transduce double-even-xforms conj [] (range 1 11))
+(transduce double-even-xforms conj [] numbers-data)
 
 (def c (async/chan 1 double-even-xforms))
 

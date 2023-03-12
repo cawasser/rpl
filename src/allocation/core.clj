@@ -139,6 +139,8 @@
 
 
 (comment
+  (memoize (wv/view-topology (:service-def micro-service-def)))
+
   (wv/view-topology (:service-def micro-service-def))
 
   (topo/map->Topology micro-service-def)

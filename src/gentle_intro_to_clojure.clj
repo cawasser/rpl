@@ -55,7 +55,7 @@ false
 {:a 1 :b "two"}                 ; and hash-maps (key/value pairs)
 
 ; NOTE: we can type this data directly into our program,
-; no "builders needed"
+; no "builders" needed
 
 
 
@@ -78,11 +78,11 @@ false
               :more-hash-maps {:deep1 1 :deep2 "two" :deep3 #{1 2}}}}
 
 ; and you can spread these collections over multiple lines
-; (just like XML...)
+; (just like XML or JSON...)
 
 ; keywords also have another interesting property in Clojure:
-; they are functions that
-; take a hash-map and return the value of that keyword as the key!
+;     they are functions that take a hash-map and return the value of
+;     that keyword as the key!
 
 (def m {:a-keyword "to a string"
         "or a string to an int" 3
@@ -91,7 +91,7 @@ false
                      :more-hash-maps {:deep1 1 :deep2 "two"
                                       :deep3 #{1 2}}}})
 
-; m.:a-hash-map()
+; as if   m.:a-hash-map()
 (:a-hash-map m)
 (:more-hash-maps (:a-hash-map m))
 (:deep2 (:more-hash-maps (:a-hash-map m)))
@@ -104,6 +104,9 @@ false
     :deep2)
 
 ; 'threading' means "pass each result into the next function"
+
+; also note that if the function takes just 1 parameter, you can drop the parentheses
+;    (although you CAN if you prefer)
 
 
 
@@ -122,7 +125,7 @@ false
 (count (:a-hash-map m))
 
 
-; we can 'add' new key/value pairs with:
+; we can 'add' new key/value pairs with ASSOC (associate):
 (assoc m :new-key "new value")
 (def new-m (assoc m :new-key "new value"))
 
@@ -140,6 +143,10 @@ false
 ;
 ; i.e., "add 10 to the existing value"
 ;
+(update {:name "James" :age 26} :age inc)
+
+
+; and there is, of course, a "pathed" version
 (update-in m [:a-hash-map :more-hash-maps :deep1] + 10)
 (update-in m [:a-hash-map :more-hash-maps :deep1] inc)
 (update-in m [:a-hash-map :more-hash-maps :deep1] dec)
@@ -148,9 +155,15 @@ false
 
 (get-in m [:a-hash-map :more-hash-maps :deep1])
 
-; we can also remove things from a hash-map
+; we can also remove things from a hash-map using DISSOC (dissociate):
 (dissoc m "or a string to an int")
 
+; NOTE: there is NO pathed version of dissoc. Why? You can just combine dissoc
+; with update or update-in:
+(update {:a {:b 0 :c {"1" 1}}} :a dissoc :b)
+
+(update-in {:a {:b 0 :c {"1" 1}}} [:a] dissoc :b)
+(update-in {:a {:b 0 :c {"1" 1}}} [:a :c] dissoc "1")
 
 
 ; earlier we noted that we can type this data directly into our program
@@ -218,8 +231,8 @@ false
 
 
 
-; you've already seen how we can just type stuff into the editor and execute it
-; using the REPL. We'll talk more about the REPL in another session. For now, just know 
+; You've already seen how we can just type stuff into the editor and execute it
+; using the REPL. We'll talk more about the REPL in other sessions. For now, just know
 ; that the REPL is a tool for developing software interactively.
 
 
@@ -252,21 +265,25 @@ y                 ; but y and z don't change, because we did NOT re-run their de
 z
 (= y x)
 
-
+; This gives the REPL tremendous power for interactive development, but don't
+; abuse this power. We prefer NOT to redefine names in our production code, save
+; re-def for figuring things out and then do it "the right way".
 
 
 
 ; defining functions
 
 
-; Clojure has a function for defining other functions, called 'defn' (define-function)
+; No special syntax for this, Clojure just uses a function for defining other functions,
+; called 'defn' (define-function)
 
 (defn f [a]
   (+ a 5))
 
-; we define function 'f' which takes 1 parameter, 'a', and returns (+ a 5)
+; we define function 'f' which takes 1 parameter (always expressed in a vector) 'a',
+; and returns (+ a 5)
 ;
-;    no explicit 'return' in Clojure, last evaluated expression is returned
+;    NOTE: no explicit 'return' in Clojure, the last evaluated expression is always returned
 
 (class f)
 
@@ -278,7 +295,7 @@ z
     f)
 
 
-; Clojure also has map, filter and reduce, like any good FP language
+; Clojure also has map, filter, and reduce, like any good FP language
 
 (map f [0 1 2 3])
 (filter even? [0 1 2 3])
@@ -314,7 +331,7 @@ z
 
 ; you may also have noticed that we don't get a vector '[]' back. Why?
 ;
-; it's called the 'sequence abstraction' and it's a key to Clojure's power, even
+; it's called the 'Sequence Abstraction' and it's a key to Clojure's power, even
 ; as compared to other LISPs.
 ;
 ; a sequence is nothing more than a 'generic' collection that supports (first) and (rest)
@@ -414,27 +431,27 @@ z
 (def moby-dick "https://www.gutenberg.org/files/2701/2701-0.txt")
 (def complete-shakespeare "https://www.gutenberg.org/files/100/100-0.txt")
 
-;
+
 ; how would this work?
 ;   1. open the URI
 ;   2. read the file
 ;   3. convert to lower case
 ;   4. break into words
-;   5. group by frequency
+;   5. group the words by frequency of occurance
 ;   6. sort by "most"
-;   7. take 10 answers
+;   7. take the first/last 10 answers
 
 
 
 
                                    ; thanks to rosettacode.org
 (->> moby-dick
-     (java.net.URI.)
+     java.net.URI.
      slurp
-     (.toLowerCase)
+     .toLowerCase
      (re-seq #"\w+")
      frequencies
-     (sort-by val <)
+     (sort-by val >)
      (take 10))
 
 
@@ -444,9 +461,9 @@ z
 ; what if we wanted to see the longest word(s)?
 
 (->> moby-dick
-     (java.net.URI.)
+     java.net.URI.
      slurp
-     (.toLowerCase)
+     .toLowerCase
      (re-seq #"\w+")
      (into #{})
      (group-by count)
