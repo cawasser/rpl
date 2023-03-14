@@ -32,6 +32,7 @@
 ; Java interoperation
 ; Immutable data
 ; Lisp
+; the REPL
 
 ; https://clojure.org/about/rationale
 
@@ -153,6 +154,9 @@ false
     :a-hash-map
     count)
 
+(count (get-in m [:a-hash-map]))
+(count (get m :a-hash-map))
+
 ; which is the same as:
 
 (count (:a-hash-map m))
@@ -161,6 +165,8 @@ false
 ; we can 'add' new key/value pairs with ASSOC (associate):
 (assoc m :new-key "new value")
 (def new-m (assoc m :new-key "new value"))
+
+(= m new-m)
 
 ; note that 'm' is unchanged - IMMUTABILITY
 
@@ -176,10 +182,14 @@ false
 ;
 ; i.e., "add 10 to the existing value"
 ;
+(get {:name "James" :age 26} :age)
+(:age {:name "James" :age 26})
+
 (update {:name "James" :age 26} :age inc)
 
 
 ; and there is, of course, a "pathed" version
+(+ 26 10)
 (update-in m [:a-hash-map :more-hash-maps :deep1] + 10)
 (update-in m [:a-hash-map :more-hash-maps :deep1] inc)
 (update-in m [:a-hash-map :more-hash-maps :deep1] dec)
@@ -197,11 +207,35 @@ false
 
 (update-in {:a {:b 0 :c {"1" 1}}} [:a] dissoc :b)
 (update-in {:a {:b 0 :c {"1" 1}}} [:a :c] dissoc "1")
+(update-in {:a {:b 0 :c {"1" 1}}} [:a] dissoc :c)
+
+(dissoc {"1" 1} "1")
 
 
 ; earlier we noted that we can type this data directly into our program
 ;
 ; this differs from having to use code to assemble things:
+
+:on
+:off
+:broken
+
+(def q :on)
+(def q :off)
+
+
+
+(def segs-team [{:last-name "Wasser" :first-name "Chris"}
+                {:last-name "Paine" :first-name "Austin"}
+                {:last-name "Dave" :first-name "Neel"}])
+
+(:last-name segs-team)
+(get-in segs-team [2 :last-name])
+(assoc-in segs-team [0 :first-name] "chuckles")
+
+:last-name
+(chris :last-name)
+
 
 (def m2
   (-> {}
@@ -220,6 +254,10 @@ false
 
 ; more code, less readable for exactly the same thing
 (= m m2)
+
+(= {:one "one" :two "two"} {:two "two" :one "one"})
+(= [0 1 2 3] [3 2 1 0])
+(= #{0 1 2 3} #{3 2 1 0})
 
 ; NOTE: this is REAL "value equality" - two things are the same if they
 ; contain exactly the same data
@@ -245,6 +283,12 @@ false
 
 [1 2 3]
 [1 ,,,,,, 3 4]
+[1 , , , , , , 3 4]
+
+
+(class '(get-in segs-team [2 :last-name]))
+(class (quote (get-in segs-team [2 :last-name])))
+(class (get-in segs-team [2 :last-name]))
 
 
 ; Function calls might look weird if you've only ever worked with languages where that first
@@ -313,6 +357,16 @@ z
 (defn f [a]
   (+ a 5))
 
+(def f (fn [a] (+ a 10)))
+
+
+(defn abc [a b c]
+  (+ a (* b c)))
+
+(abc 0 1 2)
+
+; function f (a) { ... }
+
 ; we define function 'f' which takes 1 parameter (always expressed in a vector) 'a',
 ; and returns (+ a 5)
 ;
@@ -332,6 +386,7 @@ z
 
 (map f [0 1 2 3])
 (filter even? [0 1 2 3])
+(filter string? [0 1 2 3])
 (filter int? [0 1 2 3])
 (filter boolean? [0 1 2 3])
 (reduce + 0 [0 1 2 3])
@@ -388,7 +443,7 @@ z
 ; we DON'T have (first-vec) and (first-string) and (first-hashmap)
 ;    because we don't NEED THEM.
 
-; all other functions are built on-top of these
+; all other functions are built on-top of this abstraction
 
 ; and "everything" is treated as a sequence:
    ; collections
@@ -430,7 +485,7 @@ z
 (class s)
 
 ; when calling a method, "this" is passed as the 1st parameter:
-; s.substring( 3, 7);
+; s.substring(3, 7);
 ;
 (.substring s 3 7)
 
@@ -470,7 +525,7 @@ z
 ;   2. read the file
 ;   3. convert to lower case
 ;   4. break into words
-;   5. group the words by frequency of occurance
+;   5. group the words by frequency of occurrence
 ;   6. sort by "most"/"least"
 ;   7. take the first/last 10 answers
 
@@ -484,7 +539,7 @@ z
      .toLowerCase
      (re-seq #"\w+")
      frequencies
-     (sort-by val >)
+     (sort-by val <)
      (take 10))
 
 
