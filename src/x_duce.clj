@@ -9,7 +9,7 @@
             [willa.core :as w]))
 
 
-;; region ; let's start simple (Brian Sunter)
+;; region ; let's start simple (Brian Sunter) NOTE: this page is now missing (as of 202230322)
 ; see https://briansunter.com/blog/transducers-clojure/
 
 
@@ -111,10 +111,175 @@
 ; why is this comp working left-to-right? transducers!
 ; filter and map are both transducers out of the box...
 
+;; endregion
 
 
-; see https://www.grammarly.com/blog/engineering/building-etl-pipelines-with-clojure-and-transducers/
+;; region ; https://dev.solita.fi/2021/10/14/grokking-clojure-transducers.html
+;       starts with reducers, like "conj", "reduce", etc.
 
+(conj [1 2] 3)
+;;          ^ input
+;;    ^^^^^ accumulated result
+;;=> [1 2 3]
+;;   ^^^^^^^ new result
+
+(reduce conj #{} [1 2 2 3 1])
+(conj #{} 1)
+(conj #{1} 2)
+(conj #{1 2} 2)
+(conj #{1 2} 3)
+(conj #{1 3 2} 1)
+
+
+(defn inc-transducer
+  "Given a reducing function rf, return a new reducing function that increments
+  every input it receives, then calls rf with the result and the incremented
+  input."
+  ;; rf stands for "reducing function"
+  [rf]
+  ;; this here's a new reducing function
+  (fn [result input]
+    ;; here we call the original reducing function
+    (rf result (inc input))))
+
+(def inc-then-conj (inc-transducer conj))
+
+(conj [1 2] 3)
+(conj [1 2] (inc 2))
+
+(inc-then-conj [1 2] 3)
+
+(reduce inc-then-conj [] [1 2 3 4 5])
+
+(reduce + 0 [1 2 3 4 5])
+(reduce (inc-transducer +) 0 [1 2 3 4 5])
+
+(reduce #(conj %1 (inc %2)) [] [1 2 3 4 5])
+(reduce #(+ %1 (inc %2)) 0 [1 2 3 4 5])
+(reduce (fn [result input] (+ result (inc input))) 0 [1 2 3 4 5])
+
+
+
+(defn mapping
+  "Given function f, return a transducer that calls f on every input it
+  receives."
+  [f]
+  (fn [rf]
+    (fn [result input]
+      (rf result (f input)))))
+
+(def inc-mapper
+  "Given a reducing function rf, return a reducing function that increments its
+  input before calling rf."
+  (mapping inc))
+
+(def inc-rf
+  "A reducing function that increments its input, then adds it into the
+  accumulated result."
+  (inc-mapper conj))
+
+(reduce inc-rf [] [1 2 3 4 5])
+
+(reduce ((mapping inc) conj) [] [1 2 3 4 5])
+(reduce ((mapping inc) +) 0 [1 2 3 4 5])
+
+(map inc [1 2 3 4 5])
+
+
+(reduce inc-rf '() [1 2 3 4 5])
+(reduce inc-rf #{} [1 2 3 4 5])
+
+(= (reduce inc-rf [] [1 2 3 4 5])
+  (map inc [1 2 3 4 5]))
+
+
+(reduce
+  ((mapping inc) conj)
+  []
+  [1 2 3 4 5])
+(map inc [1 2 3 4 5])
+
+(reduce
+  ((mapping inc) +)
+  0
+  [1 2 3 4 5])
+
+(reduce
+  ((mapping inc) -)
+  0
+  [1 2 3 4 5])
+
+(reduce
+  ((mapping inc) *)
+  0
+  [1 2 3 4 5])
+
+(reduce
+  ((mapping #(+ % 5)) conj)
+  []
+  [1 2 3 4 5])
+
+(reduce
+  ((mapping #(+ % 5)) +)
+  0
+  [1 2 3 4 5])
+
+
+; but how is this better than just -> & ->>?
+
+(->>
+  [1 2 3 4 5]
+  (filter even?)                                            ; intermediate collection (2 4)
+  (map inc))
+
+(defn filtering
+  "Given a predicate function pred, return a transducer that only retains items
+  for which pred returns true."
+  [pred]
+  (fn [rf]
+    (fn [result input]
+      (if (pred input)
+        (rf result input)
+        result))))
+
+(def rf
+  "A reducing function that filters for even numbers, increments any positive
+  result, then conjoins it into the result."
+  ((comp (filtering even?) (mapping inc)) conj))
+
+(reduce rf [] [1 2 3 4 5])
+
+
+
+(reduce
+  ; |-- transforming fn             |-- reducing fn
+  ; v                               v
+  ((comp (filter even?) (map inc)) conj)                    ;; <- reducing fn (awesome conj)
+  []                                                        ;; <- initial value
+  [1 2 3 4 5])                                              ;; <- input collection
+
+; 'reduce' does have issues with some transducers, so...
+(transduce
+  (comp (filter even?) (map inc))                           ; <-- transforming fn
+  conj                                                      ; <-- reducing fn
+  []
+  [1 2 3 4 5])
+
+
+;; endregion
+
+
+;; region ; https://flexiana.com/2022/02/investigating-clojures-transducer-composition
+;       starts by comparing comp and ->>
+
+; the examples mainly just reiterate those from Solita, above
+
+;; endregion
+
+
+;; region ; see https://www.grammarly.com/blog/engineering/building-etl-pipelines-with-clojure-and-transducers/
+
+(def double-even-xforms (comp (filter even?) (map #(* 2 %))))
 
 (reduce + 0 (into [] double-even-xforms numbers-data))
 ;(def x-form (comp (mapcat :parse-json-file-reducible)
@@ -363,10 +528,10 @@
 ;; region ; building abstractions via transducers (Abhinav Omprakash)
 
 (def students
-  [{:student {:name "Luke Skywalker"}
-    :discipline   "Jedi"}
-   {:student {:name "Hermione Granger"}
-    :discipline   "Magic"}])
+  [{:student    {:name "Luke Skywalker"}
+    :discipline "Jedi"}
+   {:student    {:name "Hermione Granger"}
+    :discipline "Magic"}])
 
 (defn student-name [student]
   (get-in student [:student :name]))
@@ -622,6 +787,7 @@
 (defn stop! [kafka-streams-app]
   (js/close kafka-streams-app))
 
+
 (comment
   (ja/create-topics! admin-client [rpl-event-topic rpl-answer-topic])
 
@@ -699,14 +865,14 @@
 (defn plain-filter-odd [xf]
   (fn
     ;; START
-    ([]          (xf))
+    ([] (xf))
     ;; STOP
-    ([result]    (xf result))
+    ([result] (xf result))
     ;; PROCESS
     ([result input]
      (cond
-       (odd? input) (xf result (inc input))      ;; apply xf to result adding 1 to input
-       :ELSE        result))))                    ;; do nothing - return result
+       (odd? input) (xf result (inc input))                 ;; apply xf to result adding 1 to input
+       :ELSE result))))                                     ;; do nothing - return result
 
 (->> (range 10)
   (into [] plain-filter-odd))
@@ -717,12 +883,12 @@
 
 (defn filter-evens-1 [xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result input]
      (cond
        (even? input) (xf result input)
-       :ELSE        result))))
+       :ELSE result))))
 
 (defn filter-evens-2
   ([]
@@ -734,8 +900,8 @@
 
 (defn map-inc-1 [xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result input] (xf result (inc input)))))
 
 
@@ -750,22 +916,22 @@
 ;; endregion
 
 
-;; region ; finally, we need the "service-def" parameter as context for the pipeline
+;; region ; finally, we need the "service-def" parameter as context for the Kafka event pipeline
 
 ; see "Parametrized transducers" at https://www.astrecipes.net/blog/2016/11/24/transducers-how-to/
 
 ; need the context defined BEFORE we wire-up the transducer
-(def context {:validate :inputs :authorize :approved
+(def context {:validate   :inputs :authorize :approved
               :output-key :output
-              :c-o-c "dummy-coc-09fa09"})
+              :c-o-c      "dummy-coc-09fa09"})
 
 
 
 ; transducers, work on a collection of 0 or more events
 (defn compute [xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result [k event]]
      (xf result [k (assoc event
                      :answer (reduce + (:inputs event)))]))))
@@ -773,8 +939,8 @@
 
 (defn validate [ctx xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result [k event]]
      (xf result [k (assoc event
                      :valid (if ((:validate ctx) event)
@@ -783,8 +949,8 @@
 
 (defn authorize [ctx xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result [k event]]
      (xf result [k (assoc event
                      :auth (if (:authorize ctx)
@@ -833,16 +999,16 @@
 
 (defn output [ctx xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result [k {:keys [event answer]}]]
      (xf result [k {:event event (:output-key ctx) answer}]))))
 
 
 (defn c-o-c [ctx xf]
   (fn
-    ([]          (xf))
-    ([result]    (xf result))
+    ([] (xf))
+    ([result] (xf result))
     ([result [k event]]
      (xf result [k (assoc event :c-o-c (:c-o-c ctx))]))))
 
