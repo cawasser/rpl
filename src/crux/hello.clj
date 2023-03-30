@@ -2,7 +2,7 @@
   (:require [clj-time.core :as t]
             [clj-time.format :as f]
             [crux.api :as crux]
-            [injest :as i]
+            [crux.injest :as i]
             [clojure.pprint :as pp]))
 
 

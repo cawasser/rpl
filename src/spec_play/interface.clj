@@ -7,8 +7,12 @@
 (def doc-string-spec :spec-play.specs/doc-string)
 (def data-title-spec :data-packet/long-title)
 
-(defn get-title []
-  (core/get-title))
+(defn get-title [] (core/get-title))
+
+(defn num-sort [coll] (core/num-sort coll))
+(defn num-sort-special [coll] (core/num-sort-special coll))
+
+
 
 (comment
   (require '[clojure.spec.alpha :as s])
