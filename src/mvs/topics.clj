@@ -5,6 +5,7 @@
 (def customer-request-topic (atom []))
 (def service-request-topic (atom []))
 (def service-commitment-topic (atom []))
+(def service-agreement-topic (atom []))
 (def plan-topic (atom []))
 (def fix-topic (atom []))
 (def configure-provider-topic (atom []))
