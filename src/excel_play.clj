@@ -8,7 +8,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; first, play around with the excel spreadsheet
+; region ; first, play around with the excel spreadsheet
 ;
 ; https://github.com/mjul/docjure
 ;
@@ -59,13 +59,13 @@
   (map cell-seq)
   (map #(map read-cell %)))
 
-
+;; endregion
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; now let's play with datascript so know kind-of how it works
+; region ; now let's play with datascript so know kind-of how it works
 ;
 ; https://github.com/tonsky/datascript
 ;
@@ -76,10 +76,20 @@
 (d/transact! conn [{:db/id -1
                     :name  "Maksim"
                     :age   45
-                    :aka   ["Max Otto von Stierlitz", "Jack Ryan"]}])
+                    :aka   ["Max Otto von Stierlitz" "Jack Ryan"]}
+                   {:db/id -2
+                    :name  "Harrison Ford"
+                    :age   70
+                    :aka   ["Hand Solo" "Jack Ryan" "Indiana Jones"]}])
 
 (d/q '[:find ?n ?a
        :where [?e :aka "Max Otto von Stierlitz"]
+       [?e :name ?n]
+       [?e :age ?a]]
+  @conn)
+
+(d/q '[:find ?n ?a
+       :where [?e :aka "Jack Ryan"]
        [?e :name ?n]
        [?e :age ?a]]
   @conn)
@@ -93,13 +103,13 @@
 
 
 
-
+;; endregion
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; now let's put the excel data into datascript so can use DATALOG
+; region ; now let's put the excel data into datascript so can use DATALOG
 ; to run real queries
 ;
 
@@ -156,4 +166,4 @@
   (map (fn [[_ from to weight]]
          [from to weight])))
 
-
+;; endregion
