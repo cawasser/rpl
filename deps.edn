@@ -31,7 +31,9 @@
 
   instaparse/instaparse           {:mvn/version "1.4.12"}
 
-  io.github.nextjournal/clerk     {:mvn/version "0.8.451"}}
+  io.github.nextjournal/clerk     {:mvn/version "0.8.451"}
+
+  danlentz/clj-uuid               {:mvn/version "0.1.9"}}
 
  :aliases
  {:rebl {:extra-deps {
