@@ -14,7 +14,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; region ; Wiring
+; region ; Wiring (a Willa-like DSL using 'topics' and 'ktables')
 ;
 ;  wire the services together using watchers on the various atoms
 

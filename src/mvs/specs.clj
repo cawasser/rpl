@@ -49,6 +49,13 @@
                                             :customer/needs :service/resources]))
 
 
+; :service/commitment
+; commitment-id
+; request-id
+; [{resource-id {provider-id} [time-frame] cost}]
+; [time-frame]
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
