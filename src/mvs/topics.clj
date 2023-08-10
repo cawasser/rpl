@@ -3,8 +3,9 @@
 
 (def provider-catalog-topic (atom []))
 (def customer-request-topic (atom []))
-(def service-request-topic (atom []))
-(def service-commitment-topic (atom []))
+(def sales-request-topic (atom []))
+(def sales-commitment-topic (atom []))
+(def sales-failure-topic (atom []))
 (def service-agreement-topic (atom []))
 (def plan-topic (atom []))
 (def fix-topic (atom []))

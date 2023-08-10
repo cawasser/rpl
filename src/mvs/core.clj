@@ -20,8 +20,9 @@
 
 (def mvs-wiring {:mvs/entities {:provider-catalog-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
                                 :customer-request-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name customer-request-topic}
-                                :service-request-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name service-request-topic}
-                                :service-commitment-topic    {:mvs/entity-type :mvs/topic :mvs/topic-name service-commitment-topic}
+                                :sales-request-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
+                                :sales-commitment-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
+                                :sales-failure-topic         {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
 
                                 :service-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
 
@@ -29,15 +30,17 @@
                                 :process-producer-catalog    {:mvs/entity-type :mvs/service :mvs/service-name #'process-producer-catalog}
                                 :customer-service-catalog    {:mvs/entity-type :mvs/service :mvs/service-name #'customer-service-catalog}
                                 :process-customer-request    {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-request}
-                                :process-service-request     {:mvs/entity-type :mvs/service :mvs/service-name #'process-service-request}
+                                :process-sales-request     {:mvs/entity-type :mvs/service :mvs/service-name #'process-sales-request}
                                 :process-customer-commitment {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-commitment}}
 
                  :mvs/workflow [[:provider-catalog-topic :process-producer-catalog]
                                 [:provider-catalog-topic :available-resources]
 
                                 [:customer-request-topic :process-customer-request]
-                                [:service-request-topic :process-service-request]
-                                [:service-commitment-topic :process-customer-commitment]
+                                [:sales-request-topic :process-sales-request]
+
+                                [:sales-commitment-topic :process-customer-commitment]
+                                [:sales-failure-topic :process-customer-commitment]
 
                                 [:service-catalog-view :customer-service-catalog]]})
 
