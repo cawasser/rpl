@@ -25,13 +25,16 @@
 
 
 (defn available-resources
-  [k _ _ [{:keys [provider/id]} catalog :as params]]
+  [k _ _ [{provider-id :provider/id} catalog :as params]]
 
-  (println "available-resources (a)" k "//" id)
+  (println "available-resources (a)" k "//" provider-id)
 
   (let [new-values (->> catalog
                      (map (fn [{:keys [resource/id resource/time-frames]}]
-                            {id time-frames}))
+                            {id (into #{}
+                                  (map (fn [t]
+                                         {t provider-id})
+                                    time-frames))}))
                      (into {}))]
 
     (swap! available-resources-view #(merge-with into %1 %2) new-values)))
@@ -68,6 +71,18 @@
                                       :service/resources   resources}])))
 
 
+
+(defn- allocate [resource-id time-t]
+  (let [allocation (as-> @available-resources-view m
+                     (get m resource-id)
+                     (mapcat seq m)
+                     (filter (fn [[k v]] (= time-t k)) m)
+                     (map (fn [[k v]] {k v}) m)
+                     (set m)
+                     (first m))]
+    (swap! available-resources-view update 0 disj allocation)))
+
+
 (defn process-service-request
   "this function takes the request and tries to allocate system resources (Googoos)
   from the various providers to satisfy the expressed need(s)"
@@ -81,6 +96,8 @@
     (:service/request-id request) "//" (:customer/needs request))
 
   (let [customer-actual-needs (:service/definition request)]))
+
+
 
 
 (defn process-customer-commitment
@@ -124,7 +141,6 @@
   ())
 
 
-
 ; build available-resources-view from provider-catalogs
 (comment
   (do
@@ -137,14 +153,20 @@
   (let [[m-key m-content] provider-a
         new-values (->> m-content
                      (map (fn [{:keys [resource/id resource/time-frames]}]
-                            {id time-frames}))
+                            {id (into #{}
+                                  (map (fn [t]
+                                         {t (:provider/id m-key)})
+                                    time-frames))}))
                      (into {}))]
     (swap! local-available-resources #(merge-with into %1 %2) new-values))
 
-  (merge {} {0 [0 1 2] 1 [0 1 2]})
+  (merge {} {0 #{{0 :a} {1 :a} {2 :a}}
+             1 #{{0 :a} {1 :a} {2 :a}}})
   (merge-with into
-    {0 [0 1 2] 1 [0 1 2]}
-    {0 [0 1 2] 1 [0 1 2]})
+    {0 #{{0 :a} {1 :a} {2 :a}}
+     1 #{{0 :a} {1 :a} {2 :a}}}
+    {0 #{{0 :b} {1 :b} {2 :b}}
+     1 #{{0 :b} {1 :b} {2 :b}}})
 
 
 
@@ -167,7 +189,7 @@
   ())
 
 
-; build a :service/request form a :customer/request
+; build a :service/request from a :customer/request
 (comment
   (def request {:service/request-id  (uuid/v1)
                 :customer/request-id (uuid/v1)
@@ -207,12 +229,69 @@
                                           :resource/time-frames [0 1 2 3 4 5]}]}])
 
     (def request-key (first request))
-    (def request-content (second request)))
+    (def request-content (second request))
+
+    (def local-available-resources-view {0 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"}
+                                             {3 "bravo"} {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"}
+                                             {2 "charlie"} {5 "charlie"} {4 "charlie"} {1 "bravo"} {4 "alpha"}
+                                             {3 "alpha"} {2 "alpha"}},
+                                         1 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"}
+                                             {3 "bravo"} {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"}
+                                             {2 "charlie"} {5 "charlie"} {4 "charlie"} {1 "bravo"} {4 "alpha"}
+                                             {3 "alpha"} {2 "alpha"}},
+                                         2 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"} {3 "bravo"}
+                                             {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"} {2 "charlie"} {5 "charlie"}
+                                             {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}},
+                                         3 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"} {3 "bravo"}
+                                             {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"} {2 "charlie"} {5 "charlie"}
+                                             {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}},
+                                         4 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"} {3 "bravo"}
+                                             {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"} {2 "charlie"} {5 "charlie"}
+                                             {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}}}))
 
 
   (def customer-actual-needs (:service/resources request-content))
 
+  (key {5 "alpha"})
+
+  (map (fn [[k v :as m]]
+         {:m m :k k :v v})
+    (mapcat seq #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"} {3 "bravo"} {3 "echo"}
+                  {1 "alpha"} {5 "bravo"} {1 "delta"} {2 "charlie"} {5 "charlie"} {4 "charlie"} {1 "bravo"}
+                  {4 "alpha"} {3 "alpha"} {2 "alpha"}}))
+  (filter (fn [[k v]] (= 3 k)) (mapcat seq (get local-available-resources-view 0)))
+
+  ; find a provider for the correct :resource/id (0) and :resource/time (3)
+  ;    (just take first one in the set with the correct :resource/time)
+  ;
+  (def allocation (as-> local-available-resources-view m
+                    (get m 0)
+                    (mapcat seq m)
+                    (filter (fn [[k v]] (= 3 k)) m)
+                    (map (fn [[k v]] {k v}) m)
+                    (set m)
+                    (first m)))
+
+  ; then we can disj it from the original set and put it back into the read-model
+  (update local-available-resources-view 0 disj allocation)
+
+  (def old-avail @available-resources-view)
+  (allocate 0 3)
+
+  ; 1) can we satisfy everything?
+  ; 2) if yes, do the allocations
+  ; 3) if no, then publish! a :service/failure with the same keys as the :service/request
+
+  ; map (allocate id time-t) over all the customer-actual-needs
+  (doall
+    (map (fn [{:keys [resource/id resource/time-frames]}]
+           (map (fn [time-t]
+                  [allocate id time-t])
+             time-frames))
+      customer-actual-needs))
+
   ())
+
 
 ; endregion
 
