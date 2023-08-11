@@ -162,9 +162,12 @@
 (defn process-sales-commitment
   "this function takes a service-commitment from 'planning' and enriches it for submission
   to the customer for approval"
-  [_ _ _ [event-key commitment]]
+  [_ _ _ [event-key event]]
 
-  (println "process-sales-commitment" event-key))
+  (condp = (:request/status event)
+    :request/successful (println "process-sales-commitment SUCCESS" event-key "//" event)
+
+    :request/failed (println "process-sales-commitment ******* FAILURE ******" event-key "//" event)))
 
 
 (defn process-customer-agreement

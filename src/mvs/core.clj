@@ -118,6 +118,13 @@
                                    :customer/request-id req-3
                                    :customer/needs      [0 1]}])
 
+  ; this one "fails"
+  (publish! customer-order-topic [{:customer/id         customer-1
+                                   :customer/request-id req-1}
+                                  {:customer/id         customer-1
+                                   :customer/request-id req-1
+                                   :customer/needs      [20]}])
+
   ; endregion
 
 
