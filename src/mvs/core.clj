@@ -11,6 +11,7 @@
             [clj-uuid :as uuid]))
 
 
+(set! *print-namespace-maps* false)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -18,31 +19,34 @@
 ;
 ;  wire the services together using watchers on the various atoms
 
-(def mvs-wiring {:mvs/entities {:provider-catalog-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
-                                :customer-request-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name customer-request-topic}
-                                :sales-request-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
-                                :sales-commitment-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
-                                :sales-failure-topic         {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
+(def mvs-wiring {:mvs/entities {:provider-catalog-topic     {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
+                                :customer-order-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
+                                :sales-request-topic        {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
+                                :sales-commitment-topic     {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
+                                :sales-failure-topic        {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
 
-                                :service-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
+                                :service-catalog-view       {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
+                                :committed-resource-view    {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
 
-                                :available-resources         {:mvs/entity-type :mvs/service :mvs/service-name #'available-resources}
-                                :process-producer-catalog    {:mvs/entity-type :mvs/service :mvs/service-name #'process-producer-catalog}
-                                :customer-service-catalog    {:mvs/entity-type :mvs/service :mvs/service-name #'customer-service-catalog}
-                                :process-customer-request    {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-request}
-                                :process-sales-request     {:mvs/entity-type :mvs/service :mvs/service-name #'process-sales-request}
-                                :process-customer-commitment {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-commitment}}
+                                :available-resources        {:mvs/entity-type :mvs/service :mvs/service-name #'available-resources}
+                                :process-producer-catalog   {:mvs/entity-type :mvs/service :mvs/service-name #'process-producer-catalog}
+                                :customer-service-catalog   {:mvs/entity-type :mvs/service :mvs/service-name #'customer-service-catalog}
+                                :process-customer-order     {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-order}
+                                :process-sales-request      {:mvs/entity-type :mvs/service :mvs/service-name #'process-sales-request}
+                                :process-sales-commitment   {:mvs/entity-type :mvs/service :mvs/service-name #'process-sales-commitment}
+                                :process-customer-agreement {:mvs/entity-type :mvs/service :mvs/service-name #'process-customer-agreement}}
 
                  :mvs/workflow [[:provider-catalog-topic :process-producer-catalog]
                                 [:provider-catalog-topic :available-resources]
 
-                                [:customer-request-topic :process-customer-request]
+                                [:customer-order-topic :process-customer-order]
                                 [:sales-request-topic :process-sales-request]
 
-                                [:sales-commitment-topic :process-customer-commitment]
-                                [:sales-failure-topic :process-customer-commitment]
+                                [:sales-commitment-topic :process-sales-commitment]
+                                [:sales-failure-topic :process-sales-commitment]
 
-                                [:service-catalog-view :customer-service-catalog]]})
+                                [:service-catalog-view :customer-service-catalog]
+                                [:committed-resource-view :process-customer-agreement]]})
 
 
 (defn init-topology [wiring]
@@ -67,9 +71,9 @@
 
   ; region ; reset everything
   (do
-    (reset! provider-catalog-topic [])
     (reset! provider-catalog-view {})
     (reset! available-resources-view {})
+    (reset! service-catalog-view {})
 
     (init-topology mvs-wiring))
 
@@ -77,40 +81,42 @@
 
   ; region ; providers 'publish' catalogs
 
-  (publish! provider-catalog-topic [{:provider/id "alpha"} provider-alpha])
-  (publish! provider-catalog-topic [{:provider/id "bravo"} provider-bravo])
-  (publish! provider-catalog-topic [{:provider/id "charlie"} provider-charlie])
-  (publish! provider-catalog-topic [{:provider/id "delta"} provider-delta])
-  (publish! provider-catalog-topic [{:provider/id "echo"} provider-echo])
+  (do
+    (publish! provider-catalog-topic [{:provider/id "alpha"} provider-alpha])
+    (publish! provider-catalog-topic [{:provider/id "bravo"} provider-bravo])
+    (publish! provider-catalog-topic [{:provider/id "charlie"} provider-charlie])
+    (publish! provider-catalog-topic [{:provider/id "delta"} provider-delta])
+    (publish! provider-catalog-topic [{:provider/id "echo"} provider-echo]))
 
   ;endregion
 
   ; region ; customers request services
-  (def customer-1 (uuid/v1))
-  (def customer-2 (uuid/v1))
-  (def customer-3 (uuid/v1))
+  (do
+    (def customer-1 (uuid/v1))
+    (def customer-2 (uuid/v1))
+    (def customer-3 (uuid/v1))
 
-  (def req-1 (uuid/v1))
-  (def req-2 (uuid/v1))
-  (def req-3 (uuid/v1))
+    (def req-1 (uuid/v1))
+    (def req-2 (uuid/v1))
+    (def req-3 (uuid/v1)))
 
-  (publish! customer-request-topic [{:customer/id         customer-1
-                                     :customer/request-id req-1}
-                                    {:customer/id         customer-1
-                                     :customer/request-id req-1
-                                     :customer/needs      [0 1]}])
+  (publish! customer-order-topic [{:customer/id         customer-1
+                                   :customer/request-id req-1}
+                                  {:customer/id         customer-1
+                                   :customer/request-id req-1
+                                   :customer/needs      [0 1]}])
 
-  (publish! customer-request-topic [{:customer/id         customer-2
-                                     :customer/request-id req-2}
-                                    {:customer/id         customer-2
-                                     :customer/request-id req-2
-                                     :customer/needs      [0 1]}])
+  (publish! customer-order-topic [{:customer/id         customer-2
+                                   :customer/request-id req-2}
+                                  {:customer/id         customer-2
+                                   :customer/request-id req-2
+                                   :customer/needs      [0 1]}])
 
-  (publish! customer-request-topic [{:customer/id         customer-3
-                                     :customer/request-id req-3}
-                                    {:customer/id         customer-3
-                                     :customer/request-id req-3
-                                     :customer/needs      [0 1]}])
+  (publish! customer-order-topic [{:customer/id         customer-3
+                                   :customer/request-id req-3}
+                                  {:customer/id         customer-3
+                                   :customer/request-id req-3
+                                   :customer/needs      [0 1]}])
 
   ; endregion
 

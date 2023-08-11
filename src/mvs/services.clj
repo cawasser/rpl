@@ -40,17 +40,17 @@
     (swap! available-resources-view #(merge-with into %1 %2) new-values)))
 
 
-(defn process-customer-request
+(defn process-customer-order
   "all we need to do here is
 
-   1) assign an ACME :service/request-id to this request
+   1) assign an ACME :sale/request-id to this request
    2) enrich with the actual resources associated with the chosen services
 
    and pass it along"
 
-  [_ _ _ request]
+  [_ _ _ [event-key request]]
 
-  (println "process-customer-request" (:customer/request-id request))
+  (println "process-customer-order" (:customer/request-id request))
 
   (let [request-id (uuid/v1)
         resources  (->> request
@@ -61,15 +61,15 @@
                                    (filter #(= (:service/id %) service-id) @service-catalog-view)))))
                      (into []))]
 
-    (publish! service-request-topic [{:service/request-id  request-id
-                                      :customer/request-id (:customer/request-id request)
-                                      :customer/id         (:customer/id request)}
-                                     {:service/request-id  request-id
-                                      :request/status      :request/submitted
-                                      :customer/request-id (:customer/request-id request)
-                                      :customer/id         (:customer/id request)
-                                      :customer/needs      (:customer/needs request)
-                                      :service/resources   resources}])))
+    (publish! sales-request-topic [{:sales/request-id    request-id
+                                    :customer/request-id (:customer/request-id request)
+                                    :customer/id         (:customer/id request)}
+                                   {:sales/request-id    request-id
+                                    :request/status      :request/submitted
+                                    :customer/request-id (:customer/request-id request)
+                                    :customer/id         (:customer/id request)
+                                    :customer/needs      (:customer/needs request)
+                                    :sales/resources     resources}])))
 
 
 
@@ -137,7 +137,7 @@
 
     (if successful-allocation
       (do
-        ; 1) commit the allocations
+        ; TODO: 1) commit the allocations, durably
 
         ; 2) publish the :sales/committed event
         (publish! sales-commitment-topic
@@ -149,6 +149,7 @@
             :commitment/time-frame time-frame
             :commitment/cost       total-cost}]))
 
+      ; OR, we failed to satisfy (allocate) all the customer needs
       (publish! sales-failure-topic
         [{:sales/request-id (:sales/request-id request)}
          {:failure/id       (uuid/v1)
@@ -158,129 +159,21 @@
                              "should the reasons also include the failed 'needs'?"]}]))))
 
 
-; test out process-sales-request with some simple :customer/requests
-(comment
-  (do
-    (def sales-id (uuid/v1))
-    (def customer-request-id (uuid/v1))
-
-    (def event [{:sales/request-id sales-id}
-                {:sales/request-id    sales-id
-                 :request/status      :request/submitted
-                 :customer/request-id customer-request-id
-                 :customer/needs      [0 1]
-                 :sales/resources     [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5]}
-                                       {:resource/id 1 :resource/time-frames [0 1 2 3 4 5]}]}])
-    (def event2 [{:sales/request-id sales-id}
-                 {:sales/request-id    sales-id
-                  :request/status      :request/submitted
-                  :customer/request-id customer-request-id
-                  :customer/needs      [20]
-                  :sales/resources     [{:resource/id 20 :resource/time-frames [10 11]}]}]))
-
-
-  ; happy-path
-  (spec/explain :sales/commitment
-    (second (process-sales-request [] [] [] event)))
-
-  (spec/explain :sales/failure
-    (second (process-sales-request [] [] [] event2)))
-
-
-  (do
-    (def event-key (first event))
-    (def request (second event))
-    (def customer-actual-needs (:sales/resources request))
-    (def allocations (into {}
-                       (map (fn [{:keys [resource/id resource/time-frames]}]
-                              {id (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view id time-t))
-                                             time-frames))})
-                         customer-actual-needs)))
-    (def allocated-resources (mapcat (fn [[provider-id allocs]]
-                                       (allocation->resource provider-id allocs))
-                               allocations))
-    (def all-times (when (not-empty allocated-resources)
-                     (->> allocated-resources
-                       (map :resource/time-frames)
-                       (reduce #(apply conj %1 %2)))))
-    (def time-frame (if all-times
-                      [(apply min all-times) (apply max all-times)]
-                      []))
-    (def successful-allocation (every? false?
-                                 (mapcat (fn [[resource-id time-frames]]
-                                           (map nil? time-frames))
-                                   allocations)))
-    (def total-cost (->> allocated-resources
-                      (map :resource/cost)
-                      (reduce +))))
-
-
-  (let [customer-actual-needs (:sales/resources request)
-        allocations           (into {}
-                                (map (fn [{:keys [resource/id resource/time-frames]}]
-                                       {id (into [] (map (fn [time-t]
-                                                           (allocate @available-resources-view id time-t))
-                                                      time-frames))})
-                                  customer-actual-needs))
-        allocated-resources   (mapcat (fn [[provider-id allocs]]
-                                        (allocation->resource provider-id allocs))
-                                allocations)
-        all-times             (when (not-empty allocated-resources)
-                                (->> allocated-resources
-                                  (map :resource/time-frames)
-                                  (reduce #(apply conj %1 %2))))
-        time-frame            (if all-times
-                                [(apply min all-times) (apply max all-times)]
-                                [])
-        successful-allocation (every? false?
-                                (mapcat (fn [[resource-id time-frames]]
-                                          (map nil? time-frames))
-                                  allocations))]
-    {:success successful-allocation :time time-frame})
-
-
-
-  (do
-    (def event-key (first event2))
-    (def request (second event2))
-    (def customer-actual-needs (:sales/resources request))
-    (def allocations (into {}
-                       (map (fn [{:keys [resource/id resource/time-frames]}]
-                              {id (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view id time-t))
-                                             time-frames))})
-                         customer-actual-needs)))
-    (def allocated-resources (mapcat (fn [[provider-id allocs]]
-                                       (allocation->resource provider-id allocs))
-                               allocations))
-    (def all-times (when (not-empty allocated-resources)
-                     (->> allocated-resources
-                       (map :resource/time-frames)
-                       (reduce #(apply conj %1 %2)))))
-    (def time-frame (if all-times
-                      [(apply min all-times) (apply max all-times)]
-                      []))
-    (def successful-allocation (every? false?
-                                 (mapcat (fn [[resource-id time-frames]]
-                                           (map nil? time-frames))
-                                   allocations)))
-    (def total-cost (->> allocated-resources
-                      (map :resource/cost)
-                      (reduce +))))
-
-
-  ())
-
-
-
-
-(defn process-customer-commitment
-  "this function takes a service-commitment form 'planning' and enriches it for submision
+(defn process-sales-commitment
+  "this function takes a service-commitment from 'planning' and enriches it for submission
   to the customer for approval"
-  [_ _ _ commitment]
+  [_ _ _ [event-key commitment]]
 
-  (println "process-customer-commitment"))
+  (println "process-sales-commitment" event-key))
+
+
+(defn process-customer-agreement
+  "this function takes an order-agreement from the customer and turns it into a 'plan'
+  to be submitted for 'fulfillment"
+
+  [_ _ _ [event-key agreement]]
+
+  (println "process-customer-agreement" event-key))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -622,6 +515,164 @@
 
   ())
 
+
+; test out process-sales-request with some simple :customer/requests
+(comment
+  (do
+    (def sales-id (uuid/v1))
+    (def customer-request-id (uuid/v1))
+
+    ; one that can be satisfied
+    (def event [{:sales/request-id sales-id}
+                {:sales/request-id    sales-id
+                 :request/status      :request/submitted
+                 :customer/request-id customer-request-id
+                 :customer/needs      [0 1]
+                 :sales/resources     [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5]}
+                                       {:resource/id 1 :resource/time-frames [0 1 2 3 4 5]}]}])
+
+    ; one that can NOT be satisfied
+    (def event2 [{:sales/request-id sales-id}
+                 {:sales/request-id    sales-id
+                  :request/status      :request/submitted
+                  :customer/request-id customer-request-id
+                  :customer/needs      [20]
+                  :sales/resources     [{:resource/id 20
+                                         :resource/time-frames [10 11]}]}]))
+
+
+  ; happy-path
+  (spec/explain :sales/commitment
+    (second (process-sales-request [] [] [] event)))
+
+  (spec/explain :sales/failure
+    (second (process-sales-request [] [] [] event2)))
+
+
+  (do
+    (def event-key (first event))
+    (def request (second event))
+    (def customer-actual-needs (:sales/resources request))
+    (def allocations (into {}
+                       (map (fn [{:keys [resource/id resource/time-frames]}]
+                              {id (into [] (map (fn [time-t]
+                                                  (allocate @available-resources-view id time-t))
+                                             time-frames))})
+                         customer-actual-needs)))
+    (def allocated-resources (mapcat (fn [[resource-id allocs]]
+                                       (allocation->resource resource-id allocs))
+                               allocations))
+    (def all-times (when (not-empty allocated-resources)
+                     (->> allocated-resources
+                       (map :resource/time-frames)
+                       (reduce #(apply conj %1 %2)))))
+    (def time-frame (if all-times
+                      [(apply min all-times) (apply max all-times)]
+                      []))
+    (def successful-allocation (every? false?
+                                 (mapcat (fn [[resource-id time-frames]]
+                                           (map nil? time-frames))
+                                   allocations)))
+    (def total-cost (->> allocated-resources
+                      (map :resource/cost)
+                      (reduce +))))
+
+
+  ; sidebar: how does (allocate...) work?
+  (do
+    (def available @available-resources-view)
+    (def resource-id 0)
+    (def time-t 3)
+    (def sorted (map (fn [[r t]] {r (sort-by first t)}) available)))
+
+  (as-> available m
+    (get m resource-id)
+    (mapcat seq m)
+    (filter (fn [[k v]] (= time-t k)) m)
+    (map (fn [[k v]] {k v}) m)
+    (set m)
+    (first m))
+
+
+  ; sidebar #2: how does (allocation->resource ...) work?
+  (do
+    (def allocs (-> allocations first second))
+    (def resource-id (-> allocations first first)))
+
+  (->> allocs
+    (mapcat seq)
+    (group-by second))
+
+  (->> allocs
+    (mapcat seq)
+    (group-by second)
+    (map (fn [[provider t]]
+           {:resource/id          resource-id
+            :provider/id          provider
+            :resource/time-frames (into [] (map first t))
+            :resource/cost        (* (count (into [] (map first t)))
+                                    (get-in @provider-catalog-view [provider
+                                                                    resource-id
+                                                                    :resource/cost]))})))
+
+
+
+
+  (let [customer-actual-needs (:sales/resources request)
+        allocations           (into {}
+                                (map (fn [{:keys [resource/id resource/time-frames]}]
+                                       {id (into [] (map (fn [time-t]
+                                                           (allocate @available-resources-view id time-t))
+                                                      time-frames))})
+                                  customer-actual-needs))
+        allocated-resources   (mapcat (fn [[provider-id allocs]]
+                                        (allocation->resource provider-id allocs))
+                                allocations)
+        all-times             (when (not-empty allocated-resources)
+                                (->> allocated-resources
+                                  (map :resource/time-frames)
+                                  (reduce #(apply conj %1 %2))))
+        time-frame            (if all-times
+                                [(apply min all-times) (apply max all-times)]
+                                [])
+        successful-allocation (every? false?
+                                (mapcat (fn [[resource-id time-frames]]
+                                          (map nil? time-frames))
+                                  allocations))]
+    {:success successful-allocation :time time-frame})
+
+
+
+  (do
+    (def event-key (first event2))
+    (def request (second event2))
+    (def customer-actual-needs (:sales/resources request))
+    (def allocations (into {}
+                       (map (fn [{:keys [resource/id resource/time-frames]}]
+                              {id (into [] (map (fn [time-t]
+                                                  (allocate @available-resources-view id time-t))
+                                             time-frames))})
+                         customer-actual-needs)))
+    (def allocated-resources (mapcat (fn [[provider-id allocs]]
+                                       (allocation->resource provider-id allocs))
+                               allocations))
+    (def all-times (when (not-empty allocated-resources)
+                     (->> allocated-resources
+                       (map :resource/time-frames)
+                       (reduce #(apply conj %1 %2)))))
+    (def time-frame (if all-times
+                      [(apply min all-times) (apply max all-times)]
+                      []))
+    (def successful-allocation (every? false?
+                                 (mapcat (fn [[resource-id time-frames]]
+                                           (map nil? time-frames))
+                                   allocations)))
+    (def total-cost (->> allocated-resources
+                      (map :resource/cost)
+                      (reduce +))))
+
+
+  ())
 
 
 

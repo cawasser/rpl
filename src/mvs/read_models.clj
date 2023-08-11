@@ -44,6 +44,9 @@
 (def service-catalog-view
   "catalog of service ACME offers to customer" (atom []))
 
+(def committed-resources-view
+  "all the resources that ACME has committed to customers" (atom []))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
