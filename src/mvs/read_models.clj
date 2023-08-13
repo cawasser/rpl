@@ -44,6 +44,12 @@
 (def service-catalog-view
   "catalog of service ACME offers to customer" (atom []))
 
+;(def sales-catalog-history-view
+;  "history of all the sales catalogs of ACME ever offered to customer" (atom []))
+
+(def order->sales-request-view
+  "maps order/id to :sales/request-id so we can relate all information" (atom []))
+
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
 

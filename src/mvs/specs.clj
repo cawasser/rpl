@@ -4,13 +4,15 @@
             [clj-uuid :as uuid]))
 
 
-; :googoo/googoos
+; region ; :googoo/googoos (resource)
 (spec/def :resource/id integer?)
 (spec/def :googoo/googoo (spec/keys :req [:resource/id]))
 (spec/def :googoo/googoos (spec/coll-of :googoo/googoo))
 
+; endregion
 
-; :resource/catalog
+
+; region ; :resource/catalog
 (spec/def :resource/time integer?)
 (spec/def :resource/time-frames (spec/coll-of :resource/time))
 (spec/def :resource/cost integer?)
@@ -19,15 +21,19 @@
                                                 :resource/cost]))
 (spec/def :resource/catalog (spec/coll-of :resource/definition))
 
+; endregion
 
-; :provider/catalog
+
+; region ; :provider/catalog
 (spec/def :provider/id string?)
 (spec/def :provider/event-key (spec/keys :req [:provider/id]))
 (spec/def :provider/catalog (spec/tuple :provider/event-key
                               :resource/catalog))
 
+; endregion
 
-; :service/catalog
+
+; region ; :service/catalog
 (spec/def :service/id integer?)
 (spec/def :service/description string?)
 (spec/def :service/element (spec/keys :req [:resource/id
@@ -40,8 +46,10 @@
                                                :service/price]))
 (spec/def :service/catalog (spec/coll-of :service/definition))
 
+; endregion
 
-; :request/status
+
+; region ; :request/status
 (spec/def :request/status (spec/or
                             :successful #(= % :request/successful)
                             :failed #(= % :request/failed)
@@ -49,29 +57,35 @@
                             :malformed #(= % :request/malformed)
                             :errored #(= % :request/errored)))
 
+; endregion
 
 
-; :customer/service-request
+; region ; :customer/order
 (spec/def :customer/id uuid?)
-(spec/def :customer/request-id uuid?)
-(spec/def :customer/needs (spec/coll-of :service/id))
-(spec/def :customer/service-request (spec/keys :req [:customer/request-id
-                                                     :customer/id
-                                                     :customer/needs]))
+(spec/def :order/id uuid?)
+(spec/def :order/needs (spec/coll-of :service/id))
+(spec/def :customer/order (spec/keys :req [:order/id
+                                           :customer/id
+                                           :order/needs]))
+
+; endregion
 
 
-; :sales/request
+; region ; :sales/request
 (spec/def :sales/request-id uuid?)
 (spec/def :sales/resource (spec/keys :req [:resource/id :resource/time-frames]))
 (spec/def :sales/resources (spec/coll-of :sales/resource))
 (spec/def :sales/request (spec/keys :req [:sales/request-id
                                           :request/status
-                                          :customer/request-id
-                                          :customer/needs
+                                          :order/id
+                                          :customer/id
+                                          :order/needs
                                           :sales/resources]))
 
+; endregion
 
-; :sales/commitment
+
+; region ; :sales/commitment
 (spec/def :commitment/id uuid?)
 (spec/def :commitment/resource (spec/keys :req [:resource/id
                                                 :provider/id
@@ -91,7 +105,10 @@
                                              :commitment/time-frame
                                              :commitment/cost]))
 
-; :sales/failure
+; endregion
+
+
+; region ; :sales/failure
 (spec/def :failure/id uuid?)
 (spec/def :failure/reason string?)
 (spec/def :failure/reasons (spec/coll-of :service/failure-reason))
@@ -100,6 +117,42 @@
                                           :request/status
                                           :failure/reasons]))
 
+; endregion
+
+
+; region ; :sales/agreement
+(spec/def :agreement/id uuid?)
+(spec/def :agreement/price integer?)
+(spec/def :agreement/resource (spec/keys :req [:resource/id
+                                               :resource/time-frames]))
+(spec/def :agreement/resources (spec/coll-of :agreement/resource))
+(spec/def :agreement/start-time integer?)
+(spec/def :agreement/end-time integer?)
+(spec/def :agreement/time-frame (spec/cat
+                                  :start :agreement/start-time
+                                  :end :agreement/end-time))
+(spec/def :agreement/note string?)
+(spec/def :agreement/notes (spec/coll-of :agreement/note))
+(spec/def :sales/agreement (spec/keys :req [:agreement/id
+                                            :customer/id
+                                            :order/id
+                                            :order/needs
+                                            :agreement/resources
+                                            :agreement/time-frame
+                                            :agreement/price
+                                            :agreement/notes]))
+
+; endregion
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

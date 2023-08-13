@@ -1,190 +1,48 @@
 (ns mvs.services
+
+  "Note: each 'service' is in its own 'block', alon with any helper function (before) and any
+  rich comments for repl dev & testing (after). This will make it easier to pull the relevant
+  code into actual microservice components when the time comes."
+
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :refer :all]
             [mvs.topics :refer :all]
+            [mvs.helpers :refer :all]
             [mvs.specs]
             [clj-uuid :as uuid]))
 
 
-(defn process-producer-catalog
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-provider-catalog
+;
+(defn process-provider-catalog
   "takes a (spec) `:provider/catalog`
 
   i.e., tuple of hash-maps (key and message-content) with the producer encoded inside the 'key'
   and the catalog itself being the message-content"
 
-  [k _ _ [{:keys [:provider/id]} catalog :as params]]
-
-  (println "process-producer-catalog" k)
-
-  ; 1) update provider-catalog-view
-  (swap! provider-catalog-view assoc id catalog)
-
-  ; 2) 'publish' ACME's "Service Catalog"
-  (publish! service-catalog-view service-catalog))
+  [k _ _ [{:keys [:provider/id]} catalog]]
 
 
-(defn available-resources
-  [k _ _ [{provider-id :provider/id} catalog :as params]]
+  (println "process-provider-catalog" k)
 
-  (println "available-resources (a)" k "//" provider-id)
+  (if (spec/valid? :provider/catalog catalog)
+    (do
+      ; 1) update provider-catalog-view
+      (swap! provider-catalog-view assoc id catalog)
 
-  (let [new-values (->> catalog
-                     (map (fn [{:keys [resource/id resource/time-frames]}]
-                            {id (into #{}
-                                  (map (fn [t]
-                                         {t provider-id})
-                                    time-frames))}))
-                     (into {}))]
+      ; 2) 'publish' ACME's "Service Catalog"
+      (publish! sales-catalog-topic service-catalog))
 
-    (swap! available-resources-view #(merge-with into %1 %2) new-values)))
-
-
-(defn process-customer-order
-  "all we need to do here is
-
-   1) assign an ACME :sale/request-id to this request
-   2) enrich with the actual resources associated with the chosen services
-
-   and pass it along"
-
-  [_ _ _ [event-key request]]
-
-  (println "process-customer-order" (:customer/request-id request))
-
-  (let [request-id (uuid/v1)
-        resources  (->> request
-                     :customer/needs
-                     (mapcat (fn [service-id]
-                               (:service/elements
-                                 (first
-                                   (filter #(= (:service/id %) service-id) @service-catalog-view)))))
-                     (into []))]
-
-    (publish! sales-request-topic [{:sales/request-id    request-id
-                                    :customer/request-id (:customer/request-id request)
-                                    :customer/id         (:customer/id request)}
-                                   {:sales/request-id    request-id
-                                    :request/status      :request/submitted
-                                    :customer/request-id (:customer/request-id request)
-                                    :customer/id         (:customer/id request)
-                                    :customer/needs      (:customer/needs request)
-                                    :sales/resources     resources}])))
+    (malformed "process-provider-catalog" :provider/catalog)))
 
 
 
-(defn- allocate [available resource-id time-t]
-  (as-> available m
-    (get m resource-id)
-    (mapcat seq m)
-    (filter (fn [[k v]] (= time-t k)) m)
-    (map (fn [[k v]] {k v}) m)
-    (set m)
-    (first m)))
 
 
-(defn- allocation->resource [resource-id allocs]
-  (->> allocs
-    (mapcat seq)
-    (group-by second)
-    (map (fn [[provider t]]
-           {:resource/id          resource-id
-            :provider/id          provider
-            :resource/time-frames (into [] (map first t))
-            :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in @provider-catalog-view [provider
-                                                                    resource-id
-                                                                    :resource/cost]))}))))
-
-
-(defn process-sales-request
-  "this function takes the request and tries to allocate system resources (Googoos)
-  from the various providers to satisfy the expressed need(s)"
-
-  [_ _ _ [event-key request]]
-
-  ; TODO: where does process-service-request get the available-resources?
-  ;         currently using @available-resources-view
-
-  (println "process-sales-request"
-    (:sales/request-id request) "//" (:customer/needs request)
-    "//" (:sales/resources request))
-
-  (let [customer-actual-needs (:sales/resources request)
-        allocations           (into {}
-                                (map (fn [{:keys [resource/id resource/time-frames]}]
-                                       {id (into [] (map (fn [time-t]
-                                                           (allocate @available-resources-view id time-t))
-                                                      time-frames))})
-                                  customer-actual-needs))
-        allocated-resources   (mapcat (fn [[provider-id allocs]]
-                                        (allocation->resource provider-id allocs))
-                                allocations)
-        all-times             (when (not-empty allocated-resources)
-                                (->> allocated-resources
-                                  (map :resource/time-frames)
-                                  (reduce #(apply conj %1 %2))))
-        time-frame            (if all-times
-                                [(apply min all-times) (apply max all-times)]
-                                [])
-        successful-allocation (every? false?
-                                (mapcat (fn [[resource-id time-frames]]
-                                          (map nil? time-frames))
-                                  allocations))
-        total-cost            (->> allocated-resources
-                                (map :resource/cost)
-                                (reduce +))]
-
-    (if successful-allocation
-      (do
-        ; TODO: 1) commit the allocations, durably
-
-        ; 2) publish the :sales/committed event
-        (publish! sales-commitment-topic
-          [{:sales/request-id (:sales/request-id request)}
-           {:commitment/id         (uuid/v1)
-            :sales/request-id      (:sales/request-id request)
-            :request/status        :request/successful
-            :commitment/resources  allocated-resources
-            :commitment/time-frame time-frame
-            :commitment/cost       total-cost}]))
-
-      ; OR, we failed to satisfy (allocate) all the customer needs
-      (publish! sales-failure-topic
-        [{:sales/request-id (:sales/request-id request)}
-         {:failure/id       (uuid/v1)
-          :sales/request-id (:sales/request-id request)
-          :request/status   :request/failed
-          :failure/reasons  ["we will one day put some reasons here"
-                             "should the reasons also include the failed 'needs'?"]}]))))
-
-
-(defn process-sales-commitment
-  "this function takes a service-commitment from 'planning' and enriches it for submission
-  to the customer for approval"
-  [_ _ _ [event-key event]]
-
-  (condp = (:request/status event)
-    :request/successful (println "process-sales-commitment SUCCESS" event-key "//" event)
-
-    :request/failed (println "process-sales-commitment ******* FAILURE ******" event-key "//" event)))
-
-
-(defn process-customer-agreement
-  "this function takes an order-agreement from the customer and turns it into a 'plan'
-  to be submitted for 'fulfillment"
-
-  [_ _ _ [event-key agreement]]
-
-  (println "process-customer-agreement" event-key))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;
-; region ; rich comments
-
-; test process-producer-catalog
+; test process-provider-catalog
 (comment
   (def event-1 [{:provider/id "alpha"} provider-alpha])
   (def event-2 [{:provider/id "bravo"} provider-bravo])
@@ -192,24 +50,47 @@
   @provider-catalog-view
   (reset! provider-catalog-view {})
 
-  (process-producer-catalog [] [] [] event-1)
-  (process-producer-catalog [] [] [] event-2)
-  (process-producer-catalog [] [] [] [{:provider/id "charlie"} provider-charlie])
-  (process-producer-catalog [] [] [] [{:provider/id "delta"} provider-delta])
-  (process-producer-catalog [] [] [] [{:provider/id "echo"} provider-echo])
+  (process-provider-catalog [] [] [] event-1)
+  (process-provider-catalog [] [] [] event-2)
+  (process-provider-catalog [] [] [] [{:provider/id "charlie"} provider-charlie])
+  (process-provider-catalog [] [] [] [{:provider/id "delta"} provider-delta])
+  (process-provider-catalog [] [] [] [{:provider/id "echo"} provider-echo])
 
   ())
 
-
-; check specs for :customer/service-request
-(comment
-  (spec/explain :customer/needs [0 1])
-  (spec/explain :customer/service-request {:customer/id         (uuid/v1)
-                                           :customer/request-id (uuid/v1)
-                                           :customer/needs      [0 1]})
+; endregion
 
 
-  ())
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-available-resources
+;
+(defn process-available-resources
+  "take provider catalog data (:provider/catalog) and turn it into something useful for allocating
+  to customers as: `{ <:resource/id> #{ { <:resource/time> <:provider/id> }
+                                        { <:resource/time> <:provider/id> } }
+                      <:resource/id> #{ { <:resource/time> <:provider/id> }
+                                        { <:resource/time> <:provider/id> } } }`
+  "
+  [k _ _ [{provider-id :provider/id} catalog]]
+
+  (println "available-resources (a)" k "//" provider-id)
+
+  (if (spec/valid? :provider/catalog catalog)
+    (let [new-values (->> catalog
+                       (map (fn [{:keys [resource/id resource/time-frames]}]
+                              {id (into #{}
+                                    (map (fn [t]
+                                           {t provider-id})
+                                      time-frames))}))
+                       (into {}))]
+
+      (swap! available-resources-view #(merge-with into %1 %2) new-values))
+
+    (malformed "available-resources" :provider/catalog)))
+
+
 
 
 ; build available-resources-view from provider-catalogs
@@ -259,28 +140,238 @@
 
   ())
 
+; endregion
 
-; build a :sales/request from a :customer/request
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-customer-order
+;
+(defn process-customer-order
+  "we:
+
+   1) assign an ACME :sale/request-id to this request
+   2) enrich with the actual resources associated with the chosen services
+
+   and pass it along
+
+   we also associate the :order-id with the :sales/request-id generated here, so we
+   can find all the relevant data as we need
+   "
+  [_ _ _ [event-key order]]
+
+  (println "process-customer-order" (:order/id order))
+
+  (if (spec/valid? :customer/order order)
+    ; region ; handle :customer/order
+    (let [request-id (uuid/v1)
+          resources  (->> order
+                       :order/needs
+                       (mapcat (fn [service-id]
+                                 (:service/elements
+                                   (first
+                                     (filter #(= (:service/id %) service-id) @service-catalog-view)))))
+                       (into []))]
+
+      ; 1) store the mapping from the :customer/order to the :/sales/request-id
+      (swap! order->sales-request-view conj (assoc order :sales/request-id request-id))
+
+      ; 2) publish the :sales/request
+      (publish! sales-request-topic [{:sales/request-id request-id
+                                      :order/id         (:order/id order)
+                                      :customer/id      (:customer/id order)}
+                                     {:sales/request-id request-id
+                                      :request/status   :request/submitted
+                                      :order/id         (:order/id order)
+                                      :customer/id      (:customer/id order)
+                                      :order/needs      (:order/needs order)
+                                      :sales/resources  resources}]))
+    ; endregion
+
+    (malformed "process-customer-order" :customer/order)))
+
+
+
+
+
+
+; check specs for :customer/order
+(comment
+  (spec/explain :customer/needs [0 1])
+  (spec/explain :customer/order {:customer/id (uuid/v1)
+                                 :order/id    (uuid/v1)
+                                 :order/needs [0 1]})
+
+  ())
+
+
+; process-customer-order -build a :sales/request from a :customer/request
 (comment
   (do
-    (def request {:sales/request-id    (uuid/v1)
-                  :request/status      :request/submitted
-                  :customer/request-id (uuid/v1)
-                  :customer/needs      [0 1]
-                  :sales/resources     [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5]}
-                                        {:resource/id 1 :resource/time-frames [0 1 2 3 4 5]}]})
+    (def order-id (uuid/v1))
+    (def service-request-id (uuid/v1))
+    (def order {:sales/request-id service-request-id
+                :request/status   :request/submitted
+                :customer/id      (uuid/v1)
+                :order/id         order-id
+                :order/needs      [0 1]
+                :sales/resources  [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5]}
+                                   {:resource/id 1 :resource/time-frames [0 1 2 3 4 5]}]})
 
-    (def service-id 0))
+    (def service-id 0)
+    (def local-view (atom [])))
 
-  (->> request
-    :customer/needs
+  (spec/explain :customer/order order)
+
+
+  (->> order
+    :order/needs
     (mapcat (fn [service-id]
               (:service/elements
                 (first
                   (filter #(= (:service/id %) service-id) @service-catalog-view)))))
     (into []))
 
+  (swap! local-view conj (assoc order :sales/request-id service-request-id))
+
   ())
+
+; endregion
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-sales-request
+;
+
+; helpers
+(defn- allocate
+  "pick the next available Googoo 'off the shelf' and 'put it in the box'
+
+  - available : all available resources, formatted as (`{ <:resource/id> #{ { <:resource/time> <:provider/id> }
+                                                                            { <:resource/time> <:provider/id> } }
+                                                          <:resource/id> #{ { <:resource/time> <:provider/id> }
+                                                                            { <:resource/time> <:provider/id> } } }`)
+  - resource-id : (:resource/id)
+  - time-t : (:resource/time)"
+
+  [available resource-id time-t]
+  (as-> available m
+    (get m resource-id)
+    (mapcat seq m)
+    (filter (fn [[k v]] (= time-t k)) m)
+    (map (fn [[k v]] {k v}) m)
+    (set m)
+    (first m)))
+
+
+(defn- allocation->resource
+  "turn allocs, which are in a reduced format, back into :commitment/resources
+
+  - resource-id : (:resource/id) which resource are we processing?
+  - allocs : collection of allocated resources, formatted as: `{ <:resource/id> [ { <:resource/time> <:provider/id> } ] }
+  "
+  [resource-id allocs]
+  (->> allocs
+    (mapcat seq)
+    (group-by second)
+    (map (fn [[provider t]]
+           {:resource/id          resource-id
+            :provider/id          provider
+            :resource/time-frames (into [] (map first t))
+            :resource/cost        (* (count (into [] (map first t)))
+                                    (get-in @provider-catalog-view [provider
+                                                                    resource-id
+                                                                    :resource/cost]))}))))
+
+
+(defn- commit-resources
+  "use a reducer to remove (via disj) all the allocated resources from the
+  available-resources-view
+
+  - resources : the resources we want to commit to a :sales/request, formatted as:
+             `{ <:resource/id> [ { <:resource/time> <:provider/id> } ] }`"
+
+  [resources]
+
+  (reset! available-resources-view
+    (reduce (fn [m [id alloc]]
+              (assoc m id (apply disj (get m id) alloc)))
+      @available-resources-view
+      resources)))
+
+
+(defn process-sales-request
+  "this function takes the request and tries to allocate system resources (Googoos)
+  from the various providers to satisfy the expressed need(s)
+
+  - request : (:sales/request) everything we need to locate in the 'warehouse' for a given customer"
+
+  [_ _ _ [event-key request]]
+
+  ; TODO: where does process-service-request get the available-resources?
+  ;         currently using @available-resources-view
+
+  (println "process-sales-request"
+    (:sales/request-id request) "//" (:order/needs request)
+    "//" (:sales/resources request))
+
+  (if (spec/valid? :sales/request request)
+    ; region ; handle the valid request
+    (let [customer-actual-needs (:sales/resources request)
+          allocations           (into {}
+                                  (map (fn [{:keys [resource/id resource/time-frames]}]
+                                         {id (into [] (map (fn [time-t]
+                                                             (allocate @available-resources-view id time-t))
+                                                        time-frames))})
+                                    customer-actual-needs))
+          allocated-resources   (mapcat (fn [[provider-id allocs]]
+                                          (allocation->resource provider-id allocs))
+                                  allocations)
+          all-times             (when (not-empty allocated-resources)
+                                  (->> allocated-resources
+                                    (map :resource/time-frames)
+                                    (reduce #(apply conj %1 %2))))
+          time-frame            (if all-times
+                                  [(apply min all-times) (apply max all-times)]
+                                  [])
+          successful-allocation (every? false?
+                                  (mapcat (fn [[resource-id time-frames]]
+                                            (map nil? time-frames))
+                                    allocations))
+          total-cost            (->> allocated-resources
+                                  (map :resource/cost)
+                                  (reduce +))]
+
+      (if successful-allocation
+        (do
+          ; 1) commit the allocations, durably
+          (commit-resources allocations)
+
+          ; 2) publish the :sales/committed event
+          (publish! sales-commitment-topic
+            [{:sales/request-id (:sales/request-id request)}
+             {:commitment/id         (uuid/v1)
+              :sales/request-id      (:sales/request-id request)
+              :request/status        :request/successful
+              :commitment/resources  allocated-resources
+              :commitment/time-frame time-frame
+              :commitment/cost       total-cost}]))
+
+        ; OR, we failed to satisfy (allocate) all the customer needs
+        (publish! sales-failure-topic
+          [{:sales/request-id (:sales/request-id request)}
+           {:failure/id       (uuid/v1)
+            :sales/request-id (:sales/request-id request)
+            :request/status   :request/failed
+            :failure/reasons  ["we will one day put some reasons here"
+                               "should the reasons also include the failed 'needs'?"]}])))
+    ; endregion
+
+    (println "process-sales-request   ********* MALFORMED ******** expected :sales/request")))
+
+
+
 
 
 ; process-sales-request
@@ -391,7 +482,7 @@
 
   ; then we can "commit" the allocations
   ;     (disj)
-  (update local-available-resources-view 0 disj allocation)
+  (update @local-available-resources-view 0 disj allocation)
 
   (def old-avail @available-resources-view)
   (allocate @available-resources-view 0 3)
@@ -404,10 +495,10 @@
 ; so we can attach them to the :service/commitment
 (comment
 
-  ; (spec/def :commitment/resource (spec/keys :req [:resource/id
-  ;                                                 :provider/id
-  ;                                                 :resource/time-frames
-  ;                                                 :resource/cost]))
+  (spec/def :commitment/resource (spec/keys :req [:resource/id
+                                                  :provider/id
+                                                  :resource/time-frames
+                                                  :resource/cost]))
 
   (do
     (def allocations {0 [{0 "delta"} {1 "alpha"} {2 "delta"} {3 "bravo"} {4 "echo"} {5 "alpha"}],
@@ -540,7 +631,7 @@
                   :request/status      :request/submitted
                   :customer/request-id customer-request-id
                   :customer/needs      [20]
-                  :sales/resources     [{:resource/id 20
+                  :sales/resources     [{:resource/id          20
                                          :resource/time-frames [10 11]}]}]))
 
 
@@ -601,10 +692,6 @@
   (do
     (def allocs (-> allocations first second))
     (def resource-id (-> allocations first first)))
-
-  (->> allocs
-    (mapcat seq)
-    (group-by second))
 
   (->> allocs
     (mapcat seq)
@@ -678,7 +765,184 @@
   ())
 
 
+; commit the resources we've selected by removing them from available-resources-view
+(comment
+  (do
+    (def customer-actual-needs [{:resource/id          0
+                                 :resource/time-frames [0 1]}])
+    ;{:resource/id          1
+    ; :resource/time-frames [0 1]}])
+    (def t 0)
+    (def id 0)
+    (def allocations (into {}
+                       (map (fn [{:keys [resource/id resource/time-frames]}]
+                              {id (into [] (map (fn [time-t]
+                                                  (allocate @available-resources-view id time-t))
+                                             time-frames))})
+                         customer-actual-needs)))
+    (def allocations {0 [{0 "delta"} {1 "alpha"}]
+                      1 [{0 "bravo"} {1 "echo"}]})
+    (def allocations {0 [{1 "alpha"}]
+                      1 [{1 "echo"}]})
+    (def local-available-resources-view (atom {0 #{{0 "delta"} {1 "alpha"}}
+                                               1 #{{0 "bravo"} {1 "echo"}}})))
 
+
+  (apply disj #{1 2 3} [1 3])
+
+  (apply disj (get @local-available-resources-view id) (get allocations id))
+
+  ; now, how do we apply multiple disj to the data at each step? REDUCE!
+
+  (reset! local-available-resources-view
+    (reduce (fn [m [id alloc]]
+              (assoc m id (apply disj (get m id) alloc)))
+      @local-available-resources-view
+      allocations))
+
+
+  ())
 
 ; endregion
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-sales-commitment
+;
+(defn process-sales-commitment
+  "this function takes a :sales/commitment from 'planning' and enriches into
+   a :sales/agreement event which we send ot the customer for their approval (or rejection)
+
+   _OR_
+
+   we get a :sales/failure because planning can't fulfil the customer's order, so we should
+   tell the customer that we can't do anything, by sending a :sales/failure event"
+
+  [_ _ _ [event-key event]]
+
+  (if (or (spec/valid? :sales/commitment event)
+        (spec/valid? :sales/failure event))
+
+    ; region ; handle a success or failure from planning
+    (condp = (:request/status event)
+      :request/successful
+      (do
+        (println "process-sales-commitment SUCCESS" event-key "//" event)
+
+        (let [commitment           event
+              agreement-id         (uuid/v1)
+              sales-request-id     (:sales/request-id commitment)
+              associated-order     (->> @order->sales-request-view
+                                     (filter #(= sales-request-id (:sales/request-id %)))
+                                     first)
+              customer-id          (:customer/id associated-order)
+              order-id             (:order/id associated-order)
+              order-needs          (:order/needs associated-order)
+              agreement-resources  (:commitment/resources commitment)
+              agreement-time-frame (:commitment/time-frame commitment)
+              commitment-cost      (:commitment/cost commitment)
+              agreement-price      (->> order-needs
+                                     (mapcat (fn [id]
+                                               (filter (fn [r] (= id (:service/id r)))
+                                                 @service-catalog-view)))
+                                     (map :service/price)
+                                     (reduce +))
+              agreement-notes      ["note 1" "note 2"]]
+
+          (println "profit" (- agreement-price commitment-cost)
+            "//" agreement-price "//" commitment-cost)
+
+          (publish! service-agreement-topic [{:agreement/id agreement-id}
+                                             {:agreement/id         agreement-id
+                                              :customer/id          customer-id
+                                              :order/id             order-id
+                                              :order/needs          order-needs
+                                              :agreement/resources  agreement-resources
+                                              :agreement/time-frame agreement-time-frame
+                                              :agreement/price      agreement-price
+                                              :agreement/notes      agreement-notes}])))
+
+      :request/failed
+      (println "process-sales-commitment ******* FAILURE ******" event-key "//" event))
+    ; endregion
+
+    (malformed "process-sales-commitment" :sales/commitment)))
+
+
+
+
+
+; process-sales-commitment
+(comment
+  (do
+    (def local-view (atom []))
+    (def order {:customer/id (uuid/v1)
+                :order/id    (uuid/v1)
+                :order/needs [0 1]})
+    (def event {:commitment/id         #uuid"1cce2aa0-3895-11ee-be86-1768c9d0d0e5",
+                :sales/request-id      #uuid"8f2c8eb0-3882-11ee-be86-1768c9d0d0e5",
+                :request/status        :request/successful,
+                :commitment/resources  [{:resource/id 0, :provider/id "delta", :resource/time-frames [0 2], :resource/cost 10}
+                                        {:resource/id 0, :provider/id "alpha", :resource/time-frames [1 5], :resource/cost 20}
+                                        {:resource/id 0, :provider/id "bravo", :resource/time-frames [3], :resource/cost 5}
+                                        {:resource/id 0, :provider/id "echo", :resource/time-frames [4], :resource/cost 2}
+                                        {:resource/id 1, :provider/id "delta", :resource/time-frames [0 2], :resource/cost 10}
+                                        {:resource/id 1, :provider/id "alpha", :resource/time-frames [1 5], :resource/cost 20}
+                                        {:resource/id 1, :provider/id "bravo", :resource/time-frames [3], :resource/cost 5}
+                                        {:resource/id 1, :provider/id "echo", :resource/time-frames [4], :resource/cost 2}],
+                :commitment/time-frame [0 5],
+                :commitment/cost       74})
+    (def commitment event)
+    (def agreement-id (uuid/v1))
+
+    (swap! local-view conj (assoc order :sales/request-id
+                             (:sales/request-id commitment)))
+
+    (def sales-request-id (:sales/request-id commitment))
+    (def associated-order (->> @local-view
+                            (filter #(= sales-request-id (:sales/request-id %)))
+                            first))
+    (def customer-id (:customer/id associated-order))
+    (def order-id (:order/id associated-order))
+    (def order-needs (:order/needs associated-order))
+    (def agreement-resources (:commitment/resources commitment))
+    (def agreement-time-frame (:commitment/time-frame commitment))
+    (def commitment-cost (:commitment/cost commitment))
+    (def agreement-price (->> order-needs
+                           (mapcat (fn [id]
+                                     (filter (fn [r] (= id (:service/id r)))
+                                       @service-catalog-view)))
+                           (map :service/price)
+                           (reduce +)))
+    (def agreement-notes ["note 1" "note 2"]))
+
+
+  ())
+
+; endregion
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-customer-agreement
+;
+(defn process-customer-agreement
+  "this function takes an :order/agreement from the customer and turns it into a 'plan'
+  to be submitted for actual 'fulfillment' (as opposed to what planning does, which is sort of
+  hypothetical)
+  "
+  [_ _ _ [{:keys [agreement/id agreement/status] :as event-key} agreement]]
+
+  (println "process-customer-agreement" event-key)
+
+  (if (spec/valid? :customer/agreement agreement)
+    (println "the customer " status " to " id)
+
+    (malformed "process-customer-agreement" :customer/agreement)))
+
+; endregion
+
+
+
 

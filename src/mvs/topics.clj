@@ -2,6 +2,7 @@
 
 
 (def provider-catalog-topic (atom []))
+(def sales-catalog-topic (atom []))
 (def customer-order-topic (atom []))
 (def sales-request-topic (atom []))
 (def sales-commitment-topic (atom []))

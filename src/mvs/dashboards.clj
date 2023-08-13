@@ -1,7 +1,7 @@
 (ns mvs.dashboards)
 
 
-(defn customer-service-catalog [k _ _ catalog]
+(defn process-sale-catalog [k _ _ catalog]
   (println "CUSTOMER CATALOG UPDATE" k))
 
 
