@@ -1,9 +1,13 @@
 (ns mvs.dashboards)
 
 
-(defn process-sale-catalog [k _ _ catalog]
-  (println "CUSTOMER CATALOG UPDATE" k))
+(defn customer-dashboard [_ _ _ event]
+  (println "CUSTOMER received " event))
 
+
+
+(defn provider-dashboard [_ _ _ event]
+  (println "PROVIDER " (:provider/id (second event)) " received " event))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

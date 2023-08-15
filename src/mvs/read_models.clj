@@ -8,31 +8,36 @@
                (into [])))
 
 
-(def provider-alpha [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
-                     {:resource/id 1 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
-                     {:resource/id 2 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
-                     {:resource/id 3 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
-                     {:resource/id 4 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}])
-(def provider-bravo [{:resource/id 0 :resource/time-frames [1 3 5] :resource/cost 5}
-                     {:resource/id 1 :resource/time-frames [1 3 5] :resource/cost 5}
-                     {:resource/id 2 :resource/time-frames [1 3 5] :resource/cost 5}
-                     {:resource/id 3 :resource/time-frames [1 3 5] :resource/cost 5}
-                     {:resource/id 4 :resource/time-frames [1 3 5] :resource/cost 5}])
-(def provider-charlie [{:resource/id 0 :resource/time-frames [2 4 5] :resource/cost 5}
-                       {:resource/id 1 :resource/time-frames [2 4 5] :resource/cost 5}
-                       {:resource/id 2 :resource/time-frames [2 4 5] :resource/cost 5}
-                       {:resource/id 3 :resource/time-frames [2 4 5] :resource/cost 5}
-                       {:resource/id 4 :resource/time-frames [2 4 5] :resource/cost 5}])
-(def provider-delta [{:resource/id 0 :resource/time-frames [0 1 2] :resource/cost 5}
-                     {:resource/id 1 :resource/time-frames [0 1 2] :resource/cost 5}
-                     {:resource/id 2 :resource/time-frames [0 1 2] :resource/cost 5}
-                     {:resource/id 3 :resource/time-frames [0 1 2] :resource/cost 5}
-                     {:resource/id 4 :resource/time-frames [0 1 2] :resource/cost 5}])
-(def provider-echo [{:resource/id 0 :resource/time-frames [3 4] :resource/cost 2}
-                    {:resource/id 1 :resource/time-frames [3 4] :resource/cost 2}
-                    {:resource/id 2 :resource/time-frames [3 4] :resource/cost 2}
-                    {:resource/id 3 :resource/time-frames [3 4] :resource/cost 2}
-                    {:resource/id 4 :resource/time-frames [3 4] :resource/cost 2}])
+(def provider-alpha {:provider/id "alpha"
+                     :resource/catalog [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
+                                        {:resource/id 1 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
+                                        {:resource/id 2 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
+                                        {:resource/id 3 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
+                                        {:resource/id 4 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}]})
+(def provider-bravo {:provider/id "bravo"
+                     :resource/catalog [{:resource/id 0 :resource/time-frames [1 3 5] :resource/cost 5}
+                                        {:resource/id 1 :resource/time-frames [1 3 5] :resource/cost 5}
+                                        {:resource/id 2 :resource/time-frames [1 3 5] :resource/cost 5}
+                                        {:resource/id 3 :resource/time-frames [1 3 5] :resource/cost 5}
+                                        {:resource/id 4 :resource/time-frames [1 3 5] :resource/cost 5}]})
+(def provider-charlie {:provider/id "charlie"
+                       :resource/catalog [{:resource/id 0 :resource/time-frames [2 4 5] :resource/cost 5}
+                                          {:resource/id 1 :resource/time-frames [2 4 5] :resource/cost 5}
+                                          {:resource/id 2 :resource/time-frames [2 4 5] :resource/cost 5}
+                                          {:resource/id 3 :resource/time-frames [2 4 5] :resource/cost 5}
+                                          {:resource/id 4 :resource/time-frames [2 4 5] :resource/cost 5}]})
+(def provider-delta {:provider/id "delta"
+                     :resource/catalog [{:resource/id 0 :resource/time-frames [0 1 2] :resource/cost 5}
+                                        {:resource/id 1 :resource/time-frames [0 1 2] :resource/cost 5}
+                                        {:resource/id 2 :resource/time-frames [0 1 2] :resource/cost 5}
+                                        {:resource/id 3 :resource/time-frames [0 1 2] :resource/cost 5}
+                                        {:resource/id 4 :resource/time-frames [0 1 2] :resource/cost 5}]})
+(def provider-echo {:provider/id "echo"
+                    :resource/catalog [{:resource/id 0 :resource/time-frames [3 4] :resource/cost 2}
+                                       {:resource/id 1 :resource/time-frames [3 4] :resource/cost 2}
+                                       {:resource/id 2 :resource/time-frames [3 4] :resource/cost 2}
+                                       {:resource/id 3 :resource/time-frames [3 4] :resource/cost 2}
+                                       {:resource/id 4 :resource/time-frames [3 4] :resource/cost 2}]})
 
 
 (def provider-catalog-view
@@ -48,10 +53,13 @@
 ;  "history of all the sales catalogs of ACME ever offered to customer" (atom []))
 
 (def order->sales-request-view
-  "maps order/id to :sales/request-id so we can relate all information" (atom []))
+  "maps order/id to :sales/request-id so we can relate all information" (atom {}))
 
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
+
+(def resource-monitoring-view
+  "all the resources that ACME must monitor" (atom []))
 
 
 

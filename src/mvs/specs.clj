@@ -13,6 +13,7 @@
 
 
 ; region ; :resource/catalog
+
 (spec/def :resource/time integer?)
 (spec/def :resource/time-frames (spec/coll-of :resource/time))
 (spec/def :resource/cost integer?)
@@ -25,10 +26,11 @@
 
 
 ; region ; :provider/catalog
+
 (spec/def :provider/id string?)
 (spec/def :provider/event-key (spec/keys :req [:provider/id]))
-(spec/def :provider/catalog (spec/tuple :provider/event-key
-                              :resource/catalog))
+(spec/def :provider/catalog (spec/keys :req [:provider/id
+                                             :resource/catalog]))
 
 ; endregion
 
@@ -36,7 +38,7 @@
 ; region ; :service/catalog
 (spec/def :service/id integer?)
 (spec/def :service/description string?)
-(spec/def :service/element (spec/keys :req [:resource/id
+(spec/def :service/element (spec/keys :req [:resource/googoo
                                             :resource/time-frames]))
 (spec/def :service/elements (spec/coll-of :service/element))
 (spec/def :service/price integer?)
@@ -111,7 +113,7 @@
 ; region ; :sales/failure
 (spec/def :failure/id uuid?)
 (spec/def :failure/reason string?)
-(spec/def :failure/reasons (spec/coll-of :service/failure-reason))
+(spec/def :failure/reasons (spec/coll-of :failure/reason))
 (spec/def :sales/failure (spec/keys :req [:failure/id
                                           :sales/request-id
                                           :request/status
@@ -145,7 +147,41 @@
 ; endregion
 
 
+; region ; :order/approval
+(spec/def :order/status (spec/or
+                          :purchased #(= % :order/purchased)))
+(spec/def :order/approval (spec/keys :req [:agreement/id
+                                           :customer/id
+                                           :order/id
+                                           :order/status]))
+; endregion
 
+
+; region ; :sales/plan
+(spec/def :plan/id uuid?)
+(spec/def :sales/plan (spec/keys :req [:plan/id
+                                       :customer/id
+                                       :sales/request-id
+                                       :commitment/resources]))
+; endregion
+
+
+; region ; :provider/order (ACME places an order with a provider)
+(spec/def :provider/order (spec/keys :req [:order/id
+                                           :provider/id
+                                           :service/elements
+                                           :order/status]))
+; endregion
+
+
+; region ; :resource/measurement
+
+(spec/def :measurement/value integer?)
+(spec/def :resource/measurement (spec/keys :req [:resource/googoo
+                                                 :resource/time-frame
+                                                 :measurement/value]))
+
+; endregion
 
 
 
@@ -160,8 +196,8 @@
 
 (comment
   (spec/explain :sales/request-id (uuid/v1))
-  (spec/explain :customer/request-id (uuid/v1))
-  (spec/explain :customer/needs [0 1])
+  (spec/explain :order/id (uuid/v1))
+  (spec/explain :order/needs [0 1])
   (spec/explain :resource/catalog [{:resource/id 0 :resource/time-frames [0 1]}])
   (spec/explain :sales/request {:sales/request-id    (uuid/v1)
                                 :customer/request-id (uuid/v1)

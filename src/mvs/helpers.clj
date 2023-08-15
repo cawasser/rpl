@@ -10,8 +10,8 @@
 
 
 
-(defn malformed [service-name expected-spec]
-  (println (str service-name " ******** MALFORMED ********  " expected-spec)))
+(defn malformed [service-name expected-spec & structure]
+  (println (str service-name " ******** MALFORMED ********  " expected-spec " // " (first structure))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

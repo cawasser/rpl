@@ -13,6 +13,9 @@
             [clj-uuid :as uuid]))
 
 
+(def last-event (atom nil))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; process-provider-catalog
@@ -33,13 +36,24 @@
       ; 1) update provider-catalog-view
       (swap! provider-catalog-view assoc id catalog)
 
-      ; 2) 'publish' ACME's "Service Catalog"
+      ; 2) update service-catalog-view (for later use)
+      (reset! service-catalog-view service-catalog)
+
+      ; 3) 'publish' ACME's "Service Catalog"
       (publish! sales-catalog-topic service-catalog))
 
     (malformed "process-provider-catalog" :provider/catalog)))
 
 
 
+
+
+; check provider-* against :provider/catalog
+(comment
+  (spec/explain :provider/catalog provider-alpha)
+
+
+  ())
 
 
 ; test process-provider-catalog
@@ -73,22 +87,25 @@
                       <:resource/id> #{ { <:resource/time> <:provider/id> }
                                         { <:resource/time> <:provider/id> } } }`
   "
-  [k _ _ [{provider-id :provider/id} catalog]]
+  [_ _ _ [_ catalog]]
 
-  (println "available-resources (a)" k "//" provider-id)
+  (println "process-available-resources" (:provider/id catalog))
 
   (if (spec/valid? :provider/catalog catalog)
-    (let [new-values (->> catalog
-                       (map (fn [{:keys [resource/id resource/time-frames]}]
-                              {id (into #{}
-                                    (map (fn [t]
-                                           {t provider-id})
-                                      time-frames))}))
-                       (into {}))]
+    (let [provider-id (:provider/id catalog)
+          new-values  (->> catalog
+                        :resource/catalog
+                        (map (fn [{:keys [resource/id resource/time-frames]}]
+                               {id (into #{}
+                                     (map (fn [t]
+                                            {t provider-id})
+                                       time-frames))}))
+                        (into {}))]
 
       (swap! available-resources-view #(merge-with into %1 %2) new-values))
 
-    (malformed "available-resources" :provider/catalog)))
+    (malformed "process-available-resources" :provider/catalog)))
+
 
 
 
@@ -96,11 +113,21 @@
 ; build available-resources-view from provider-catalogs
 (comment
   (do
-    (def provider-a [{:provider/id "alpha"} mvs.read-models/provider-alpha])
-    (def provider-b [{:provider/id "bravo"} mvs.read-models/provider-bravo])
+    (def provider-a [{:provider/id "alpha"} provider-alpha])
+    (def provider-b [{:provider/id "bravo"} provider-bravo])
+    (def m-key {:provider/id "alpha"})
 
     (def local-available-resources (atom {})))
 
+
+  (->> (second provider-a)
+    :resource/catalog
+    (map (fn [{:keys [resource/id resource/time-frames]}]
+           {id (into #{}
+                 (map (fn [t]
+                        {t (:provider/id m-key)})
+                   time-frames))}))
+    (into {}))
 
   (let [[m-key m-content] provider-a
         new-values (->> m-content
@@ -140,6 +167,18 @@
 
   ())
 
+
+; test process-available-resources
+(comment
+  (do
+    (reset! available-resources-view {})
+    (def provider-id (:provider/id provider-alpha)))
+
+  (process-available-resources [] [] [] [{:provider/id provider-id}
+                                         provider-alpha])
+
+  ())
+
 ; endregion
 
 
@@ -162,6 +201,8 @@
 
   (println "process-customer-order" (:order/id order))
 
+  (reset! last-event order)
+
   (if (spec/valid? :customer/order order)
     ; region ; handle :customer/order
     (let [request-id (uuid/v1)
@@ -173,22 +214,31 @@
                                      (filter #(= (:service/id %) service-id) @service-catalog-view)))))
                        (into []))]
 
-      ; 1) store the mapping from the :customer/order to the :/sales/request-id
-      (swap! order->sales-request-view conj (assoc order :sales/request-id request-id))
+      (println "process-customer-order (b) " (:order/needs order) " // " resources)
 
-      ; 2) publish the :sales/request
-      (publish! sales-request-topic [{:sales/request-id request-id
-                                      :order/id         (:order/id order)
-                                      :customer/id      (:customer/id order)}
-                                     {:sales/request-id request-id
-                                      :request/status   :request/submitted
-                                      :order/id         (:order/id order)
-                                      :customer/id      (:customer/id order)
-                                      :order/needs      (:order/needs order)
-                                      :sales/resources  resources}]))
+      (if (not-empty resources)
+        (do
+          ; 1) store the mapping from the :order/id to the :sales/request-id
+          (swap! order->sales-request-view assoc
+            (:order/id order) (assoc order :sales/request-id request-id))
+
+          ; 2) publish the :sales/request or send the customer some kind of Error
+
+          (publish! sales-request-topic [{:sales/request-id request-id
+                                          :order/id         (:order/id order)
+                                          :customer/id      (:customer/id order)}
+                                         {:sales/request-id request-id
+                                          :request/status   :request/submitted
+                                          :order/id         (:order/id order)
+                                          :customer/id      (:customer/id order)
+                                          :order/needs      (:order/needs order)
+                                          :sales/resources  resources}]))
+
+        (println "process-customer-order !!!!!! Error Error Error !!!!!! "
+          (:order/id order) " // " (:order/needs order))))
     ; endregion
 
-    (malformed "process-customer-order" :customer/order)))
+    (malformed "process-customer-order" :customer/order order)))
 
 
 
@@ -205,11 +255,13 @@
   ())
 
 
-; process-customer-order -build a :sales/request from a :customer/request
+; process-customer-order ->  build a :sales/request from a :customer/request
 (comment
   (do
     (def order-id (uuid/v1))
     (def service-request-id (uuid/v1))
+
+    (def order @last-event)
     (def order {:sales/request-id service-request-id
                 :request/status   :request/submitted
                 :customer/id      (uuid/v1)
@@ -223,7 +275,6 @@
 
   (spec/explain :customer/order order)
 
-
   (->> order
     :order/needs
     (mapcat (fn [service-id]
@@ -233,6 +284,47 @@
     (into []))
 
   (swap! local-view conj (assoc order :sales/request-id service-request-id))
+
+  ())
+
+
+; send an "error" if the customer needs are incorrect (asking for something that
+; doesn't exist, etc.)
+(comment
+  (do
+    (def order-id (uuid/v1))
+    (def customer-id (uuid/v1))
+    (def order {:customer/id (uuid/v1)
+                :order/id    order-id
+                :order/needs [20]}))
+
+  (->> order
+    :order/needs
+    (mapcat (fn [service-id]
+              (:service/elements
+                (first
+                  (filter #(= (:service/id %) service-id) @service-catalog-view)))))
+    (into []))
+
+  (process-customer-order [] [] [] [{:order/id customer-id :customer/id customer-id}
+                                    order])
+
+  ())
+
+
+
+; update order->sales-request-view with the new order->service-request mapping
+(comment
+  (do
+    (def local-order->sales-request-view (atom {}))
+    (def order-id (uuid/v1))
+    (def order {:order/id order-id})
+    (def request-id (uuid/v1)))
+
+
+  (swap! local-order->sales-request-view
+    assoc order-id (assoc order :sales/request-id request-id))
+
 
   ())
 
@@ -265,6 +357,15 @@
     (first m)))
 
 
+(defn- get-provider-resource-cost [provider-id resource-id]
+  (as-> @provider-catalog-view v
+    (get v provider-id)
+    (:resource/catalog v)
+    (filter #(= resource-id (:resource/id %)) v)
+    (first v)
+    (:resource/cost v)))
+
+
 (defn- allocation->resource
   "turn allocs, which are in a reduced format, back into :commitment/resources
 
@@ -275,14 +376,12 @@
   (->> allocs
     (mapcat seq)
     (group-by second)
-    (map (fn [[provider t]]
+    (map (fn [[provider-id t]]
            {:resource/id          resource-id
-            :provider/id          provider
+            :provider/id          provider-id
             :resource/time-frames (into [] (map first t))
             :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in @provider-catalog-view [provider
-                                                                    resource-id
-                                                                    :resource/cost]))}))))
+                                    (get-provider-resource-cost provider-id resource-id))}))))
 
 
 (defn- commit-resources
@@ -308,6 +407,8 @@
   - request : (:sales/request) everything we need to locate in the 'warehouse' for a given customer"
 
   [_ _ _ [event-key request]]
+
+  ;(reset! last-event request)
 
   ; TODO: where does process-service-request get the available-resources?
   ;         currently using @available-resources-view
@@ -368,10 +469,28 @@
                                "should the reasons also include the failed 'needs'?"]}])))
     ; endregion
 
-    (println "process-sales-request   ********* MALFORMED ******** expected :sales/request")))
+    (println "process-sales-request   ********* MALFORMED ******** expected :sales/request" request)))
 
 
 
+
+
+; getting the cost for a provider's resource
+(comment
+  (do
+    (def provider-id "alpha")
+    (def resource-id 3))
+
+  (as-> @provider-catalog-view v
+    (get v provider-id)
+    (:resource/catalog v)
+    (filter #(= resource-id (:resource/id %)) v)
+    (first v)
+    (:resource/cost v))
+
+
+
+  ())
 
 
 ; process-sales-request
@@ -543,21 +662,17 @@
     (->> allocs
       (mapcat seq)
       (group-by second)
-      (map (fn [[provider t]]
+      (map (fn [[provider-id t]]
              {:resource/id          resource-id
-              :provider/id          provider
+              :provider/id          provider-id
               :resource/time-frames (into [] (map first t))
-              :resource/cost        (get-in @provider-catalog-view [provider
-                                                                    resource-id
-                                                                    :resource/cost])}))))
+              :resource/cost        (* (count (into [] (map first t)))
+                                      (get-provider-resource-cost provider-id resource-id))}))))
 
   (def allocated-resources (mapcat (fn [[resource-id allocs]]
                                      (allocation->resource resource-id allocs))
                              allocations))
 
-
-  ; work out getting the correct cost from the provider-catalog
-  (get-in @provider-catalog-view ["alpha" 0 :resource/cost])
 
   ; lastly, we need the min & max of all the time-frames
   (let [all-times (->> allocated-resources
@@ -810,6 +925,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; process-sales-commitment
 ;
+
+(defn- associated-sales-request [order-id]
+  (->> @order->sales-request-view
+    vals
+    (filter #(= order-id (:order/id %)))
+    first))
+
+
+(defn- associated-order [sales-request-id]
+  (->> @order->sales-request-view
+    vals
+    (filter #(= sales-request-id (:sales/request-id %)))
+    first))
+
+
+(defn- add-agreement [{agreement-id :agreement/id
+                       order-id     :order/id
+                       resources    :agreement/resources
+                       :as          agreement}]
+
+  (swap! order->sales-request-view
+    assoc order-id (-> @order->sales-request-view
+                     (get order-id)
+                     (assoc :agreement/id agreement-id)
+                     (assoc :agreement/resources resources))))
+
+
 (defn process-sales-commitment
   "this function takes a :sales/commitment from 'planning' and enriches into
    a :sales/agreement event which we send ot the customer for their approval (or rejection)
@@ -820,6 +962,8 @@
    tell the customer that we can't do anything, by sending a :sales/failure event"
 
   [_ _ _ [event-key event]]
+
+  ;(reset! last-event event)
 
   (if (or (spec/valid? :sales/commitment event)
         (spec/valid? :sales/failure event))
@@ -833,9 +977,7 @@
         (let [commitment           event
               agreement-id         (uuid/v1)
               sales-request-id     (:sales/request-id commitment)
-              associated-order     (->> @order->sales-request-view
-                                     (filter #(= sales-request-id (:sales/request-id %)))
-                                     first)
+              associated-order     (associated-order sales-request-id)
               customer-id          (:customer/id associated-order)
               order-id             (:order/id associated-order)
               order-needs          (:order/needs associated-order)
@@ -848,29 +990,82 @@
                                                  @service-catalog-view)))
                                      (map :service/price)
                                      (reduce +))
-              agreement-notes      ["note 1" "note 2"]]
+              agreement-notes      ["note 1" "note 2"]
+              sales-agreement      {:agreement/id         agreement-id
+                                    :customer/id          customer-id
+                                    :order/id             order-id
+                                    :order/needs          order-needs
+                                    :agreement/resources  agreement-resources
+                                    :agreement/time-frame agreement-time-frame
+                                    :agreement/price      agreement-price
+                                    :agreement/notes      agreement-notes}]
 
           (println "profit" (- agreement-price commitment-cost)
             "//" agreement-price "//" commitment-cost)
 
-          (publish! service-agreement-topic [{:agreement/id agreement-id}
-                                             {:agreement/id         agreement-id
-                                              :customer/id          customer-id
-                                              :order/id             order-id
-                                              :order/needs          order-needs
-                                              :agreement/resources  agreement-resources
-                                              :agreement/time-frame agreement-time-frame
-                                              :agreement/price      agreement-price
-                                              :agreement/notes      agreement-notes}])))
+          (println "process-sales-commitment (b) " associated-order)
+
+          ; we should also (assoc) the :agreement/id & :commitment/resources into order->sales-request-view
+          (add-agreement sales-agreement)
+
+          (publish! sales-agreement-topic [{:agreement/id agreement-id}
+                                           sales-agreement])))
 
       :request/failed
       (println "process-sales-commitment ******* FAILURE ******" event-key "//" event))
     ; endregion
 
-    (malformed "process-sales-commitment" :sales/commitment)))
+    (malformed "process-sales-commitment" :sales/commitment event)))
 
 
 
+
+
+; check :sales/commitment against the spec
+(comment
+  (spec/explain :sales/commitment {:commitment/id         #uuid"1cce2aa0-3895-11ee-be86-1768c9d0d0e5",
+                                   :sales/request-id      #uuid"8f2c8eb0-3882-11ee-be86-1768c9d0d0e5",
+                                   :request/status        :request/successful,
+                                   :commitment/resources  [{:resource/id 0, :provider/id "delta", :resource/time-frames [0 2], :resource/cost 10}
+                                                           {:resource/id 0, :provider/id "alpha", :resource/time-frames [1 5], :resource/cost 20}
+                                                           {:resource/id 0, :provider/id "bravo", :resource/time-frames [3], :resource/cost 5}
+                                                           {:resource/id 0, :provider/id "echo", :resource/time-frames [4], :resource/cost 2}
+                                                           {:resource/id 1, :provider/id "delta", :resource/time-frames [0 2], :resource/cost 10}
+                                                           {:resource/id 1, :provider/id "alpha", :resource/time-frames [1 5], :resource/cost 20}
+                                                           {:resource/id 1, :provider/id "bravo", :resource/time-frames [3], :resource/cost 5}
+                                                           {:resource/id 1, :provider/id "echo", :resource/time-frames [4], :resource/cost 2}],
+                                   :commitment/time-frame [0 5],
+                                   :commitment/cost       74})
+
+  ()
+
+  ())
+
+
+; get the :order/id from the :sales/request-id from order->sales-request-view
+(comment
+  (do
+    (def sales-request-id #uuid"96830160-3b04-11ee-9c78-16a8ee85083d"))
+
+  (->> @order->sales-request-view
+    vals
+    (filter #(= sales-request-id (:sales/request-id %)))
+    first)
+
+  ())
+
+
+; get the :sales/request-id from the :order-id
+(comment
+  (do
+    (def order-id #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d"))
+
+  @order->sales-request-view
+
+  (associated-sales-request order-id)
+
+
+  ())
 
 
 ; process-sales-commitment
@@ -920,29 +1115,268 @@
 
   ())
 
+
+; add-in the :agreement/id to the cache
+(comment
+  (do
+    (def agreement-id (uuid/v1))
+    (def order-id #uuid"6d9bc4e3-3a4a-11ee-8473-e65ce679c38d")
+    (def customer-id #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
+    (def service-request-id #uuid"7139d330-3a4a-11ee-8473-e65ce679c38d")
+    (def agreement-resources [{:resource/id       "100" :resource/time-frames [0 1]
+                               :resource/provider "alpha" :resource/cost 10}])
+
+    (def local-order->sales-request-view
+      (atom {#uuid"6d9bc4e3-3a4a-11ee-8473-e65ce679c38d"
+             {:order/id         #uuid"6d9bc4e3-3a4a-11ee-8473-e65ce679c38d",
+              :customer/id      #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d",
+              :order/needs      [0 1],
+              :sales/request-id #uuid"7139d330-3a4a-11ee-8473-e65ce679c38d"}})))
+
+  @order->sales-request-view
+
+
+  (-> @local-order->sales-request-view
+    (get order-id)
+    (assoc :agreement/id agreement-id)
+    (assoc :commitment/resources agreement-resources))
+
+
+  (-> @local-order->sales-request-view
+    (get order-id)
+    (assoc :agreement/id agreement-id)
+    (assoc :commitment/resources agreement-resources))
+
+
+
+  (swap! local-order->sales-request-view
+    assoc order-id
+    (-> @local-order->sales-request-view
+      (get order-id)
+      (assoc :agreement/id agreement-id)
+      (assoc :commitment/resources agreement-resources)))
+
+
+
+  ())
+
 ; endregion
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; region ; process-customer-agreement
+; region ; process-order-approval
 ;
-(defn process-customer-agreement
+(defn process-order-approval
   "this function takes an :order/agreement from the customer and turns it into a 'plan'
   to be submitted for actual 'fulfillment' (as opposed to what planning does, which is sort of
   hypothetical)
   "
-  [_ _ _ [{:keys [agreement/id agreement/status] :as event-key} agreement]]
+  [_ _ _ [{:keys [order/id] :as event-key} {status      :order/status
+                                            customer-id :customer/id
+                                            order-id    :order/id
+                                            :as         approval}]]
 
-  (println "process-customer-agreement" event-key)
+  (println "process-order-approval" event-key)
 
-  (if (spec/valid? :customer/agreement agreement)
-    (println "the customer " status " to " id)
+  (if (spec/valid? :order/approval approval)
+    (do
+      (println "the customer " status " order " order-id)
 
-    (malformed "process-customer-agreement" :customer/agreement)))
+      (let [sales-request-id (-> order-id associated-sales-request :sales/request-id)
+            assoc-agreement  (associated-order sales-request-id)
+            resources        (:agreement/resources assoc-agreement)
+            plan-id          (uuid/v1)
+            plan             {:plan/id              plan-id
+                              :customer/id          customer-id
+                              :sales/request-id     sales-request-id
+                              :commitment/resources resources}]
+
+        (publish! plan-topic [{:plan/id plan-id} plan])))
+
+    (malformed "process-order-approval" :order/approval approval)))
+
+
+
+
+
+; get the :sales/request associated with this :agreement/id
+(comment
+  (do
+    (def sales-request-id #uuid"def57e90-3b05-11ee-9c78-16a8ee85083d"))
+
+  @order->sales-request-view
+
+  (associated-order sales-request-id)
+
+
+  ())
+
+
+; get the :sales/resources for the :sales/request
+(comment
+  (do
+    (def sales-request-id #uuid"def57e90-3b05-11ee-9c78-16a8ee85083d")
+    (def assoc-agreement (associated-order sales-request-id)))
+
+  (:agreement/resources assoc-agreement)
+
+  ())
+
+
+; format the :sales/plan from the relevant data
+(comment
+  (do
+    (def sales-request-id #uuid"def57e90-3b05-11ee-9c78-16a8ee85083d")
+    (def assoc-agreement (associated-order sales-request-id))
+    (def resources (:agreement/resources assoc-agreement)))
+
+  (map #(dissoc % :resource/cost) resources)
+
+  ())
+
+; endregion
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-plan
+;
+(defn process-plan [_ _ _ [{:keys [order/id] :as event-key}
+                           {plan-id          :plan/id
+                            customer-id      :customer/id
+                            sales-request-id :sales/request-id
+                            resources        :commitment/resources
+                            :as              plan}]]
+
+  (println "process-plan" event-key)
+
+  (if (spec/valid? :sales/plan plan)
+    (let [resources     (->> plan
+                          :commitment/resources
+                          (group-by :provider/id))
+          expanded-plan (map (fn [[id r]]
+                               {id (map (fn [m]
+                                          (dissoc m :provider/id :resource/cost))
+                                     r)})
+                          resources)]
+
+      ; 1) place orders with the providers
+      (doseq [p expanded-plan]
+        (doseq [[id r] p]
+          (let [order-id       (uuid/v1)
+                provider-order {:order/id         order-id
+                                :provider/id      id
+                                :order/status     :order/purchased
+                                :service/elements r}]
+            (publish! provider-order-topic [{:order/id order-id}
+                                            provider-order])))))
+
+    ; 2) tell "monitoring" to watch for the new orders
+
+
+    (malformed "process-plan" :sales/plan plan)))
+
+
+
+
+; format a :provider/shipping event to each :provider/id (in the :sales/plan, specifically
+; the :commitment/resources key)
+(comment
+  (do
+    (def plan {:plan/id          (uuid/v1)
+               :customer/id      (uuid/v1)
+               :sales/request-id (uuid/v1)
+               :commitment/resources
+               [{:resource/id          0 :provider/id "alpha"
+                 :resource/time-frames [0 1] :resource/cost 10}
+                {:resource/id          0 :provider/id "delta"
+                 :resource/time-frames [0 1] :resource/cost 10}
+                {:resource/id          1 :provider/id "alpha"
+                 :resource/time-frames [0 1] :resource/cost 10}
+                {:resource/id          1 :provider/id "bravo"
+                 :resource/time-frames [0 1] :resource/cost 10}]}))
+
+  ; so we expect 3 events, one each for: "alpha", "bravo", and "delta"
+
+  (def resources (->> plan
+                   :commitment/resources
+                   (group-by :provider/id)))
+
+  ; then, drop the :provider/id and :resource/cost keys from each resource
+  ; (this is a map inside a map)
+  (def expanded-plan (map (fn [[id r]]
+                            {id (map (fn [m]
+                                       (dissoc m :provider/id :resource/cost))
+                                  r)})
+                       resources))
+
+  ; and then reformat into :provider/order:
+  ;     :order/id
+  ;     :provider/id
+  ;     :service/elements
+  ;     :order/status
+  (def provider-order {:order/id     (uuid/v1)
+                       :provider/id  "alpha"
+                       :order/status :order/purchased
+                       :service/elements
+                       [{:resource/id 0 :resource/time-frames [0 1]}
+                        {:resource/id 1 :resource/time-frames [0 1]}]})
+
+  (spec/explain :provider/order provider-order)
+
+  ; create an event for each provider in expanded-plan
+  (doall
+    (mapcat (fn [m]
+              (map (fn [[id r]]
+                     (let [order-id       (uuid/v1)
+                           provider-order {:order/id         order-id
+                                           :provider/id      id
+                                           :order/status     :order/purchased
+                                           :service/elements r}]
+                       [{:order/id order-id}
+                        provider-order]))
+                m))
+      expanded-plan))
+
+  (doseq [p expanded-plan]
+    (doseq [[id r] p]
+      (let [order-id       (uuid/v1)
+            provider-order {:order/id         order-id
+                            :provider/id      id
+                            :order/status     :order/purchased
+                            :service/elements r}]
+        [{:order/id order-id}
+         provider-order])))
+
+
+
+
+
+  ())
+
 
 ; endregion
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; process-resource-measurement
+;
+(defn process-resource-measurement [_ _ _ [{:keys [resoruce/id] :as event-key}
+                                           {:keys [resource/id
+                                                   resource/time-frame
+                                                   measurement/value]
+                                            :as measurement}]]
 
+  (println "process-resource-measurement" event-key)
+
+  (if (spec/valid? :resource/measurement measurement)
+    (do)
+
+
+    (malformed "process-resource-measurement" :resource/measurement measurement)))
+
+
+; endregion
