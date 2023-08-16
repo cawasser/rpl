@@ -47,8 +47,7 @@
                                 :process-sales-commitment    {:mvs/entity-type :mvs/service :mvs/name #'process-sales-commitment}
                                 :process-order-approval      {:mvs/entity-type :mvs/service :mvs/name #'process-order-approval}
 
-                                :process-plan                {:mvs/entity-type :mvs/service :mvs/name #'process-plan}
-                                :process-monitoring-plan     {:mvs/entity-type :mvs/service :mvs/name #'process-monitoring-plan}}
+                                :process-plan                {:mvs/entity-type :mvs/service :mvs/name #'process-plan}}
 
                  :mvs/workflow [[:provider-catalog-topic :process-provider-catalog]
                                 [:provider-catalog-topic :process-available-resources]
@@ -170,6 +169,7 @@
 
   (view-topo mvs-wiring)
 
+  ; 1) start
   (reset-topology mvs-wiring)
 
 
@@ -199,7 +199,8 @@
   @order->sales-request-view
   @service-catalog-view
 
-  ; region ; customers request services
+
+  ; region ; 2) customers request services
   (do
     (def customer-1 #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
     (def customer-2 #uuid"5a9ff450-3ac3-11ee-8473-e65ce679c38d")
@@ -234,7 +235,7 @@
   ; endregion
 
 
-  ; region ; customers agree to successful orders (order-1 & order-2 above) i.e., :order/approval
+  ; region ; 3) customers agree to successful orders (order-1 & order-2 above) i.e., :order/approval
   ;
   ; approve order-1
   (do
@@ -263,15 +264,19 @@
   ; endregion
 
 
-  ; region ; providers ship resources
+  ; region ; 4) providers ship resources
   (do
-    (def alpha-reports [{:resource/id 0}
-                        {:provider/id      "alpha"
-                         :service/elements [{:resource/id          0
-                                             :resource/time-frames [0 1 2 3 4 5]}]}]))
+    (def alpha-ships [{:resource/id 0}
+                      {:provider/id      "alpha"
+                       :service/elements [{:resource/id          0
+                                           :resource/time-frames [0 1 2 3 4 5]}]}]))
 
   (spec/explain :provider/shipment (second alpha-ships))
 
+
+  ; endregion
+
+  ; region 5) resources start reporting health & status
 
   ; endregion
 

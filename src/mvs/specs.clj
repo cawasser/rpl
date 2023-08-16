@@ -5,19 +5,46 @@
 
 
 ; region ; :googoo/googoos (resource)
+
+; TODO: at some point (monitoring) we need to distinguish between each
+;       individual Googoo, regardless of its attributes, but HOW? Currently,
+;       we identify a Googoo by :resource/id which is NOT unique throughout
+;       the system, eg. "alpha" and ""bravo" BOTH produce several "0" Googoos,
+;       even at the same :resource/time-frame!
+
+; Googoos are actually uniquely defined by:
+;      1) :resource/id (which should be a :googoo/type)
+;      2) :resource/time-frame, AND
+;      3) :provider/id
+;
+; this changes things related to allocating resources by attributes, specifically
+; :resource/type / :resource/time-frame, with :provider/id being the wildcard (pattern-matching
+; concept)
+;
+; this effectively resets :resource/id to :resource/type:
+;
+;    :resource/definition, :sales/resource, :commitment/resource, :agreement/resource
+;
+;
+
 (spec/def :resource/id integer?)
-(spec/def :googoo/googoo (spec/keys :req [:resource/id]))
-(spec/def :googoo/googoos (spec/coll-of :googoo/googoo))
+(spec/def :resource/type integer?)
+(spec/def :resource/time integer?)
+(spec/def :resource/attributes (spec/cat
+                                 :type :resource/type
+                                 :time :resource/time
+                                 :provider :provider/id))
+(spec/def :resource/resource (spec/keys :req [:resource/id
+                                              :resource/attributes]))
 
 ; endregion
 
 
 ; region ; :resource/catalog
 
-(spec/def :resource/time integer?)
 (spec/def :resource/time-frames (spec/coll-of :resource/time))
 (spec/def :resource/cost integer?)
-(spec/def :resource/definition (spec/keys :req [:resource/id
+(spec/def :resource/definition (spec/keys :req [:resource/type
                                                 :resource/time-frames
                                                 :resource/cost]))
 (spec/def :resource/catalog (spec/coll-of :resource/definition))
@@ -28,7 +55,6 @@
 ; region ; :provider/catalog
 
 (spec/def :provider/id string?)
-(spec/def :provider/event-key (spec/keys :req [:provider/id]))
 (spec/def :provider/catalog (spec/keys :req [:provider/id
                                              :resource/catalog]))
 
@@ -38,7 +64,7 @@
 ; region ; :service/catalog
 (spec/def :service/id integer?)
 (spec/def :service/description string?)
-(spec/def :service/element (spec/keys :req [:resource/googoo
+(spec/def :service/element (spec/keys :req [:resource/type
                                             :resource/time-frames]))
 (spec/def :service/elements (spec/coll-of :service/element))
 (spec/def :service/price integer?)
@@ -75,7 +101,7 @@
 
 ; region ; :sales/request
 (spec/def :sales/request-id uuid?)
-(spec/def :sales/resource (spec/keys :req [:resource/id :resource/time-frames]))
+(spec/def :sales/resource (spec/keys :req [:resource/type :resource/time-frames]))
 (spec/def :sales/resources (spec/coll-of :sales/resource))
 (spec/def :sales/request (spec/keys :req [:sales/request-id
                                           :request/status
@@ -89,7 +115,7 @@
 
 ; region ; :sales/commitment
 (spec/def :commitment/id uuid?)
-(spec/def :commitment/resource (spec/keys :req [:resource/id
+(spec/def :commitment/resource (spec/keys :req [:resource/type
                                                 :provider/id
                                                 :resource/time-frames
                                                 :resource/cost]))
@@ -125,7 +151,7 @@
 ; region ; :sales/agreement
 (spec/def :agreement/id uuid?)
 (spec/def :agreement/price integer?)
-(spec/def :agreement/resource (spec/keys :req [:resource/id
+(spec/def :agreement/resource (spec/keys :req [:resource/type
                                                :resource/time-frames]))
 (spec/def :agreement/resources (spec/coll-of :agreement/resource))
 (spec/def :agreement/start-time integer?)
@@ -154,6 +180,7 @@
                                            :customer/id
                                            :order/id
                                            :order/status]))
+
 ; endregion
 
 
@@ -198,32 +225,32 @@
   (spec/explain :sales/request-id (uuid/v1))
   (spec/explain :order/id (uuid/v1))
   (spec/explain :order/needs [0 1])
-  (spec/explain :resource/catalog [{:resource/id 0 :resource/time-frames [0 1]}])
+  (spec/explain :resource/catalog [{:resource/type 0 :resource/time-frames [0 1]}])
   (spec/explain :sales/request {:sales/request-id    (uuid/v1)
                                 :customer/request-id (uuid/v1)
                                 :request/status      :request/submitted
                                 :customer/needs      [0 1]
-                                :sales/resources     [{:resource/id 0 :resource/time-frames [0 1 2 3 4 5]}
-                                                      {:resource/id 1 :resource/time-frames [0 1 2 3 4 5]}]})
+                                :sales/resources     [{:resource/type 0 :resource/time-frames [0 1 2 3 4 5]}
+                                                      {:resource/type 1 :resource/time-frames [0 1 2 3 4 5]}]})
 
   ())
 
 
 (comment
   (spec/explain :commitment/id (uuid/v1))
-  (spec/explain :commitment/resource {:resource/id          0 :provider/id "alpha"
+  (spec/explain :commitment/resource {:resource/type          0 :provider/id "alpha"
                                       :resource/time-frames [0 1 2 3 8 9] :resource/cost 25})
-  (spec/explain :commitment/resources [{:resource/id          0 :provider/id "alpha"
+  (spec/explain :commitment/resources [{:resource/type          0 :provider/id "alpha"
                                         :resource/time-frames [0 1 2] :resource/cost 25}
-                                       {:resource/id          1 :provider/id "alpha"
+                                       {:resource/type          1 :provider/id "alpha"
                                         :resource/time-frames [3 8 9] :resource/cost 25}])
   (spec/explain :commitment/start-time 0)
   (spec/explain :commitment/end-time 9)
   (spec/explain :commitment/time-frame [0 9])
   (spec/explain :sales/commitment {:commitment/id         (uuid/v1)
-                                   :commitment/resources  [{:resource/id          0 :provider/id "alpha"
+                                   :commitment/resources  [{:resource/type          0 :provider/id "alpha"
                                                             :resource/time-frames [0 1 2] :resource/cost 25}
-                                                           {:resource/id          1 :provider/id "alpha"
+                                                           {:resource/type          1 :provider/id "alpha"
                                                             :resource/time-frames [3 8 9] :resource/cost 25}]
                                    :commitment/time-frame [0 9]})
 
