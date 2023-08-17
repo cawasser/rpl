@@ -37,7 +37,7 @@
                                 :resource/usage       {:mvs/message-type :mvs/event}
                                 :resource/health      {:mvs/message-type :mvs/event}
                                 :resource/performance {:mvs/message-type :mvs/event}
-                                :resources            {:mvs/message-type :mvs/view}
+                                :resource/resources            {:mvs/message-type :mvs/view}
                                 :resource/state       {:mvs/message-type :mvs/view}}
 
 
@@ -86,14 +86,14 @@
                                 [:process-provider-catalog :service-catalog-view :provider/catalog]
                                 [:provider-catalog-topic :process-available-resources :provider/catalog]
                                 [:process-provider-catalog :sales-catalog-topic :sales/catalog]
-                                [:process-available-resources :available-resources-view :resources]
+                                [:process-available-resources :available-resources-view :resource/resources]
                                 [:sales-catalog-topic :customer-dashboard :sales/catalog]
 
                                 [:customer-order-topic :process-customer-order :customer/order]
                                 [:customer-order-approval :process-order-approval :customer/approval]
                                 [:sales-request-topic :process-sales-request :sales/request]
-                                [:available-resources-view :process-sales-request :resources]
-                                [:process-sales-request :committed-resource-view :resources]
+                                [:available-resources-view :process-sales-request :resource/resources]
+                                [:process-sales-request :committed-resource-view :resource/resources]
 
                                 [:sales-commitment-topic :process-sales-commitment :sales/commitment]
                                 [:sales-failure-topic :process-sales-commitment :sales/failure]
@@ -102,7 +102,7 @@
                                 [:process-order-approval :plan-topic :resource/plan]
                                 [:plan-topic :process-plan :resource/plan]
 
-                                [:committed-resource-view :process-order-approval :resources]
+                                [:committed-resource-view :process-order-approval :resource/resources]
 
                                 [:process-customer-order :sales-request-topic :sales/request]
                                 [:process-sales-request :sales-commitment-topic :sales/commitment]
@@ -110,11 +110,11 @@
                                 [:process-sales-commitment :sales-agreement-topic :sales/commitment]
 
                                 [:process-plan :provider-order-topic :provider/order]
-                                [:process-plan :resource-state-view :resources]
+                                [:process-plan :resource-state-view :resource/resources]
                                 [:provider-order-topic :provider-dashboard :provider/order]
 
                                 [:shipment-topic :process-shipment :provider/shipment]
-                                [:process-shipment :resource-state-view :resources]
+                                [:process-shipment :resource-state-view :resource/resources]
 
                                 [:resource-measurement-topic :process-measurement :resource/measurement]
                                 [:resource-state-view :process-measurement :resource/state]
