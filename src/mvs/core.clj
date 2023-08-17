@@ -31,7 +31,7 @@
                                 :customer/approval    {:mvs/message-type :mvs/command}
                                 :resource/plan        {:mvs/message-type :mvs/event}
                                 :resource/config      {:mvs/message-type :mvs/command}
-                                :provider/order       {:mvs/message-type :mvs/event}
+                                :provider/order       {:mvs/message-type :mvs/command}
                                 :provider/shipment    {:mvs/message-type :mvs/event}
                                 :resource/measurement {:mvs/message-type :mvs/event}
                                 :resource/usage       {:mvs/message-type :mvs/event}
@@ -62,6 +62,9 @@
                                 :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
                                 :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
                                 :monitoring-dashboard         {:mvs/entity-type :mvs/dashboard :mvs/name #'monitoring-dashboard}
+                                :billing-dashboard            {:mvs/entity-type :mvs/dashboard :mvs/name #'billing-dashboard}
+                                :planning-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'planning-dashboard}
+                                :customer-support-dashboard   {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-support-dashboard}
 
                                 :process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
                                 :process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
@@ -80,6 +83,7 @@
 
                  :mvs/workflow [[:provider-catalog-topic :process-provider-catalog :provider/catalog]
                                 [:service-catalog-view :process-provider-catalog :provider/catalog]
+                                [:process-provider-catalog :service-catalog-view :provider/catalog]
                                 [:provider-catalog-topic :process-available-resources :provider/catalog]
                                 [:process-provider-catalog :sales-catalog-topic :sales/catalog]
                                 [:process-available-resources :available-resources-view :resources]
@@ -88,6 +92,8 @@
                                 [:customer-order-topic :process-customer-order :customer/order]
                                 [:customer-order-approval :process-order-approval :customer/approval]
                                 [:sales-request-topic :process-sales-request :sales/request]
+                                [:available-resources-view :process-sales-request :resources]
+                                [:process-sales-request :committed-resource-view :resources]
 
                                 [:sales-commitment-topic :process-sales-commitment :sales/commitment]
                                 [:sales-failure-topic :process-sales-commitment :sales/failure]

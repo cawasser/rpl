@@ -81,6 +81,13 @@
     (lio/view)))
 
 
+(defn- label [text color font-color]
+  {:color     color
+   :label     text
+   :fontcolor font-color
+   :penwidth  3})
+
+
 (defn view-topo-2 [{:keys [mvs/messages mvs/entities mvs/workflow] :as topo}]
   (let [nodes (->> topo
                 :mvs/entities
@@ -89,17 +96,17 @@
                             :mvs/topic {:shape :parallelogram :fillcolor :orange :style :filled}
                             :mvs/service {:shape :box :style :rounded}
                             :mvs/ktable {:shape :cylinder :fillcolor :green :style :filled}
-                            :mvs/dashboard {:shape :box}
+                            :mvs/dashboard {:shape :doubleoctagon}
                             {:shape :component})]))
                 (into []))
         edges (->> topo
                 :mvs/workflow
                 (map (fn [e] (conj (into [] (drop-last e))
                                (condp = (-> messages ((last e)) :mvs/message-type)
-                                 :mvs/command {:color :blue :label (str (last e))}
-                                 :mvs/event {:color :orange :label (str (last e))}
-                                 :mvs/view {:color :green :label (str (last e))}
-                                 {:color :black :label (str (last e))}))))
+                                 :mvs/command (label (str (last e)) :blue :blue)
+                                 :mvs/event (label (str (last e)) :orange :darkorange)
+                                 :mvs/view (label (str (last e)) :seagreen :darkgreen)
+                                 (label (str (last e)) :black :black)))))
                 (into []))]
 
     (-> (dot/digraph
@@ -213,6 +220,38 @@
     (into []))
 
 
+
+
+  ())
+
+
+; topo-2
+(comment
+  (let [nodes (->> topo
+                :mvs/entities
+                (map (fn [[k {:keys [mvs/entity-type]}]]
+                       [k (condp = entity-type
+                            :mvs/topic {:shape :parallelogram :fillcolor :orange :style :filled}
+                            :mvs/service {:shape :box :style :rounded}
+                            :mvs/ktable {:shape :cylinder :fillcolor :green :style :filled}
+                            :mvs/dashboard {:shape :box}
+                            {:shape :component})]))
+                (into []))
+        edges (->> topo
+                :mvs/workflow
+                (map (fn [e] (conj (into [] (drop-last e))
+                               (condp = (-> messages ((last e)) :mvs/message-type)
+                                 :mvs/command (label (str (last e)) :blue :blue)
+                                 :mvs/event (label (str (last e)) :darkorange :darkorange)
+                                 :mvs/view (label (str (last e)) :seagreen :darkgreen)
+                                 (label (str (last e)) :black :black)))))
+                (into []))]
+
+    (-> (dot/digraph
+          (apply conj edges nodes))
+      dot/dot))
+  ;(dj/render {:format :png})
+  ;(open-data ".png")))
 
 
   ())
