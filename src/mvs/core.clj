@@ -1,17 +1,16 @@
 (ns mvs.core
   (:require [mvs.commands :refer :all]
-    [mvs.constants :refer :all]
-    [mvs.dashboards :refer :all]
-    [mvs.events :refer :all]
-    [mvs.helpers :refer :all]
-    [mvs.read-models :refer :all]
-    [mvs.services :refer :all]
-    [mvs.specs :refer :all]
-    [mvs.topics :refer :all]
-    [clojure.spec.alpha :as spec]
-    [clj-uuid :as uuid]
-    [loom.graph :as lg]
-    [loom.io :as lio]))
+            [mvs.constants :refer :all]
+            [mvs.dashboards :refer :all]
+            [mvs.events :refer :all]
+            [mvs.helpers :refer :all]
+            [mvs.read-models :refer :all]
+            [mvs.services :refer :all]
+            [mvs.specs :refer :all]
+            [mvs.topics :refer :all]
+            [mvs.topology :refer :all]
+            [clojure.spec.alpha :as spec]
+            [clj-uuid :as uuid]))
 
 
 (set! *print-namespace-maps* false)
@@ -22,13 +21,34 @@
 ;
 ;  wire the services together using watchers on the various atoms
 
-(def mvs-wiring {:mvs/entities {:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
+(def mvs-wiring {:mvs/messages {:provider/catalog     {:mvs/message-type :mvs/event}
+                                :sales/catalog        {:mvs/message-type :mvs/event}
+                                :customer/order       {:mvs/message-type :mvs/command}
+                                :sales/request        {:mvs/message-type :mvs/command}
+                                :sales/commitment     {:mvs/message-type :mvs/event}
+                                :sales/failure        {:mvs/message-type :mvs/event}
+                                :customer/agreement   {:mvs/message-type :mvs/event}
+                                :customer/approval    {:mvs/message-type :mvs/command}
+                                :resource/plan        {:mvs/message-type :mvs/event}
+                                :resource/config      {:mvs/message-type :mvs/command}
+                                :provider/order       {:mvs/message-type :mvs/event}
+                                :provider/shipment    {:mvs/message-type :mvs/event}
+                                :resource/measurement {:mvs/message-type :mvs/event}
+                                :resource/usage       {:mvs/message-type :mvs/event}
+                                :resource/health      {:mvs/message-type :mvs/event}
+                                :resource/performance {:mvs/message-type :mvs/event}
+                                :resources            {:mvs/message-type :mvs/view}
+                                :resource/state       {:mvs/message-type :mvs/view}}
+
+
+                 :mvs/entities {:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
                                 :provider-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
                                 :sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
                                 :customer-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
                                 :sales-request-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
                                 :sales-commitment-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
-                                :sales-failure-topic          {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
+                                :sales-failure-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-failure-topic}
+                                :sales-agreement-topic        {:mvs/entity-type :mvs/topic :mvs/topic-name sales-agreement-topic}
                                 :customer-order-approval      {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-approval}
                                 :plan-topic                   {:mvs/entity-type :mvs/topic :mvs/topic-name plan-topic}
                                 :shipment-topic               {:mvs/entity-type :mvs/topic :mvs/topic-name shipment-topic}
@@ -37,6 +57,7 @@
                                 :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                 :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                 :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
+                                :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
 
                                 :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
                                 :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
@@ -57,46 +78,56 @@
                                 :process-resource-health      {:mvs/entity-type :mvs/service :mvs/name #'process-resource-health}
                                 :process-resource-performance {:mvs/entity-type :mvs/service :mvs/name #'process-resource-performance}}
 
-                 :mvs/workflow [[:provider-catalog-topic :process-provider-catalog]
-                                [:provider-catalog-topic :process-available-resources]
-                                [:process-provider-catalog :sales-catalog-topic]
-                                [:sales-catalog-topic :customer-dashboard]
+                 :mvs/workflow [[:provider-catalog-topic :process-provider-catalog :provider/catalog]
+                                [:service-catalog-view :process-provider-catalog :provider/catalog]
+                                [:provider-catalog-topic :process-available-resources :provider/catalog]
+                                [:process-provider-catalog :sales-catalog-topic :sales/catalog]
+                                [:process-available-resources :available-resources-view :resources]
+                                [:sales-catalog-topic :customer-dashboard :sales/catalog]
 
-                                [:customer-order-topic :process-customer-order]
-                                [:customer-order-approval :process-order-approval]
-                                [:sales-request-topic :process-sales-request]
+                                [:customer-order-topic :process-customer-order :customer/order]
+                                [:customer-order-approval :process-order-approval :customer/approval]
+                                [:sales-request-topic :process-sales-request :sales/request]
 
-                                [:sales-commitment-topic :process-sales-commitment]
-                                [:sales-failure-topic :process-sales-commitment]
-                                [:sales-agreement-topic :customer-dashboard]
+                                [:sales-commitment-topic :process-sales-commitment :sales/commitment]
+                                [:sales-failure-topic :process-sales-commitment :sales/failure]
+                                [:sales-agreement-topic :customer-dashboard :customer/agreement]
 
-                                [:process-order-approval :plan-topic]
-                                [:plan-topic :process-plan]
+                                [:process-order-approval :plan-topic :resource/plan]
+                                [:plan-topic :process-plan :resource/plan]
 
-                                [:committed-resource-view :process-order-approval]
+                                [:committed-resource-view :process-order-approval :resources]
 
-                                [:process-customer-order :sales-request-topic]
-                                [:process-sales-request :sales-commitment-topic]
-                                [:process-sales-request :sales-failure-topic]
-                                [:process-sales-commitment :sales-agreement-topic]
+                                [:process-customer-order :sales-request-topic :sales/request]
+                                [:process-sales-request :sales-commitment-topic :sales/commitment]
+                                [:process-sales-request :sales-failure-topic :sales/failure]
+                                [:process-sales-commitment :sales-agreement-topic :sales/commitment]
 
-                                [:process-plan :provider-order-topic]
-                                [:process-plan :resource-state-view]
-                                [:provider-order-topic :provider-dashboard]
+                                [:process-plan :provider-order-topic :provider/order]
+                                [:process-plan :resource-state-view :resources]
+                                [:provider-order-topic :provider-dashboard :provider/order]
 
-                                [:shipment-topic :process-shipment]
+                                [:shipment-topic :process-shipment :provider/shipment]
+                                [:process-shipment :resource-state-view :resources]
 
-                                [:resource-measurement-topic :process-measurement]
-                                [:resource-state-view :process-measurement]
-                                [:resource-state-view :monitoring-dashboard]
-                                [:process-measurement :resource-state-view]
+                                [:resource-measurement-topic :process-measurement :resource/measurement]
+                                [:resource-state-view :process-measurement :resource/state]
+                                [:resource-state-view :monitoring-dashboard :resource/state]
+                                [:process-measurement :resource-state-view :resource/state]
 
-                                [:resource-state-view :process-resource-usage]
-                                [:resource-state-view :process-resource-health]
-                                [:resource-state-view :process-resource-performance]
+                                [:resource-state-view :process-resource-usage :resource/state]
+                                [:process-resource-usage :billing-dashboard :resource/usage]
+                                [:resource-state-view :process-resource-health :resource/state]
+                                [:process-resource-health :planning-dashboard :resource/health]
+                                [:process-resource-health :customer-support-dashboard :resource/health]
+                                [:resource-state-view :process-resource-performance :resource/state]
+                                [:process-resource-performance :planning-dashboard :resource/performance]
 
-                                [:customer-dashboard :customer-order-topic]
-                                [:customer-dashboard :customer-order-approval]]})
+                                [:customer-dashboard :customer-order-topic :customer/order]
+                                [:customer-dashboard :customer-order-approval :customer/approval]
+                                [:provider-dashboard :shipment-topic :provider/shipment]
+                                [:provider-dashboard :provider-catalog-topic :provider/catalog]
+                                [:provider-dashboard :resource-measurement-topic :resource/measurement]]})
 
 
 
@@ -111,13 +142,6 @@
                  (add-watch (-> entities from :mvs/topic-name)
                    to (-> entities to :mvs/name)))))
         workflow))))
-
-
-(defn view-topo [{:keys [mvs/entities mvs/workflow] :as topo}]
-  (-> (lg/digraph)
-    (#(apply lg/add-nodes % (keys entities)))
-    (#(apply lg/add-edges % workflow))
-    (lio/view)))
 
 
 (defn reset-topology [topo]
@@ -184,6 +208,7 @@
 (comment
 
   (view-topo mvs-wiring)
+  (view-topo-2 mvs-wiring)
 
   ; 1) start
   (reset-topology mvs-wiring)

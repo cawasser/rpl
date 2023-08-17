@@ -20,6 +20,7 @@
   frinj/frinj                     {:mvn/version "0.2.5"}
 
   aysylu/loom                     {:mvn/version "1.0.2"}
+  dorothy/dorothy                 {:mvn/version "0.0.7"}
 
   fundingcircle/jackdaw           {:mvn/version "0.6.4"}    ;"0.8.0"
   willa/willa                     {:mvn/version "0.2.2"}

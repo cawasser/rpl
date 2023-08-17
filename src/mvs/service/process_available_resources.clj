@@ -41,7 +41,6 @@
 ; region ; rich comments
 ;
 
-
 ; build available-resources-view from provider-catalogs
 (comment
   (do
