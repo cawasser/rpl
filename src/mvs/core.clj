@@ -31,13 +31,16 @@
                                 :sales-failure-topic         {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
                                 :customer-order-approval     {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-approval}
                                 :plan-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name plan-topic}
+                                :shipment-topic              {:mvs/entity-type :mvs/topic :mvs/topic-name shipment-topic}
+                                :resource-measurement-topic  {:mvs/entity-type :mvs/topic :mvs/topic-name resource-measurement-topic}
 
                                 :service-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                 :committed-resource-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
-                                :resource-monitoring-view    {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-monitoring-view}
+                                :resource-state-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
 
-                                :customer-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name customer-dashboard}
-                                :provider-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name provider-dashboard}
+                                :customer-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
+                                :provider-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
+                                :monitoring-dashboard        {:mvs/entity-type :mvs/dashboard :mvs/name #'monitoring-dashboard}
 
                                 :process-available-resources {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
                                 :process-provider-catalog    {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
@@ -47,7 +50,9 @@
                                 :process-sales-commitment    {:mvs/entity-type :mvs/service :mvs/name #'process-sales-commitment}
                                 :process-order-approval      {:mvs/entity-type :mvs/service :mvs/name #'process-order-approval}
 
-                                :process-plan                {:mvs/entity-type :mvs/service :mvs/name #'process-plan}}
+                                :process-plan                {:mvs/entity-type :mvs/service :mvs/name #'process-plan}
+                                :process-shipment            {:mvs/entity-type :mvs/service :mvs/name #'process-shipment}
+                                :process-measurement         {:mvs/entity-type :mvs/service :mvs/name #'process-measurement}}
 
                  :mvs/workflow [[:provider-catalog-topic :process-provider-catalog]
                                 [:provider-catalog-topic :process-available-resources]
@@ -66,8 +71,6 @@
                                 [:plan-topic :process-plan]
 
                                 [:committed-resource-view :process-order-approval]
-                                [:process-monitoring-plan :resource-monitoring-view]
-                                [:resource-monitoring-view :process-monitoring-plan]
 
                                 [:process-customer-order :sales-request-topic]
                                 [:process-sales-request :sales-commitment-topic]
@@ -75,10 +78,15 @@
                                 [:process-sales-commitment :sales-agreement-topic]
 
                                 [:process-plan :provider-order-topic]
+                                [:process-plan :resource-state-view]
                                 [:provider-order-topic :provider-dashboard]
-                                [:provider-order-topic :process-monitoring-plan]
 
-                                [:resource-measurement-topic :process-resource-measurement]
+                                [:shipment-topic :process-shipment]
+
+                                [:resource-measurement-topic :process-measurement]
+                                [:resource-state-view :process-measurement]
+                                [:resource-state-view :monitoring-dashboard]
+                                [:process-measurement :resource-state-view]
 
                                 [:customer-dashboard :customer-order-topic]
                                 [:customer-dashboard :customer-order-approval]]})
@@ -110,6 +118,7 @@
   (reset! available-resources-view {})
   (reset! service-catalog-view {})
   (reset! order->sales-request-view {})
+  (reset! resource-state-view {})
 
   (init-topology topo)
 
@@ -173,6 +182,9 @@
   (reset-topology mvs-wiring)
 
 
+
+  (init-topology mvs-wiring)
+
   ; region ; reset everything and re-load the catalog(s)
   (do
     (reset! provider-catalog-view {})
@@ -198,6 +210,7 @@
   @available-resources-view
   @order->sales-request-view
   @service-catalog-view
+  @resource-state-view
 
 
   ; region ; 2) customers request services
@@ -264,19 +277,58 @@
   ; endregion
 
 
-  ; region ; 4) providers ship resources
+  ; region ; 4) providers ship resources for order-1
   (do
-    (def alpha-ships [{:resource/id 0}
-                      {:provider/id      "alpha"
-                       :service/elements [{:resource/id          0
-                                           :resource/time-frames [0 1 2 3 4 5]}]}]))
+    (def order-id (-> @order->sales-request-view first second :order/id))
+    (def shipment-id (uuid/v1))
+    (def alpha-shipment
+      [{:shipment/id shipment-id}
+       {:shipment/id    shipment-id
+        :order/id       order-id
+        :provider/id    "alpha"
+        :shipment/items [{:resource/id (uuid/v1) :resource/type 0 :resource/time 0}
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 1}
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 2}
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 3}
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 4}
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 5}]}]))
 
-  (spec/explain :provider/shipment (second alpha-ships))
+  (spec/explain :shipment/line-item {:resource/id (uuid/v1) :resource/type 0 :resource/time 0})
+  (spec/explain :provider/shipment (second alpha-shipment))
+
+  (publish! shipment-topic alpha-shipment)
 
 
   ; endregion
 
+
+  @resource-state-view
+
+
   ; region 5) resources start reporting health & status
+  (do
+    (def resource-id (-> @resource-state-view keys first)))
+
+  (publish! resource-measurement-topic [{:resource/id resource-id}
+                                        {:measurement/id        (uuid/v1)
+                                         :resource/id           resource-id
+                                         :measurement/attribute :googoo/metric
+                                         :measurement/value     100}])
+
+  (publish! resource-measurement-topic [{:resource/id resource-id}
+                                        {:measurement/id        (uuid/v1)
+                                         :resource/id           resource-id
+                                         :measurement/attribute :googoo/metric
+                                         :measurement/value     90}])
+
+  (publish! resource-measurement-topic [{:resource/id resource-id}
+                                        {:measurement/id        (uuid/v1)
+                                         :resource/id           resource-id
+                                         :measurement/attribute :googoo/metric
+                                         :measurement/value     110}])
+  @resource-state-view
+
+  (reset! resource-state-view {})
 
   ; endregion
 

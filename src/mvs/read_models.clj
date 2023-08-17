@@ -59,8 +59,8 @@
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
 
-(def resource-monitoring-view
-  "all the resources that ACME must monitor" (atom []))
+(def resource-state-view
+  "all the resources that ACME must monitor" (atom {}))
 
 
 

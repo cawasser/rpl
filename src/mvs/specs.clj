@@ -27,7 +27,7 @@
 ;
 ;
 
-(spec/def :resource/id integer?)
+(spec/def :resource/id uuid?)
 (spec/def :resource/type integer?)
 (spec/def :resource/time integer?)
 (spec/def :resource/attributes (spec/cat
@@ -201,11 +201,29 @@
 ; endregion
 
 
+; region ; :provider/shipment
+
+(spec/def :shipment/id uuid?)
+(spec/def :shipment/line-item (spec/keys :req [:resource/id ; assigned by the provider
+                                               :resource/type
+                                               :resource/time]))
+(spec/def :shipment/items (spec/coll-of :shipment/line-item))
+(spec/def :provider/shipment (spec/keys :req [:shipment/id
+                                              :order/id
+                                              :provider/id
+                                              :shipment/items]))
+
+; endregion
+
+
 ; region ; :resource/measurement
 
+(spec/def :measurement/id uuid?)
+(spec/def :measurement/attribute keyword?)
 (spec/def :measurement/value integer?)
-(spec/def :resource/measurement (spec/keys :req [:resource/googoo
-                                                 :resource/time-frame
+(spec/def :resource/measurement (spec/keys :req [:measurement/id
+                                                 :resource/id
+                                                 :measurement/attribute
                                                  :measurement/value]))
 
 ; endregion
