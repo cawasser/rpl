@@ -1,17 +1,17 @@
 (ns mvs.core
   (:require [mvs.commands :refer :all]
-            [mvs.constants :refer :all]
-            [mvs.dashboards :refer :all]
-            [mvs.events :refer :all]
-            [mvs.helpers :refer :all]
-            [mvs.read-models :refer :all]
-            [mvs.services :refer :all]
-            [mvs.specs :refer :all]
-            [mvs.topics :refer :all]
-            [clojure.spec.alpha :as spec]
-            [clj-uuid :as uuid]
-            [loom.graph :as lg]
-            [loom.io :as lio]))
+    [mvs.constants :refer :all]
+    [mvs.dashboards :refer :all]
+    [mvs.events :refer :all]
+    [mvs.helpers :refer :all]
+    [mvs.read-models :refer :all]
+    [mvs.services :refer :all]
+    [mvs.specs :refer :all]
+    [mvs.topics :refer :all]
+    [clojure.spec.alpha :as spec]
+    [clj-uuid :as uuid]
+    [loom.graph :as lg]
+    [loom.io :as lio]))
 
 
 (set! *print-namespace-maps* false)
@@ -22,37 +22,40 @@
 ;
 ;  wire the services together using watchers on the various atoms
 
-(def mvs-wiring {:mvs/entities {:provider-catalog-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
-                                :provider-order-topic        {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
-                                :sales-catalog-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
-                                :customer-order-topic        {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
-                                :sales-request-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
-                                :sales-commitment-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
-                                :sales-failure-topic         {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
-                                :customer-order-approval     {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-approval}
-                                :plan-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name plan-topic}
-                                :shipment-topic              {:mvs/entity-type :mvs/topic :mvs/topic-name shipment-topic}
-                                :resource-measurement-topic  {:mvs/entity-type :mvs/topic :mvs/topic-name resource-measurement-topic}
+(def mvs-wiring {:mvs/entities {:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
+                                :provider-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
+                                :sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
+                                :customer-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
+                                :sales-request-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
+                                :sales-commitment-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
+                                :sales-failure-topic          {:mvs/entity-type :nvs/topic :mvs/topic-name sales-failure-topic}
+                                :customer-order-approval      {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-approval}
+                                :plan-topic                   {:mvs/entity-type :mvs/topic :mvs/topic-name plan-topic}
+                                :shipment-topic               {:mvs/entity-type :mvs/topic :mvs/topic-name shipment-topic}
+                                :resource-measurement-topic   {:mvs/entity-type :mvs/topic :mvs/topic-name resource-measurement-topic}
 
-                                :service-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
-                                :committed-resource-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
-                                :resource-state-view        {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
+                                :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
+                                :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
+                                :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
 
-                                :customer-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
-                                :provider-dashboard          {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
-                                :monitoring-dashboard        {:mvs/entity-type :mvs/dashboard :mvs/name #'monitoring-dashboard}
+                                :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
+                                :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
+                                :monitoring-dashboard         {:mvs/entity-type :mvs/dashboard :mvs/name #'monitoring-dashboard}
 
-                                :process-available-resources {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
-                                :process-provider-catalog    {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
+                                :process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
+                                :process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
                                 ;:process-sales-catalog       {:mvs/entity-type :mvs/service :mvs/name #'process-sales-catalog}
-                                :process-customer-order      {:mvs/entity-type :mvs/service :mvs/name #'process-customer-order}
-                                :process-sales-request       {:mvs/entity-type :mvs/service :mvs/name #'process-sales-request}
-                                :process-sales-commitment    {:mvs/entity-type :mvs/service :mvs/name #'process-sales-commitment}
-                                :process-order-approval      {:mvs/entity-type :mvs/service :mvs/name #'process-order-approval}
+                                :process-customer-order       {:mvs/entity-type :mvs/service :mvs/name #'process-customer-order}
+                                :process-sales-request        {:mvs/entity-type :mvs/service :mvs/name #'process-sales-request}
+                                :process-sales-commitment     {:mvs/entity-type :mvs/service :mvs/name #'process-sales-commitment}
+                                :process-order-approval       {:mvs/entity-type :mvs/service :mvs/name #'process-order-approval}
 
-                                :process-plan                {:mvs/entity-type :mvs/service :mvs/name #'process-plan}
-                                :process-shipment            {:mvs/entity-type :mvs/service :mvs/name #'process-shipment}
-                                :process-measurement         {:mvs/entity-type :mvs/service :mvs/name #'process-measurement}}
+                                :process-plan                 {:mvs/entity-type :mvs/service :mvs/name #'process-plan}
+                                :process-shipment             {:mvs/entity-type :mvs/service :mvs/name #'process-shipment}
+                                :process-measurement          {:mvs/entity-type :mvs/service :mvs/name #'process-measurement}
+                                :process-resource-usage       {:mvs/entity-type :mvs/service :mvs/name #'process-resource-usage}
+                                :process-resource-health      {:mvs/entity-type :mvs/service :mvs/name #'process-resource-health}
+                                :process-resource-performance {:mvs/entity-type :mvs/service :mvs/name #'process-resource-performance}}
 
                  :mvs/workflow [[:provider-catalog-topic :process-provider-catalog]
                                 [:provider-catalog-topic :process-available-resources]
@@ -87,6 +90,10 @@
                                 [:resource-state-view :process-measurement]
                                 [:resource-state-view :monitoring-dashboard]
                                 [:process-measurement :resource-state-view]
+
+                                [:resource-state-view :process-resource-usage]
+                                [:resource-state-view :process-resource-health]
+                                [:resource-state-view :process-resource-performance]
 
                                 [:customer-dashboard :customer-order-topic]
                                 [:customer-dashboard :customer-order-approval]]})

@@ -43,6 +43,11 @@
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; rich comments
+;
+
 (comment
   (do
     (def view (atom @resource-state-view))
@@ -72,4 +77,6 @@
   ()
 
   ())
+
+; endregion
 

@@ -156,7 +156,6 @@
 ; region ; rich comments
 ;
 
-
 (comment
   (def event [{:sales/request-id #uuid"0869e140-3bff-11ee-bad8-8e6f1376370b",
                :order/id         #uuid"7a8a9400-3ac3-11ee-8473-e65ce679c38d",
