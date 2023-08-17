@@ -62,6 +62,8 @@
 (def resource-state-view
   "all the resources that ACME must monitor" (atom {}))
 
+(def customer-order-view (atom {}))
+(def customer-agreement-view (atom {}))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

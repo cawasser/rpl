@@ -1,4 +1,9 @@
-(ns mvs.dashboards)
+(ns mvs.dashboards
+  (:require [mvs.dashboard.sales :as sales]))
+
+
+(def sales-dashboard #'sales/sales-dashboard)
+
 
 
 (defn customer-dashboard [_ _ _ event]

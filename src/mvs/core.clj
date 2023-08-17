@@ -1,6 +1,7 @@
 (ns mvs.core
   (:require [mvs.commands :refer :all]
             [mvs.constants :refer :all]
+            [mvs.dashboard.sales :as sales]
             [mvs.dashboards :refer :all]
             [mvs.events :refer :all]
             [mvs.helpers :refer :all]
@@ -21,9 +22,13 @@
 ;
 ;  wire the services together using watchers on the various atoms
 
-(def mvs-wiring {:mvs/messages {:provider/catalog     {:mvs/message-type :mvs/event}
+(def mvs-wiring {
+                 ; region ; :mvs/messages
+                 :mvs/messages {:provider/catalog     {:mvs/message-type :mvs/event}
                                 :sales/catalog        {:mvs/message-type :mvs/event}
                                 :customer/order       {:mvs/message-type :mvs/command}
+                                :orders/state         {:mvs/message-type :mvs/view}
+                                :agreement/state      {:mvs/message-type :mvs/view}
                                 :sales/request        {:mvs/message-type :mvs/command}
                                 :sales/commitment     {:mvs/message-type :mvs/event}
                                 :sales/failure        {:mvs/message-type :mvs/event}
@@ -37,10 +42,11 @@
                                 :resource/usage       {:mvs/message-type :mvs/event}
                                 :resource/health      {:mvs/message-type :mvs/event}
                                 :resource/performance {:mvs/message-type :mvs/event}
-                                :resource/resources            {:mvs/message-type :mvs/view}
+                                :resource/resources   {:mvs/message-type :mvs/view}
                                 :resource/state       {:mvs/message-type :mvs/view}}
+                 ; endregion
 
-
+                 ; region ; :mvs/entities
                  :mvs/entities {:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
                                 :provider-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
                                 :sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
@@ -58,6 +64,9 @@
                                 :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                 :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
                                 :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
+                                :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
+                                :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
+                                :committed-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
 
                                 :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
                                 :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
@@ -65,6 +74,7 @@
                                 :billing-dashboard            {:mvs/entity-type :mvs/dashboard :mvs/name #'billing-dashboard}
                                 :planning-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'planning-dashboard}
                                 :customer-support-dashboard   {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-support-dashboard}
+                                :sales-dashboard              {:mvs/entity-type :mvs/dashboard :mvs/name #'sales-dashboard}
 
                                 :process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
                                 :process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
@@ -80,7 +90,9 @@
                                 :process-resource-usage       {:mvs/entity-type :mvs/service :mvs/name #'process-resource-usage}
                                 :process-resource-health      {:mvs/entity-type :mvs/service :mvs/name #'process-resource-health}
                                 :process-resource-performance {:mvs/entity-type :mvs/service :mvs/name #'process-resource-performance}}
+                 ; endregion
 
+                 ; region ; :mvs/workflow
                  :mvs/workflow [[:provider-catalog-topic :process-provider-catalog :provider/catalog]
                                 [:service-catalog-view :process-provider-catalog :provider/catalog]
                                 [:process-provider-catalog :service-catalog-view :provider/catalog]
@@ -90,13 +102,22 @@
                                 [:sales-catalog-topic :customer-dashboard :sales/catalog]
 
                                 [:customer-order-topic :process-customer-order :customer/order]
+                                [:process-customer-order :customer-order-view :orders/state]
+                                [:customer-order-view :sales-dashboard :orders/state]
+
+                                [:customer-agreement-view :sales-dashboard :agreement/state]
+                                [:planning-dashboard :customer-agreement-view :agreement/state]
                                 [:customer-order-approval :process-order-approval :customer/approval]
+                                [:process-order-approval :customer-agreement-view :agreement/state]
+                                [:process-order-approval :customer-order-view :orders/state]
                                 [:sales-request-topic :process-sales-request :sales/request]
                                 [:available-resources-view :process-sales-request :resource/resources]
                                 [:process-sales-request :committed-resource-view :resource/resources]
 
                                 [:sales-commitment-topic :process-sales-commitment :sales/commitment]
                                 [:sales-failure-topic :process-sales-commitment :sales/failure]
+                                [:process-sales-commitment :customer-order-view :orders/state]
+                                [:process-sales-commitment :customer-agreement-view :agreement/state]
                                 [:sales-agreement-topic :customer-dashboard :customer/agreement]
 
                                 [:process-order-approval :plan-topic :resource/plan]
@@ -133,7 +154,9 @@
                                 [:customer-dashboard :customer-order-approval :customer/approval]
                                 [:provider-dashboard :shipment-topic :provider/shipment]
                                 [:provider-dashboard :provider-catalog-topic :provider/catalog]
-                                [:provider-dashboard :resource-measurement-topic :resource/measurement]]})
+                                [:provider-dashboard :resource-measurement-topic :resource/measurement]]
+                 ; endregion
+                 :_            nil})
 
 
 
@@ -397,6 +420,12 @@
 
   ())
 
+
+; try some cljfx
+(comment
+  (sales/sales)
+
+  ())
 
 
 ; endregion
