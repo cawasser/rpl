@@ -1,7 +1,10 @@
 (ns mvs.dashboards
-  (:require [mvs.dashboard.sales :as sales]))
+  (:require [mvs.dashboard.sales :as sales]
+            [mvs.dashboard.planning :as planning]))
 
 
+(def planning-dashboard #'planning/planning-dashboard)
+(def planning-ui #'planning/planning-ui)
 (def sales-dashboard #'sales/sales-dashboard)
 
 
@@ -23,10 +26,6 @@
 
 (defn billing-dashboard [_ _ _ event]
   (println "BILLING received " event))
-
-
-(defn planning-dashboard [_ _ _ event]
-  (println "PLANNING received " event))
 
 
 (defn customer-support-dashboard [_ _ _ event]

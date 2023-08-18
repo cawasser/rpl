@@ -3,7 +3,7 @@
 
 
 (defn sales-dashboard [_ _ _ event]
-  (println "PLANNING received " event))
+  (println "SALES received " event))
 
 
 (defn sales []
@@ -12,8 +12,8 @@
       {:fx/type :stage
        :showing true
        :title "Sales Dashboard"
-       :width 300
-       :height 100
+       :width 500
+       :height 300
        :scene {:fx/type :scene
                :root {:fx/type :v-box
                       :alignment :center

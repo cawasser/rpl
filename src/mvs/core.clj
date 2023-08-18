@@ -192,12 +192,9 @@
     (publish! provider-catalog-topic [{:provider/id "echo"} provider-echo])))
 
 
-(comment
-  (view-topo mvs-wiring)
 
-  (init-topology mvs-wiring)
-
-  ())
+(defn start-ui []
+  (planning-ui))
 
 
 
@@ -209,7 +206,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
-; DESIGN CONSIDERATIONS
+; region ; DESIGN CONSIDERATIONS
 ;
 ; TODO: should we use the existing "customer-order-topic" for :customer/order, :sales/agreement
 ;       and :order/approval?
@@ -226,7 +223,7 @@
 ;          customer <-> sales
 ;          sales <-> planning
 ;          etc.
-;
+; endregion
 
 
 
@@ -239,8 +236,10 @@
   (view-topo mvs-wiring)
   (view-topo-2 mvs-wiring)
 
-  ; 1) start
-  (reset-topology mvs-wiring)
+  ; 1) start the backend services and the UIs
+  (do
+    (reset-topology mvs-wiring)
+    (start-ui))
 
 
 
@@ -274,7 +273,7 @@
   @resource-state-view
 
 
-  ; region ; 2) customers request services
+  ; region ; 2) customers orders services
   (do
     (def customer-1 #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
     (def customer-2 #uuid"5a9ff450-3ac3-11ee-8473-e65ce679c38d")
@@ -424,6 +423,15 @@
 ; try some cljfx
 (comment
   (sales/sales)
+
+  ())
+
+
+
+(comment
+  (view-topo-2 mvs-wiring)
+
+  (init-topology mvs-wiring)
 
   ())
 

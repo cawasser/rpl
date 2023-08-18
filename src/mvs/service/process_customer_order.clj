@@ -103,15 +103,23 @@
 
   (spec/explain :customer/order order)
 
+  (:order/needs order)
+
   (->> order
     :order/needs
     (mapcat (fn [service-id]
-              (:service/elements
-                (first
-                  (filter #(= (:service/id %) service-id) @service-catalog-view)))))
+              (->> @service-catalog-view
+                (filter #(= (:service/id %) service-id))
+                first
+                :service/elements)))
     (into []))
 
-  (swap! local-view conj (assoc order :sales/request-id service-request-id))
+  (:service/elements
+    (first
+      (filter #(= (:service/id %) service-id) @service-catalog-view))))
+
+
+(swap! local-view conj (assoc order :sales/request-id service-request-id)
 
   ())
 
