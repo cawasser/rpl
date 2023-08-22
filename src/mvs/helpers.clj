@@ -1,5 +1,6 @@
 (ns mvs.helpers
-  (:require [mvs.read-models :refer :all]))
+  (:require [mvs.read-models :refer :all]
+            [clojure.spec.alpha :as spec]))
 
 
 (defn make-resource
@@ -25,7 +26,8 @@
 
 
 (defn malformed [service-name expected-spec & structure]
-  (println (str service-name " ******** MALFORMED ********  " expected-spec " // " (first structure))))
+  (println (str service-name " ******** MALFORMED ********  " expected-spec
+             " // " (spec/explain expected-spec (first structure)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

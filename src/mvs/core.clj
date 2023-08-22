@@ -59,6 +59,10 @@
                                 :plan-topic                   {:mvs/entity-type :mvs/topic :mvs/topic-name plan-topic}
                                 :shipment-topic               {:mvs/entity-type :mvs/topic :mvs/topic-name shipment-topic}
                                 :resource-measurement-topic   {:mvs/entity-type :mvs/topic :mvs/topic-name resource-measurement-topic}
+                                :measurement-topic            {:mvs/entity-type :mvs/topic :mvs/topic-name measurement-topic}
+                                :health-topic                 {:mvs/entity-type :mvs/topic :mvs/topic-name health-topic}
+                                :performance-topic            {:mvs/entity-type :mvs/topic :mvs/topic-name performance-topic}
+                                :usage-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name usage-topic}
 
                                 :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                 :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
@@ -141,14 +145,27 @@
                                 [:resource-state-view :process-measurement :resource/state]
                                 [:resource-state-view :monitoring-dashboard :resource/state]
                                 [:process-measurement :resource-state-view :resource/state]
+                                [:process-measurement :measurement-topic :resource/measurement]
 
-                                [:resource-state-view :process-resource-usage :resource/state]
-                                [:process-resource-usage :billing-dashboard :resource/usage]
-                                [:resource-state-view :process-resource-health :resource/state]
-                                [:process-resource-health :planning-dashboard :resource/health]
-                                [:process-resource-health :customer-support-dashboard :resource/health]
-                                [:resource-state-view :process-resource-performance :resource/state]
-                                [:process-resource-performance :planning-dashboard :resource/performance]
+                                [:measurement-topic :process-resource-health :resource/measurement]
+                                [:process-resource-health :health-topic :resource/health]
+                                [:health-topic :planning-dashboard :resource/health]
+                                [:health-topic :customer-support-dashboard :resource/health]
+
+                                [:measurement-topic :process-resource-performance :resource/measurement]
+                                [:process-resource-performance :performance-topic :resource/performance]
+                                [:performance-topic :planning-dashboard :resource/performance]
+                                [:performance-topic :customer-support-dashboard :resource/performance]
+                                ;[:performance-topic :customer-dashboard :resource/performance]
+
+                                [:measurement-topic :process-resource-usage :resource/measurement]
+                                [:process-resource-usage :usage-topic :resource/usage]
+                                [:usage-topic :billing-dashboard :resource/usage]
+                                [:usage-topic :customer-support-dashboard :resource/usage]
+
+                                [:health-topic :monitoring-dashboard :resource/health]
+                                [:performance-topic :monitoring-dashboard :resource/performance]
+                                [:usage-topic :monitoring-dashboard :resource/usage]
 
                                 [:customer-dashboard :customer-order-topic :customer/order]
                                 [:customer-dashboard :customer-order-approval :customer/approval]
@@ -241,8 +258,6 @@
     (reset-topology mvs-wiring)
     (start-ui))
 
-
-
   (init-topology mvs-wiring)
 
   ; region ; reset everything and re-load the catalog(s)
@@ -286,24 +301,24 @@
     (def order-failure #uuid"84389b00-3ac3-11ee-8473-e65ce679c38d"))
 
   (publish! customer-order-topic [{:order/id order-1 :customer/id customer-1}
-                                  {:order/id    order-1 :customer/id customer-1
-                                   :order/needs [0 1]}])
+                                  {:order/id     order-1 :customer/id customer-1
+                                   :order/status :order/submitted :order/needs [0 1]}])
 
   (publish! customer-order-topic [{:order/id order-2 :customer/id customer-2}
-                                  {:order/id    order-2 :customer/id customer-2
-                                   :order/needs [0 1]}])
+                                  {:order/id     order-2 :customer/id customer-2
+                                   :order/status :order/submitted :order/needs [0 1]}])
 
   ; this one "fails" because we've used all the 0/0 and 0/1 Googoos
   (publish! customer-order-topic [{:customer/id customer-3 :order/id order-3}
-                                  {:customer/id customer-3 :order/id order-3
-                                   :order/needs [0 1]}])
+                                  {:customer/id  customer-3 :order/id order-3
+                                   :order/status :order/submitted :order/needs [0 1]}])
 
   ; this one "errors" because it asks for nonsense service ids
   (publish! customer-order-topic [{:customer/id customer-1
                                    :order/id    order-failure}
-                                  {:customer/id customer-1
-                                   :order/id    order-failure
-                                   :order/needs [20]}])
+                                  {:customer/id  customer-1
+                                   :order/id     order-failure
+                                   :order/status :order/submitted :order/needs [20]}])
 
   ; endregion
 
@@ -351,12 +366,12 @@
                          {:resource/id (uuid/v1) :resource/type 0 :resource/time 2}
                          {:resource/id (uuid/v1) :resource/type 0 :resource/time 3}
                          {:resource/id (uuid/v1) :resource/type 0 :resource/time 4}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 5}]}]))
+                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 5}]}])
 
-  (spec/explain :shipment/line-item {:resource/id (uuid/v1) :resource/type 0 :resource/time 0})
-  (spec/explain :provider/shipment (second alpha-shipment))
+    (spec/explain :shipment/line-item {:resource/id (uuid/v1) :resource/type 0 :resource/time 0})
+    (spec/explain :provider/shipment (second alpha-shipment))
 
-  (publish! shipment-topic alpha-shipment)
+    (publish! shipment-topic alpha-shipment))
 
 
   ; endregion
@@ -373,7 +388,7 @@
                                         {:measurement/id        (uuid/v1)
                                          :resource/id           resource-id
                                          :measurement/attribute :googoo/metric
-                                         :measurement/value     100}])
+                                         :measurement/value     10}])
 
   (publish! resource-measurement-topic [{:resource/id resource-id}
                                         {:measurement/id        (uuid/v1)
@@ -386,6 +401,18 @@
                                          :resource/id           resource-id
                                          :measurement/attribute :googoo/metric
                                          :measurement/value     110}])
+
+  (publish! resource-measurement-topic [{:resource/id resource-id}
+                                        {:measurement/id        (uuid/v1)
+                                         :resource/id           resource-id
+                                         :measurement/attribute :googoo/metric
+                                         :measurement/value     50}])
+
+  (publish! resource-measurement-topic [{:resource/id resource-id}
+                                        {:measurement/id        (uuid/v1)
+                                         :resource/id           resource-id
+                                         :measurement/attribute :googoo/metric
+                                         :measurement/value     0}])
   @resource-state-view
 
   (reset! resource-state-view {})

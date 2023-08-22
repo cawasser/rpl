@@ -9,7 +9,7 @@
 ; TODO: at some point (monitoring) we need to distinguish between each
 ;       individual Googoo, regardless of its attributes, but HOW? Currently,
 ;       we identify a Googoo by :resource/id which is NOT unique throughout
-;       the system, eg. "alpha" and ""bravo" BOTH produce several "0" Googoos,
+;       the system, eg. "alpha" and "bravo" BOTH produce several "0" Googoos,
 ;       even at the same :resource/time-frame!
 
 ; Googoos are actually uniquely defined by:
@@ -40,7 +40,7 @@
 ; endregion
 
 
-; region ; :resource/catalog
+; region ; :resource/catalog (collection of resources, organized by attributes)
 
 (spec/def :resource/time-frames (spec/coll-of :resource/time))
 (spec/def :resource/cost integer?)
@@ -52,7 +52,7 @@
 ; endregion
 
 
-; region ; :provider/catalog
+; region ; :provider/catalog (resources offered to ACME by a Provider)
 
 (spec/def :provider/id string?)
 (spec/def :provider/catalog (spec/keys :req [:provider/id
@@ -61,7 +61,7 @@
 ; endregion
 
 
-; region ; :service/catalog
+; region ; :service/catalog (services [bundles of resources] offered to Customers by ACME)
 (spec/def :service/id integer?)
 (spec/def :service/description string?)
 (spec/def :service/element (spec/keys :req [:resource/type
@@ -77,7 +77,7 @@
 ; endregion
 
 
-; region ; :request/status
+; region ; :request/status (does this duplicate :order/status?)
 (spec/def :request/status (spec/or
                             :successful #(= % :request/successful)
                             :failed #(= % :request/failed)
@@ -88,18 +88,37 @@
 ; endregion
 
 
-; region ; :customer/order
+; region ; :customer/order (Customer places an order for services with ACME)
 (spec/def :customer/id uuid?)
 (spec/def :order/id uuid?)
 (spec/def :order/needs (spec/coll-of :service/id))
+; :order/fulfilled is separate from :order/closed for those scenarios where the
+; resource is actually a "service" that exists independently ove some period of time
+; (i.e., NOT a material good that is just delivered and the order is "over")
+;
+;    similarly for :order/terminate-early
+;
+(spec/def :order/status (spec/or
+                          :submitted #(= % :order/submitted) ; submitted (customer->ACME or ACME->Provider)
+                          :accepted #(= % :order/accepted)  ; accepted by AMCE or Provider
+                          :planned #(= % :order/planned)    ; ? ACME created commitment
+                          :awaiting-approval #(= % :order/awaiting-approval) ; (customer or ACME)
+                          :approved #(= % :order/approved)  ; (customer or ACME)
+                          :awaiting-fulfilment #(= % :order/awaiting-fulfilment) ; ? ACME->Provider
+                          :purchased #(= % :order/purchased) ; TODO: does :order/purchased duplicate :order/awaiting-fulfilment?
+                          :fulfilled #(= % :order/fulfilled) ; Provider->ACME
+                          :abandoned #(= % :order/abandoned) ; Customer
+                          :terminated-early #(= % :order/terminated-early) ; Customer
+                          :closed #(= % :order/closed)))
 (spec/def :customer/order (spec/keys :req [:order/id
                                            :customer/id
-                                           :order/needs]))
+                                           :order/needs
+                                           :order/status]))
 
 ; endregion
 
 
-; region ; :sales/request
+; region ; :sales/request (SALES requests PLANNING to identify inventory to satisfy a Customer order)
 (spec/def :sales/request-id uuid?)
 (spec/def :sales/resource (spec/keys :req [:resource/type :resource/time-frames]))
 (spec/def :sales/resources (spec/coll-of :sales/resource))
@@ -113,7 +132,7 @@
 ; endregion
 
 
-; region ; :sales/commitment
+; region ; :sales/commitment (PLANNING commits resources to SALES to satisfy a Customer order)
 (spec/def :commitment/id uuid?)
 (spec/def :commitment/resource (spec/keys :req [:resource/type
                                                 :provider/id
@@ -136,7 +155,7 @@
 ; endregion
 
 
-; region ; :sales/failure
+; region ; :sales/failure (PLANNING cannot commit resources to SALES)
 (spec/def :failure/id uuid?)
 (spec/def :failure/reason string?)
 (spec/def :failure/reasons (spec/coll-of :failure/reason))
@@ -148,7 +167,7 @@
 ; endregion
 
 
-; region ; :sales/agreement
+; region ; :sales/agreement (SALES provide Customer with a proposal to satisfy their order)
 (spec/def :agreement/id uuid?)
 (spec/def :agreement/price integer?)
 (spec/def :agreement/resource (spec/keys :req [:resource/type
@@ -173,9 +192,7 @@
 ; endregion
 
 
-; region ; :order/approval
-(spec/def :order/status (spec/or
-                          :purchased #(= % :order/purchased)))
+; region ; :order/approval (Customer "signs" the agreement to "purchase" the ordered services)
 (spec/def :order/approval (spec/keys :req [:agreement/id
                                            :customer/id
                                            :order/id
@@ -184,7 +201,7 @@
 ; endregion
 
 
-; region ; :sales/plan
+; region ; :sales/plan (ACME turns a Customer order into purchase orders to Providers)
 (spec/def :plan/id uuid?)
 (spec/def :sales/plan (spec/keys :req [:plan/id
                                        :customer/id
@@ -201,7 +218,7 @@
 ; endregion
 
 
-; region ; :provider/shipment
+; region ; :provider/shipment (Provider ships resources to ACME)
 
 (spec/def :shipment/id uuid?)
 (spec/def :shipment/line-item (spec/keys :req [:resource/id ; assigned by the provider
@@ -216,7 +233,7 @@
 ; endregion
 
 
-; region ; :resource/measurement
+; region ; :resource/measurement (resources report status/performance/etc. to ACME)
 
 (spec/def :measurement/id uuid?)
 (spec/def :measurement/attribute keyword?)
@@ -225,6 +242,15 @@
                                                  :resource/id
                                                  :measurement/attribute
                                                  :measurement/value]))
+
+(spec/def :resource/health keyword?)
+
+(spec/def :resource/performance integer?)
+
+;(spec/def :resource/sla-target double?)                     ; percentage
+;(spec/def :resource/usage (spec/keys :req [:customer/id
+;                                           :service/id
+;                                           :resource/sla-target]))
 
 ; endregion
 
@@ -256,19 +282,19 @@
 
 (comment
   (spec/explain :commitment/id (uuid/v1))
-  (spec/explain :commitment/resource {:resource/type          0 :provider/id "alpha"
+  (spec/explain :commitment/resource {:resource/type        0 :provider/id "alpha"
                                       :resource/time-frames [0 1 2 3 8 9] :resource/cost 25})
-  (spec/explain :commitment/resources [{:resource/type          0 :provider/id "alpha"
+  (spec/explain :commitment/resources [{:resource/type        0 :provider/id "alpha"
                                         :resource/time-frames [0 1 2] :resource/cost 25}
-                                       {:resource/type          1 :provider/id "alpha"
+                                       {:resource/type        1 :provider/id "alpha"
                                         :resource/time-frames [3 8 9] :resource/cost 25}])
   (spec/explain :commitment/start-time 0)
   (spec/explain :commitment/end-time 9)
   (spec/explain :commitment/time-frame [0 9])
   (spec/explain :sales/commitment {:commitment/id         (uuid/v1)
-                                   :commitment/resources  [{:resource/type          0 :provider/id "alpha"
+                                   :commitment/resources  [{:resource/type        0 :provider/id "alpha"
                                                             :resource/time-frames [0 1 2] :resource/cost 25}
-                                                           {:resource/type          1 :provider/id "alpha"
+                                                           {:resource/type        1 :provider/id "alpha"
                                                             :resource/time-frames [3 8 9] :resource/cost 25}]
                                    :commitment/time-frame [0 9]})
 

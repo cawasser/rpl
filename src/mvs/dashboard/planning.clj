@@ -45,7 +45,7 @@
 
 
 
-(defn planning-ui [{:keys content}]
+(defn planning-ui []
   (fx/on-fx-thread
     (fx/create-component
       {:fx/type :stage
@@ -56,9 +56,9 @@
        :scene {:fx/type :scene
                :root {:fx/type :v-box
                       :children [{:fx/type :label
-                                  :text "Current Content:"}
-                                 {:fx/type sales-request-table
-                                  :content content}]}}})))
+                                  :text "Current Content:"}]}}})))
+                                 ;{:fx/type sales-request-table
+                                 ; :content content}]}}})))
 
 
 

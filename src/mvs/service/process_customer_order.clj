@@ -116,10 +116,10 @@
 
   (:service/elements
     (first
-      (filter #(= (:service/id %) service-id) @service-catalog-view))))
+      (filter #(= (:service/id %) service-id) @service-catalog-view)))
 
 
-(swap! local-view conj (assoc order :sales/request-id service-request-id)
+  (swap! local-view conj (assoc order :sales/request-id service-request-id))
 
   ())
 
@@ -130,9 +130,12 @@
   (do
     (def order-id (uuid/v1))
     (def customer-id (uuid/v1))
-    (def order {:customer/id (uuid/v1)
-                :order/id    order-id
-                :order/needs [20]}))
+    (def order {:customer/id  (uuid/v1)
+                :order/id     order-id
+                :order/status :order/submitted
+                :order/needs  [20]}))
+
+  (spec/explain :customer/order order)
 
   (->> order
     :order/needs

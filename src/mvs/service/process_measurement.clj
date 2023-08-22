@@ -33,9 +33,18 @@
         ; history (materialized view)
         (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
                 [])
-          value)))
+          value))
 
       ; 2) republish this data upstream (?)
+      ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be aquired from
+      ;       @resource-state-view
+      ;
+      (let [enrichment (->> (get @resource-state-view id)
+                         ((juxt :order/id :customer/id :sales/request-id
+                            :agreement/id :order/needs))
+                         (zipmap [:order/id :customer/id :sales/request-id
+                                  :agreement/id :order/needs]))]
+        (publish! measurement-topic [event-key (merge measurement enrichment)])))
 
     (malformed "process-measurement" :resource/measurement measurement)))
 
@@ -74,7 +83,13 @@
   (swap! view
     assoc-in [id :resource/measurements attribute] value)
 
-  ()
+
+  ())
+
+
+(comment
+  (spec/explain :resource/measurement @last-event)
+
 
   ())
 

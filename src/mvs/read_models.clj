@@ -41,6 +41,14 @@
                                        {:resource/type 4 :resource/time-frames [3 4] :resource/cost 2}]})
 
 
+; TODO: consider making these functions (microservices) that do the 'swap!'
+;      themselves, rather than forcing another function to do it, i.e., more
+;      like 'real' KTables. wrap 'update' to the atom 'inside' the function, leaving
+;      the atom itself for the 'read' side of things.
+;      For example, process-sales-request uses (commit-resources) to manipulate
+;      the available-resources-view KTable by remote control. This kind of logic is
+;      what should be 'inside' the KTable.
+
 (def provider-catalog-view
   "summary of all the provider catalogs" (atom {}))
 
@@ -61,6 +69,10 @@
 
 (def resource-state-view
   "all the resources that ACME must monitor" (atom {}))
+
+(def resource-performance-view
+  "track updates events against resources over time"
+  (atom {}))
 
 (def customer-order-view (atom {}))
 (def customer-agreement-view (atom {}))
