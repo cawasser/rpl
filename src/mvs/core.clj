@@ -151,20 +151,19 @@
                                 [:process-resource-health :health-topic :resource/health]
                                 [:health-topic :planning-dashboard :resource/health]
                                 [:health-topic :customer-support-dashboard :resource/health]
+                                [:health-topic :monitoring-dashboard :resource/health]
 
                                 [:measurement-topic :process-resource-performance :resource/measurement]
                                 [:process-resource-performance :performance-topic :resource/performance]
                                 [:performance-topic :planning-dashboard :resource/performance]
                                 [:performance-topic :customer-support-dashboard :resource/performance]
+                                [:performance-topic :monitoring-dashboard :resource/performance]
                                 ;[:performance-topic :customer-dashboard :resource/performance]
 
                                 [:measurement-topic :process-resource-usage :resource/measurement]
                                 [:process-resource-usage :usage-topic :resource/usage]
                                 [:usage-topic :billing-dashboard :resource/usage]
                                 [:usage-topic :customer-support-dashboard :resource/usage]
-
-                                [:health-topic :monitoring-dashboard :resource/health]
-                                [:performance-topic :monitoring-dashboard :resource/performance]
                                 [:usage-topic :monitoring-dashboard :resource/usage]
 
                                 [:customer-dashboard :customer-order-topic :customer/order]
@@ -286,6 +285,8 @@
   @order->sales-request-view
   @service-catalog-view
   @resource-state-view
+  @resource-performance-view
+  @resource-usage-view
 
 
   ; region ; 2) customers orders services
@@ -414,8 +415,14 @@
                                          :measurement/attribute :googoo/metric
                                          :measurement/value     0}])
   @resource-state-view
+  @resource-performance-view
+  @resource-usage-view
+
+  @performance-topic
+
 
   (reset! resource-state-view {})
+  (reset! resource-usage-view {})
 
   ; endregion
 

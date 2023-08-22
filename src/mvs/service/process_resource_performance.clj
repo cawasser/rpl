@@ -29,7 +29,7 @@
 
 
 (defn average [coll]
-  (/ (reduce + coll) (count coll)))
+  (double (/ (reduce + coll) (count coll))))
 
 
 (defn- compute-performance [ktable [event-key {:keys [resource/id measurement/attribute]}]]

@@ -71,7 +71,11 @@
   "all the resources that ACME must monitor" (atom {}))
 
 (def resource-performance-view
-  "track updates events against resources over time"
+  "track update events against resources over time"
+  (atom {}))
+
+(def resource-usage-view
+  "track resources that have produces any events over time, tracking the frist only"
   (atom {}))
 
 (def customer-order-view (atom {}))

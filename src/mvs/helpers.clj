@@ -1,5 +1,6 @@
 (ns mvs.helpers
   (:require [mvs.read-models :refer :all]
+            [mvs.specs :refer :all]
             [clojure.spec.alpha :as spec]))
 
 
@@ -25,9 +26,10 @@
     first))
 
 
-(defn malformed [service-name expected-spec & structure]
-  (println (str service-name " ******** MALFORMED ********  " expected-spec
-             " // " (spec/explain expected-spec (first structure)))))
+(defn malformed [service-name expected-spec structure]
+  (println (str service-name " ******** MALFORMED ********  "
+             expected-spec
+             " // " (spec/explain-data expected-spec structure))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,5 +37,12 @@
 ;
 ; region ; rich comments
 
+
+(comment
+  (malformed "dummy" :resource/measurement {})
+
+  (spec/explain-data :resource/measurement {})
+
+  ())
 
 ; endregion
