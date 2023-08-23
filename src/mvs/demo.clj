@@ -74,10 +74,10 @@
   ; region ; 2) re-load the catalog(s)
   (do
     (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-alpha])
-    (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-bravo])
-    (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-charlie])
-    (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-delta])
-    (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-echo]))
+    (publish! provider-catalog-topic [{:provider/id "bravo-googoos"} provider-bravo])
+    (publish! provider-catalog-topic [{:provider/id "charlie-googoos"} provider-charlie])
+    (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
+    (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
 
   ; endregion
 
@@ -135,29 +135,19 @@
 
   ; region ; 4) customers agree to successful orders (order-1 & order-2 above) i.e., :order/approval
   ;
-  ; approve order-1
-  (do
-    (def order-id alice-order-1)
-    (def agreement-id (-> @order->sales-request-view (get order-id) :agreement/id))
-    (def customer-id (-> @order->sales-request-view (get order-id) :customer/id))
+  ; approve alice-order-1
+  (publish! customer-order-approval [{:order/id alice-order-1}
+                                     {:agreement/id (-> @order->sales-request-view (get alice-order-1) :agreement/id)
+                                      :order/id     alice-order-1
+                                      :customer/id  alice
+                                      :order/status :order/purchased}])
 
-    (publish! customer-order-approval [{:order/id order-id}
-                                       {:agreement/id agreement-id
-                                        :order/id     order-id
-                                        :customer/id  customer-id
-                                        :order/status :order/purchased}]))
-
-  ; approve order-2
-  (do
-    (def order-id bob-order-1)
-    (def agreement-id (-> @order->sales-request-view (get order-id) :agreement/id))
-    (def customer-id (-> @order->sales-request-view (get order-id) :customer/id))
-
-    (publish! customer-order-approval [{:order/id order-id}
-                                       {:agreement/id agreement-id
-                                        :order/id     order-id
-                                        :customer/id  customer-id
-                                        :order/status :order/purchased}]))
+  ; approve bob-order-1
+  (publish! customer-order-approval [{:order/id bob-order-1}
+                                     {:agreement/id (-> @order->sales-request-view (get bob-order-1) :agreement/id)
+                                      :order/id     bob-order-1
+                                      :customer/id  bob
+                                      :order/status :order/purchased}])
 
   ; endregion
 
@@ -187,17 +177,12 @@
 
   ; region ; 5) build the "real" :provider/shipments for the :customer/orders
 
-  (do
-    (def order-1 #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d")
-    (def order-2 #uuid"7a8a9400-3ac3-11ee-8473-e65ce679c38d")
-    (def order-3 #uuid"7f6e8fd0-3ac3-11ee-8473-e65ce679c38d"))
+  (ship/providers-ship-order alice-order-1)
 
-  (ship/providers-ship-order order-1)
-
-  (ship/providers-ship-order order-2)
+  (ship/providers-ship-order bob-order-1)
 
   ; this should fail since order-3 cannot be committed...
-  (ship/providers-ship-order order-3)
+  (ship/providers-ship-order carol-order-1)
 
   @resource-state-view
 
@@ -269,7 +254,7 @@
   (reset! mvs.demo.measurement/registry {})
 
 
-  (meas/stop-reporting)
+  (measure/stop-reporting)
 
   @measurement-topic
   @health-topic

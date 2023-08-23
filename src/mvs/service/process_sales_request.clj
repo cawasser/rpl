@@ -8,6 +8,9 @@
             [clj-uuid :as uuid]))
 
 
+(def last-event (atom {}))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; helpers
@@ -85,7 +88,7 @@
 
   [_ _ _ [event-key request]]
 
-  ;(reset! last-event request)
+  (reset! last-event request)
 
   ; TODO: where does process-service-request get the available-resources?
   ;         currently using @available-resources-view
