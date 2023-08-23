@@ -21,13 +21,16 @@
 
 
 (defn- topic-name [topic]
+  ;(println "topic-name" topic "//" *ns*)
   (:name (meta (second (first (filter #(and (var? (second %))
                                          (= topic (var-get (second %))))
-                                (ns-map *ns*)))))))
+                                (ns-map 'mvs.topics)))))))
 
 
 (defn publish! [topic [msg-key content :as message]]
   (println "publish! " (topic-name topic) " // " msg-key)
+  ;(println "publish! (b)" topic)
+
   (reset! topic message))
 
 
@@ -45,21 +48,42 @@
   (let [v provider-catalog-topic]
     (var v))
 
-  (comment
-    (topic-name provider-catalog-topic)
+  ())
 
-    (let [x provider-catalog-topic]
-      (topic-name x))
+(comment
+  (topic-name provider-catalog-topic)
+
+  (let [x provider-catalog-topic]
+    (topic-name x))
 
 
-    ())
+  (topic-name resource-measurement-topic)
 
 
+  ())
+
+
+(comment
+  (def topic #'resource-measurement-topic)
+
+  (filter #(and (var? (second %))
+             (= resource-measurement-topic (var-get (second %))))
+    (ns-map *ns*))
+
+  (ns-map #'mvs.topics)
+
+  (:name (meta (second (first (filter #(and (var? (second %))
+                                         (= resource-measurement-topic (var-get (second %))))
+                                (ns-map *ns*))))))
 
   (let [x provider-catalog-topic]
     (:name (meta (second (first (filter #(and (var? (second %))
                                             (= x (var-get (second %))))
                                    (ns-map *ns*)))))))
+
+  (let [x resource-measurement-topic]
+    (topic-name x))
+
   ())
 
 ; endregion

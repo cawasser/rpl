@@ -9,9 +9,7 @@
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
-            [mvs.topology :refer :all]
-            [clojure.spec.alpha :as spec]
-            [clj-uuid :as uuid]))
+            [mvs.topology :refer :all]))
 
 
 (set! *print-namespace-maps* false)
@@ -196,21 +194,12 @@
   (reset! order->sales-request-view {})
   (reset! resource-state-view {})
 
-  (init-topology topo)
-
-  ; providers 'publish' catalogs
-
-  (do
-    (publish! provider-catalog-topic [{:provider/id "alpha"} provider-alpha])
-    (publish! provider-catalog-topic [{:provider/id "bravo"} provider-bravo])
-    (publish! provider-catalog-topic [{:provider/id "charlie"} provider-charlie])
-    (publish! provider-catalog-topic [{:provider/id "delta"} provider-delta])
-    (publish! provider-catalog-topic [{:provider/id "echo"} provider-echo])))
-
+  (init-topology topo))
 
 
 (defn start-ui []
   (planning-ui))
+
 
 
 
@@ -241,196 +230,6 @@
 ;          etc.
 ; endregion
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; region ; Scripting
-
-(comment
-
-  (view-topo mvs-wiring)
-  (view-topo-2 mvs-wiring)
-
-  ; 1) start the backend services and the UIs
-  (do
-    (reset-topology mvs-wiring)
-    (start-ui))
-
-  (init-topology mvs-wiring)
-
-  ; region ; reset everything and re-load the catalog(s)
-  (do
-    (reset! provider-catalog-view {})
-    (reset! available-resources-view {})
-    (reset! service-catalog-view {})
-    (reset! order->sales-request-view {})
-
-    (init-topology mvs-wiring)
-
-    ; providers 'publish' catalogs
-
-    (do
-      (publish! provider-catalog-topic [{:provider/id "alpha"} provider-alpha])
-      (publish! provider-catalog-topic [{:provider/id "bravo"} provider-bravo])
-      (publish! provider-catalog-topic [{:provider/id "charlie"} provider-charlie])
-      (publish! provider-catalog-topic [{:provider/id "delta"} provider-delta])
-      (publish! provider-catalog-topic [{:provider/id "echo"} provider-echo])))
-
-  ; endregion
-
-
-  @provider-catalog-view
-  @available-resources-view
-  @order->sales-request-view
-  @service-catalog-view
-  @resource-state-view
-  @resource-performance-view
-  @resource-usage-view
-
-
-  ; region ; 2) customers orders services
-  (do
-    (def customer-1 #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
-    (def customer-2 #uuid"5a9ff450-3ac3-11ee-8473-e65ce679c38d")
-    (def customer-3 #uuid"5a9ff451-3ac3-11ee-8473-e65ce679c38d")
-
-    (def order-1 #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d")
-    (def order-2 #uuid"7a8a9400-3ac3-11ee-8473-e65ce679c38d")
-
-    (def order-3 #uuid"7f6e8fd0-3ac3-11ee-8473-e65ce679c38d")
-    (def order-failure #uuid"84389b00-3ac3-11ee-8473-e65ce679c38d"))
-
-  (publish! customer-order-topic [{:order/id order-1 :customer/id customer-1}
-                                  {:order/id     order-1 :customer/id customer-1
-                                   :order/status :order/submitted :order/needs [0 1]}])
-
-  (publish! customer-order-topic [{:order/id order-2 :customer/id customer-2}
-                                  {:order/id     order-2 :customer/id customer-2
-                                   :order/status :order/submitted :order/needs [0 1]}])
-
-  ; this one "fails" because we've used all the 0/0 and 0/1 Googoos
-  (publish! customer-order-topic [{:customer/id customer-3 :order/id order-3}
-                                  {:customer/id  customer-3 :order/id order-3
-                                   :order/status :order/submitted :order/needs [0 1]}])
-
-  ; this one "errors" because it asks for nonsense service ids
-  (publish! customer-order-topic [{:customer/id customer-1
-                                   :order/id    order-failure}
-                                  {:customer/id  customer-1
-                                   :order/id     order-failure
-                                   :order/status :order/submitted :order/needs [20]}])
-
-  ; endregion
-
-
-  ; region ; 3) customers agree to successful orders (order-1 & order-2 above) i.e., :order/approval
-  ;
-  ; approve order-1
-  (do
-    (def agreement-id (-> @order->sales-request-view first second :agreement/id))
-    (def order-id (-> @order->sales-request-view first second :order/id))
-    (def customer-id (-> @order->sales-request-view first second :customer/id))
-
-    (publish! customer-order-approval [{:order/id order-id}
-                                       {:agreement/id agreement-id
-                                        :order/id     order-id
-                                        :customer/id  customer-id
-                                        :order/status :order/purchased}]))
-
-  ; approve order-2
-  (do
-    (def agreement-id (-> @order->sales-request-view second second :agreement/id))
-    (def order-id (-> @order->sales-request-view first second :order/id))
-    (def customer-id (-> @order->sales-request-view first second :customer/id))
-
-    (publish! customer-order-approval [{:order/id order-id}
-                                       {:agreement/id agreement-id
-                                        :order/id     order-id
-                                        :customer/id  customer-id
-                                        :order/status :order/purchased}]))
-
-  ; endregion
-
-
-  ; region ; 4) providers ship resources for order-1
-  (do
-    (def order-id (-> @order->sales-request-view first second :order/id))
-    (def shipment-id (uuid/v1))
-    (def alpha-shipment
-      [{:shipment/id shipment-id}
-       {:shipment/id    shipment-id
-        :order/id       order-id
-        :provider/id    "alpha"
-        :shipment/items [{:resource/id (uuid/v1) :resource/type 0 :resource/time 0}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 1}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 2}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 3}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 4}
-                         {:resource/id (uuid/v1) :resource/type 0 :resource/time 5}]}])
-
-    (spec/explain :shipment/line-item {:resource/id (uuid/v1) :resource/type 0 :resource/time 0})
-    (spec/explain :provider/shipment (second alpha-shipment))
-
-    (publish! shipment-topic alpha-shipment))
-
-
-  ; endregion
-
-
-  @resource-state-view
-
-
-  ; region 5) resources start reporting health & status
-  (do
-    (def resource-id (-> @resource-state-view keys first)))
-
-  (publish! resource-measurement-topic [{:resource/id resource-id}
-                                        {:measurement/id        (uuid/v1)
-                                         :resource/id           resource-id
-                                         :measurement/attribute :googoo/metric
-                                         :measurement/value     10}])
-
-  (publish! resource-measurement-topic [{:resource/id resource-id}
-                                        {:measurement/id        (uuid/v1)
-                                         :resource/id           resource-id
-                                         :measurement/attribute :googoo/metric
-                                         :measurement/value     90}])
-
-  (publish! resource-measurement-topic [{:resource/id resource-id}
-                                        {:measurement/id        (uuid/v1)
-                                         :resource/id           resource-id
-                                         :measurement/attribute :googoo/metric
-                                         :measurement/value     110}])
-
-  (publish! resource-measurement-topic [{:resource/id resource-id}
-                                        {:measurement/id        (uuid/v1)
-                                         :resource/id           resource-id
-                                         :measurement/attribute :googoo/metric
-                                         :measurement/value     50}])
-
-  (publish! resource-measurement-topic [{:resource/id resource-id}
-                                        {:measurement/id        (uuid/v1)
-                                         :resource/id           resource-id
-                                         :measurement/attribute :googoo/metric
-                                         :measurement/value     0}])
-  @resource-state-view
-  @resource-performance-view
-  @resource-usage-view
-
-  @performance-topic
-
-
-  (reset! resource-state-view {})
-  (reset! resource-usage-view {})
-
-  ; endregion
-
-
-  ())
-
-
-; endregion
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

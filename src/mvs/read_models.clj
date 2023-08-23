@@ -9,31 +9,31 @@
                (into [])))
 
 
-(def provider-alpha {:provider/id      "alpha"
+(def provider-alpha {:provider/id      "alpha-googoos"
                      :resource/catalog [{:resource/type 0 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
                                         {:resource/type 1 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
                                         {:resource/type 2 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
                                         {:resource/type 3 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}
                                         {:resource/type 4 :resource/time-frames [0 1 2 3 4 5] :resource/cost 10}]})
-(def provider-bravo {:provider/id      "bravo"
+(def provider-bravo {:provider/id      "bravo-googoos"
                      :resource/catalog [{:resource/type 0 :resource/time-frames [1 3 5] :resource/cost 5}
                                         {:resource/type 1 :resource/time-frames [1 3 5] :resource/cost 5}
                                         {:resource/type 2 :resource/time-frames [1 3 5] :resource/cost 5}
                                         {:resource/type 3 :resource/time-frames [1 3 5] :resource/cost 5}
                                         {:resource/type 4 :resource/time-frames [1 3 5] :resource/cost 5}]})
-(def provider-charlie {:provider/id      "charlie"
+(def provider-charlie {:provider/id      "charlie-googoos"
                        :resource/catalog [{:resource/type 0 :resource/time-frames [2 4 5] :resource/cost 5}
                                           {:resource/type 1 :resource/time-frames [2 4 5] :resource/cost 5}
                                           {:resource/type 2 :resource/time-frames [2 4 5] :resource/cost 5}
                                           {:resource/type 3 :resource/time-frames [2 4 5] :resource/cost 5}
                                           {:resource/type 4 :resource/time-frames [2 4 5] :resource/cost 5}]})
-(def provider-delta {:provider/id      "delta"
+(def provider-delta {:provider/id      "delta-googoos"
                      :resource/catalog [{:resource/type 0 :resource/time-frames [0 1 2] :resource/cost 5}
                                         {:resource/type 1 :resource/time-frames [0 1 2] :resource/cost 5}
                                         {:resource/type 2 :resource/time-frames [0 1 2] :resource/cost 5}
                                         {:resource/type 3 :resource/time-frames [0 1 2] :resource/cost 5}
                                         {:resource/type 4 :resource/time-frames [0 1 2] :resource/cost 5}]})
-(def provider-echo {:provider/id      "echo"
+(def provider-echo {:provider/id      "echo-googoos"
                     :resource/catalog [{:resource/type 0 :resource/time-frames [3 4] :resource/cost 2}
                                        {:resource/type 1 :resource/time-frames [3 4] :resource/cost 2}
                                        {:resource/type 2 :resource/time-frames [3 4] :resource/cost 2}
