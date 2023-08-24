@@ -1,6 +1,5 @@
 (ns mvs.specs
   (:require [clojure.spec.alpha :as spec]
-            [malli.provider :as mp]
             [clj-uuid :as uuid]))
 
 

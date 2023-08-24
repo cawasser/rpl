@@ -23,6 +23,8 @@
   dorothy/dorothy                 {:mvn/version "0.0.7"}
   cljfx/cljfx                     {:git/url "https://github.com/cljfx/cljfx"
                                    :git/sha "2b3f86ab5c7fda9dcffd1149401f63de4604d797"}
+  com.jsyn/jsyn                   {:mvn/version "20170815"}
+
   io.github.cljfx/dev             {:mvn/version "1.0.36"}
 
   fundingcircle/jackdaw           {:mvn/version "0.6.4"}    ;"0.8.0"
