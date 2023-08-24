@@ -174,33 +174,15 @@
 
 
 
-(defn init-topology [wiring]
-  (let [entities (:mvs/entities wiring)
-        workflow (:mvs/workflow wiring)]
-    (doall
-      (map (fn [[from to]]
-             (when (= (-> entities from :mvs/entity-type) :mvs/topic)
-               (do
-                 (println "add-watch " from " -> " to)
-                 (add-watch (-> entities from :mvs/topic-name)
-                   to (-> entities to :mvs/name)))))
-        workflow))))
+
 
 
 (defn reset-topology [topo]
-  (reset! provider-catalog-view {})
-  (reset! available-resources-view {})
-  (reset! service-catalog-view {})
-  (reset! order->sales-request-view {})
-  (reset! resource-state-view {})
-
+  (reset-read-models)
   (init-topology topo))
 
 
-(defn start-ui []
-  (planning-ui))
-
-
+(defn start-ui [])
 
 
 
@@ -237,34 +219,14 @@
 ;
 ; region ; rich comments
 
-; look at 'watchers'
-(comment
-  (def x (atom 0))
-
-
-  (add-watch x :watcher
-    (fn [key atom old-state new-state]
-      (println "new-state" new-state)))
-
-  (reset! x 2)
-
-
-
-  ())
-
-
-; try some cljfx
-(comment
-  (sales/sales)
-
-  ())
-
 
 
 (comment
-  (view-topo-2 mvs-wiring)
+  (view-topo mvs-wiring)
 
   (init-topology mvs-wiring)
+
+  (reset-topology mvs-wiring)
 
   ())
 

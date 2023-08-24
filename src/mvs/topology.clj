@@ -75,12 +75,6 @@
 ; endregion
 
 
-
-(defn view-topo [{:keys [mvs/entities mvs/workflow] :as topo}]
-  (-> (build-graph (keys entities) workflow)
-    (lio/view)))
-
-
 (defn- label [text color font-color]
   {:color     color
    :label     text
@@ -88,7 +82,7 @@
    :penwidth  3})
 
 
-(defn view-topo-2 [{:keys [mvs/messages mvs/entities mvs/workflow] :as topo}]
+(defn view-topo [{:keys [mvs/messages mvs/entities mvs/workflow] :as topo}]
   (let [nodes (->> topo
                 :mvs/entities
                 (map (fn [[k {:keys [mvs/entity-type]}]]
@@ -116,6 +110,17 @@
       (open-data ".png"))))
 
 
+(defn init-topology [topo]
+  (let [entities (:mvs/entities topo)
+        workflow (:mvs/workflow topo)]
+    (doall
+      (map (fn [[from to]]
+             (when (= (-> entities from :mvs/entity-type) :mvs/topic)
+               (do
+                 (println "add-watch " from " -> " to)
+                 (add-watch (-> entities from :mvs/topic-name)
+                   to (-> entities to :mvs/name)))))
+        workflow))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -168,13 +173,7 @@
   (-> g dot/dot dj/show!)
 
 
-
-
-
-
   (:mvs/workflow topo)
-
-
 
   ())
 
@@ -255,5 +254,6 @@
 
 
   ())
+
 
 ; endregion

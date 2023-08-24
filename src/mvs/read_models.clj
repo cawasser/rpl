@@ -51,35 +51,62 @@
 
 (def provider-catalog-view
   "summary of all the provider catalogs" (atom {}))
+(defn reset-provider-catalog-view [] (reset! provider-catalog-view {}))
 
 (def available-resources-view
   "denormalized arrangements of all resources available" (atom {}))
+(defn reset-available-resources-view [] (reset! available-resources-view {}))
 
 (def service-catalog-view
   "catalog of service ACME offers to customer" (atom []))
+(defn reset-service-catalog-view [] (reset! service-catalog-view []))
 
 ;(def sales-catalog-history-view
 ;  "history of all the sales catalogs of ACME ever offered to customer" (atom []))
+;(defn reset-sales-catalog-history-view [] (reset! sales-catalog-history-view []))
 
 (def order->sales-request-view
   "maps order/id to :sales/request-id so we can relate all information" (atom {}))
+(defn reset-order->sales-request-view [] (reset! order->sales-request-view {}))
 
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
+(defn reset-committed-resources-view [] (reset! committed-resources-view []))
 
 (def resource-state-view
   "all the resources that ACME must monitor" (atom {}))
+(defn reset-resource-state-view [] (reset! resource-state-view {}))
 
 (def resource-performance-view
   "track update events against resources over time"
   (atom {}))
+(defn reset-available-resources-view [] (reset! available-resources-view {}))
 
 (def resource-usage-view
   "track resources that have produces any events over time, tracking the frist only"
   (atom {}))
+(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
 
 (def customer-order-view (atom {}))
+(defn reset-customer-order-view [] (reset! customer-order-view {}))
+
 (def customer-agreement-view (atom {}))
+(defn reset-customer-agreement-view [] (reset! customer-agreement-view {}))
+
+
+(defn reset-read-models
+  "reset all the read-models to their starting value (generally, empty)"
+  []
+  (reset-provider-catalog-view)
+  (reset-available-resources-view)
+  (reset-service-catalog-view)
+  ;(reset-sales-catalog-history-view)
+  (reset-committed-resources-view)
+  (reset-resource-state-view)
+  (reset-available-resources-view)
+  (reset-resource-performance-view)
+  (reset-customer-order-view)
+  (reset-customer-agreement-view))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

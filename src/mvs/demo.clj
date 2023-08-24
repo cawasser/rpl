@@ -18,15 +18,6 @@
             [clj-uuid :as uuid]))
 
 
-
-;(def generate-integer #'measure/generate-integer)
-;(def register-resource-update #'measure/register-resource-update)
-;(def start-reporting #'measure/start-reporting)
-;(def stop-reporting #'measure/stop-reporting)
-;
-;(def providers-ship-order #'ship/providers-ship-order)
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; Defining Entity IDs for the various organizations in the Demo

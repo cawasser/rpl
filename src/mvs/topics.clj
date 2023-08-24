@@ -39,7 +39,23 @@
 ;
 ; region ; rich comments
 
+; look at 'watchers'
+(comment
+  (def x (atom 0))
 
+
+  (add-watch x :watcher
+    (fn [key atom old-state new-state]
+      (println "new-state" new-state)))
+
+  (reset! x 2)
+
+
+
+  ())
+
+
+; how to get the topic's name from the parameter
 (comment
   (:name (meta #'provider-catalog-topic))
 
@@ -48,9 +64,7 @@
   (let [v provider-catalog-topic]
     (var v))
 
-  ())
 
-(comment
   (topic-name provider-catalog-topic)
 
   (let [x provider-catalog-topic]
@@ -60,10 +74,6 @@
   (topic-name resource-measurement-topic)
 
 
-  ())
-
-
-(comment
   (def topic #'resource-measurement-topic)
 
   (filter #(and (var? (second %))
@@ -85,5 +95,6 @@
     (topic-name x))
 
   ())
+
 
 ; endregion

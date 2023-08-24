@@ -1,10 +1,12 @@
 (ns mvs.dashboards
-  (:require [mvs.dashboard.sales :as sales]
-            [mvs.dashboard.planning :as planning]))
+  (:require [mvs.dashboard.monitoring :as monitoring]
+            [mvs.dashboard.planning :as planning]
+            [mvs.dashboard.sales :as sales]
+            [cljfx.api :as fx]))
 
 
+(def monitoring-dashboard #'monitoring/monitoring-dashboard)
 (def planning-dashboard #'planning/planning-dashboard)
-(def planning-ui #'planning/planning-ui)
 (def sales-dashboard #'sales/sales-dashboard)
 
 
@@ -19,11 +21,6 @@
 
 
 
-(defn monitoring-dashboard [_ _ _ event]
-  (println "MONITORING received " event))
-
-
-
 (defn billing-dashboard [_ _ _ event]
   (println "BILLING received " event))
 
@@ -33,11 +30,21 @@
 
 
 
+(def renderer
+  (fx/create-renderer
+    :middleware (fx/wrap-map-desc assoc :fx/type root)))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; region ; rich comments
 
+(comment
+
+  (renderer)
+
+  ())
 
 ; endregion
