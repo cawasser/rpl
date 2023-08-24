@@ -129,14 +129,14 @@
 ;
 
 (comment
-  (view-topo-2 mvs.core/mvs-wiring)
+  (view-topo mvs.core/mvs-topology)
 
   ())
 
 
 ; play with dorothy a bit
 (comment
-  (view-topo-2 mvs.core/mvs-wiring)
+  (view-topo mvs.core/mvs-topology)
 
   ; try "parsing" a small topology
   (do
@@ -181,7 +181,7 @@
 ; edge attributes
 (comment
   (do
-    (def topo mvs.core/mvs-wiring)
+    (def topo mvs.core/mvs-topology)
     (def messages (:mvs/messages topo))
     (def msg '(:?))                                         ;:provider/catalog))
     (def p (-> messages msg :mvs/message-type))
@@ -217,8 +217,6 @@
                      :mvs/ktable {:color :green}
                      {:color :black}))))
     (into []))
-
-
 
 
   ())

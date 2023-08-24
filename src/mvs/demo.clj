@@ -53,11 +53,11 @@
 
 (comment
 
-  (view-topo-2 mvs-wiring)
+  (view-topo-2 mvs-topology)
 
   ; region ; 1) start the backend services and the UIs
   (do
-    (reset-topology mvs-wiring)
+    (reset-topology mvs-topology)
     (start-ui))
 
   ; endregion
@@ -96,6 +96,7 @@
   ;  (def order-3 #uuid"7f6e8fd0-3ac3-11ee-8473-e65ce679c38d")
   ;  (def order-failure #uuid"84389b00-3ac3-11ee-8473-e65ce679c38d"))
 
+  ; TODO: should we drop :order/id from the key here, leaving only :customer/id?
   (publish! customer-order-topic [{:customer/id alice :order/id alice-order-1}
                                   {:customer/id  alice
                                    :order/id     alice-order-1
@@ -147,7 +148,7 @@
     (def order-id (-> @order->sales-request-view first second :order/id))
     (def shipment-id (uuid/v1))
     (def alpha-shipment
-      [{:shipment/id shipment-id}
+      [{:provider/id    "alpha"}
        {:shipment/id    shipment-id
         :order/id       order-id
         :provider/id    "alpha"

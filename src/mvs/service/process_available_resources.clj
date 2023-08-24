@@ -11,9 +11,9 @@
 (defn process-available-resources
   "take provider catalog data (:provider/catalog) and turn it into something useful for allocating
   to customers as: `{ <:resource/type> #{ { <:resource/time> <:provider/id> }
-                                        { <:resource/time> <:provider/id> } }
+                                          { <:resource/time> <:provider/id> } }
                       <:resource/type> #{ { <:resource/time> <:provider/id> }
-                                        { <:resource/time> <:provider/id> } } }`
+                                          { <:resource/time> <:provider/id> } } }`
   "
   [_ _ _ [_ catalog]]
 

@@ -4,6 +4,11 @@
             [clj-uuid :as uuid]))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; region ; DATA ITEM SPECS
+
 ; region ; :googoo/googoos (resource)
 
 ; TODO: at some point (monitoring) we need to distinguish between each
@@ -254,12 +259,26 @@
 
 ; endregion
 
+; endregion
 
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; region ; EVENT KEYS (DOMAIN ENTITIES)
+
+(spec/def :domain/customer (spec/keys :req [:customer/id]))
+(spec/def :domain/provider (spec/keys :req [:provider/id]))
+(spec/def :domain/order (spec/keys :req [:order/id]))
+(spec/def :domain/resource (spec/keys :req [:resource/id]))
+(spec/def :domain/shipment (spec/keys :req [:shipment/id])) ; TODO: really? or should this be :domain/provider?
+(spec/def :domain/plan (spec/keys :req [:plan/id]))         ; TODO: really? should this be :domain/order?
+(spec/def :domain/agreement (spec/keys :req [:agreement/id])) ; TODO: really? should this be :domain/order?
+
+; endregion
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

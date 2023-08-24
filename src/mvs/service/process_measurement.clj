@@ -12,10 +12,25 @@
 (def last-event (atom []))
 
 
-(defn process-measurement [_ _ _ [event-key {:keys [resource/id
-                                                    measurement/attribute
-                                                    measurement/value]
-                                             :as   measurement}]]
+(defn process-measurement
+  "accepts a :resource/measurement, materialized it into resource-state-view,
+  and enriches it with:
+
+  - :order/id
+  - :customer/id
+  - :sales/request-id
+  - :agreement/id
+  - :order/needs
+
+  all of which are found in resource-state-view. The enriched event is then
+  published to measurement-topic for further downstream analytical processing.
+
+  > NOTE: the inbound event is keyed by :resource/id, but this is domain specific
+  "
+  [_ _ _ [event-key {:keys [resource/id
+                            measurement/attribute
+                            measurement/value]
+                     :as   measurement}]]
 
   (println "process-measurement" event-key " // " measurement)
 
@@ -23,8 +38,6 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-
-
       ; 1) update the resource-state-view with the new data
       (swap! resource-state-view
         assoc-in [id :resource/measurements attribute]
@@ -36,7 +49,7 @@
           value))
 
       ; 2) republish this data upstream (?)
-      ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be aquired from
+      ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
       ;       @resource-state-view
       ;
       (let [enrichment (->> (get @resource-state-view id)
