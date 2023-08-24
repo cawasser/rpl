@@ -11,6 +11,10 @@
 
 (def last-event (atom []))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; helpers
+;
 
 (defmulti resource-health
   "we might decide :resource/status based upon the attribute (we only have Googoos right now)"
@@ -24,8 +28,14 @@
     (> v 100) :status/off-line
     :else :status/unknown))
 
+; endregion
 
-(defn process-resource-health [_ _ _ [event-key measurement]]
+
+(defn process-resource-health
+  "enriches a :resource/measurement event with an assessment of the resource's
+  'health' (See `resource-health` for details) using a :resource/status key"
+
+  [_ _ _ [event-key measurement]]
 
   (println "process-resource-health" event-key " // " measurement)
 

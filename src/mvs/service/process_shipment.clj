@@ -11,10 +11,14 @@
 (def last-event (atom []))
 
 
-(defn process-shipment [_ _ _ [event-key {items :shipment/items
-                                          order-id :order/id
-                                          provider-id :provider/id
-                                          :as   shipment}]]
+(defn process-shipment
+  "'select' the actual resources (by assigning them a `:resource/id`) to fulfil a `:provider/order`
+  and publish the :provider/shipment"
+
+  [_ _ _ [event-key {items :shipment/items
+                     order-id :order/id
+                     provider-id :provider/id
+                     :as   shipment}]]
 
   (if (spec/valid? :provider/shipment shipment)
 
@@ -50,7 +54,7 @@
           (reduce (fn [m [k v :as x]] (assoc m k v))
             @resource-state-view new-vals))))
 
-    (malformed :provider/shipment shipment)))
+    (malformed "process-shipment" :provider/shipment shipment)))
 
 
 

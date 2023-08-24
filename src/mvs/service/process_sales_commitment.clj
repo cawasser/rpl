@@ -47,7 +47,7 @@
 
   [_ _ _ [event-key event]]
 
-  ;(reset! last-event event)
+  (reset! last-event event)
 
   (if (or (spec/valid? :sales/commitment event)
         (spec/valid? :sales/failure event))

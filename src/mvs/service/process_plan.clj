@@ -11,12 +11,17 @@
 (def last-event (atom []))
 
 
-(defn process-plan [_ _ _ [{:keys [order/id] :as event-key}
-                           {plan-id          :plan/id
-                            customer-id      :customer/id
-                            sales-request-id :sales/request-id
-                            resources        :commitment/resources
-                            :as              plan}]]
+(defn process-plan
+  "takes a :sales/plan and turns it into collections of :provider/orders to be
+  sent to the providers for fulfillment.
+
+  "
+  [_ _ _ [{:keys [order/id] :as event-key}
+          {plan-id          :plan/id
+           customer-id      :customer/id
+           sales-request-id :sales/request-id
+           resources        :commitment/resources
+           :as              plan}]]
 
   (println "process-plan" event-key)
 
@@ -33,15 +38,14 @@
       ; 1) place orders with the providers
       (doseq [p expanded-plan]
         (doseq [[id r] p]
-          (let [order-id       (uuid/v1)
-                provider-order {:order/id         order-id
+          (let [provider-order {:order/id         (uuid/v1)
                                 :provider/id      id
                                 :order/status     :order/purchased
                                 :service/elements r}]
-            (publish! provider-order-topic [{:order/id order-id}
+            (publish! provider-order-topic [{:provider/id id}
                                             provider-order])))))
 
-    ; 2) tell "monitoring" to watch for the new orders
+    ; TODO: 2) tell "monitoring" to watch for the new orders
 
 
     (malformed "process-plan" :sales/plan plan)))

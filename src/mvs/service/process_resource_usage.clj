@@ -11,6 +11,11 @@
 (def last-event (atom []))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; helpers
+;
+
 (defn- update-ktable
   "manage state materialization (reduce/fold update events over time) into a
   'ktable' (currently just an atom) and we'll track usage of resources "
@@ -38,10 +43,14 @@
 
     {:customer/usage (double (/ usage sla))}))
 
+; endregion
+
 
 (defn process-resource-usage
   "we will compute 'usage' as the percent of the resources the customer purchased
-  the have reported a measurement event at least once."
+  vs. those that have reported a measurement event at least once.
+
+  uses a local Ktable (atom) to track the :resource/ids that have reported to-date"
 
   [_ _ _ [event-key {resource-id :resource/id
                      order-id    :order/id

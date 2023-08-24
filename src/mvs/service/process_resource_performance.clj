@@ -12,6 +12,15 @@
 (def last-event (atom []))
 
 
+(def history-size 10)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; helpers
+;
+
+
 (defn- update-ktable
   "manage state materialization (reduce/fold update events over time) into a
   'ktable' (currently just an atom) and we'll consider performance over the last 'size'
@@ -36,8 +45,17 @@
   (let [history (get-in @ktable [id attribute])]
     {:resource/performance (average history)}))
 
+; endregion
 
-(defn process-resource-performance [_ _ _ [event-key measurement :as event]]
+
+(defn process-resource-performance
+  "enriches a :resource/measurement event with an assessment of the resource's
+  'performance' (See `compute-performance` for details) using a :resource/performance key
+
+  uses a 'local' ktable (atom) to materialize history for computing the average of the last
+  `history-size` events"
+
+  [_ _ _ [event-key measurement :as event]]
 
   (println "process-resource-performance" event-key " // " measurement)
 
@@ -45,7 +63,7 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-      (let [_                 (update-ktable resource-performance-view 10 event)
+      (let [_                 (update-ktable resource-performance-view history-size event)
             perf              (compute-performance resource-performance-view event)
             performance-event [event-key (merge measurement perf)]]
 
