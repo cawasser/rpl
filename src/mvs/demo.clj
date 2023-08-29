@@ -1,11 +1,8 @@
 (ns mvs.demo
   (:require [mvs.core :refer :all]
-            [mvs.commands :refer :all]
             [mvs.constants :refer :all]
-            [mvs.dashboard.sales :as sales]
             [mvs.dashboards :refer :all]
             [mvs.demo :refer :all]
-            [mvs.events :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
             [mvs.services :refer :all]
@@ -53,7 +50,7 @@
 
 (comment
 
-  (view-topo-2 mvs-topology)
+  (view-topo mvs-topology)
 
   ; region ; 1) start the backend services and the UIs
   (do
@@ -252,6 +249,11 @@
   @health-topic
   @performance-topic
   @usage-topic
+
+
+  (get @resource-state-view #uuid"be9e6632-42c0-11ee-af47-b45e435986d5")
+  (get @resource-performance-view #uuid"be9e6632-42c0-11ee-af47-b45e435986d5")
+  (double (/ (+ 58 15 70 89 0) 5))
 
   ; endregion
 

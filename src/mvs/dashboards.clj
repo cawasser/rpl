@@ -1,8 +1,7 @@
 (ns mvs.dashboards
   (:require [mvs.dashboard.monitoring :as monitoring]
             [mvs.dashboard.planning :as planning]
-            [mvs.dashboard.sales :as sales]
-            [cljfx.api :as fx]))
+            [mvs.dashboard.sales :as sales]))
 
 
 (def monitoring-dashboard #'monitoring/monitoring-dashboard)
@@ -29,10 +28,6 @@
   (println "CUSTOMER SUPPORT received " event))
 
 
-
-(def renderer
-  (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)))
 
 
 

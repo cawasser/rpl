@@ -1,5 +1,6 @@
 (ns mvs.dashboard.monitoring
-  (:require [cljfx.api :as fx]
+  (:require [mvs.dashboard.ui.table :as table]
+            [cljfx.api :as fx]
             [cljfx.dev :refer :all])
   (:import [javafx.application Platform]
            [com.jsyn JSyn]
@@ -24,7 +25,7 @@
 ; http://pages.mtu.edu/~suits/notefreqs.html
 (def notes {"A" 440.00
             "B" 493.88
-            "C"261.63
+            "C" 261.63
             "D" 293.66
             "E" 329.63
             "F" 349.23
@@ -34,15 +35,15 @@
 ; Cljfx global state
 (def *state
   (atom {:frequency 440
-         :duration 200}))
+         :duration  500}))
 
 
 ; Generate a tone using JSyn
 ; Adapted from https://github.com/daveyarwood/javasynth/blob/master/src/javasynth/getting_started.clj
 (defn generate-tone [frequency duration amplitude]
   (let [synth (doto (. JSyn createSynthesizer) .start)
-        out (LineOut.)
-        sine (SineOscillator. frequency)]
+        out   (LineOut.)
+        sine  (SineOscillator. frequency)]
     (.set (. sine -amplitude) amplitude)
     (.add synth out)
     (.add synth sine)
@@ -85,105 +86,107 @@
 
 ; Spinner box with label
 (defn number-field [{:keys [value-factory-class min-value max-value init-value state-key label]}]
-  {:fx/type :h-box
+  {:fx/type   :h-box
    :alignment :center
-   :spacing 5
-   :children [{:fx/type :spinner
-               :editable true
-               :value-factory {:fx/type value-factory-class
-                               :min min-value
-                               :max max-value
-                               :value init-value}
-               :on-value-changed #(swap! *state assoc state-key %)}
-              {:fx/type :label
-               :text label}]})
+   :spacing   5
+   :children  [{:fx/type          :spinner
+                :editable         true
+                :value-factory    {:fx/type value-factory-class
+                                   :min     min-value
+                                   :max     max-value
+                                   :value   init-value}
+                :on-value-changed #(swap! *state assoc state-key %)}
+               {:fx/type :label
+                :text    label}]})
 
 ; Frequency slider and controls
 (defn frequency-slider [{:keys [frequency]}]
-  {:fx/type :slider
-   :min min-position
-   :max max-position
-   :value (frequency->position frequency)
+  {:fx/type          :slider
+   :min              min-position
+   :max              max-position
+   :value            (frequency->position frequency)
    :on-value-changed #(set-frequency (position->frequency %))})
 
 
 (defn octave-button [{:keys [frequency label modifier]}]
-  {:fx/type :button
-   :text label
+  {:fx/type   :button
+   :text      label
    :on-action (fn [_] (set-frequency (* frequency modifier)))})
 
 
 (defn frequency-controls [{:keys [frequency]}]
-  {:fx/type :h-box
+  {:fx/type   :h-box
    :alignment :center
-   :spacing 20
-   :children [{:fx/type octave-button
-               :frequency frequency
-               :label "<"
-               :modifier 0.5}
-              {:fx/type number-field
-               :value-factory-class :double-spinner-value-factory
-               :min-value min-frequency
-               :max-value max-frequency
-               :init-value frequency
-               :state-key :frequency
-               :label "Hz"}
-              {:fx/type octave-button
-               :frequency frequency
-               :label ">"
-               :modifier 2}]})
+   :spacing   20
+   :children  [{:fx/type   octave-button
+                :frequency frequency
+                :label     "<"
+                :modifier  0.5}
+               {:fx/type             number-field
+                :value-factory-class :double-spinner-value-factory
+                :min-value           min-frequency
+                :max-value           max-frequency
+                :init-value          frequency
+                :state-key           :frequency
+                :label               "Hz"}
+               {:fx/type   octave-button
+                :frequency frequency
+                :label     ">"
+                :modifier  2}]})
 
 
 ; General controls
 (defn general-controls [{:keys [frequency duration]}]
-  {:fx/type :h-box
-   :spacing 20
-   :children [{:fx/type number-field
+  {:fx/type  :h-box
+   :spacing  20
+   :children [{:fx/type             number-field
                :value-factory-class :integer-spinner-value-factory
-               :min-value 1
-               :max-value 600000 ; 10 minutes
-               :init-value duration
-               :state-key :duration
-               :label "ms"}
-              {:fx/type :button
-               :text "Play"
+               :min-value           1
+               :max-value           600000                  ; 10 minutes
+               :init-value          duration
+               :state-key           :duration
+               :label               "ms"}
+              {:fx/type   :button
+               :text      "Play"
                :on-action (fn [_] (generate-tone frequency duration 0.5))}
-              {:fx/type :h-box
+              {:fx/type   :h-box
                :alignment :center
-               :spacing 5
-               :children [{:fx/type :label
-                           :text "♪"}
-                          {:fx/type :choice-box
-                           :items ["A" "B" "C" "D" "E" "F" "G"]
-                           :on-value-changed #(set-frequency (notes %))}]}]})
+               :spacing   5
+               :children  [{:fx/type :label
+                            :text    "♪"}
+                           {:fx/type          :choice-box
+                            :items            ["A" "B" "C" "D" "E" "F" "G"]
+                            :on-value-changed #(set-frequency (notes %))}]}]})
 
 
 ; Main window
-(defn root [{:keys [frequency duration]}]
+(defn main-window [{:keys [frequency duration]}]
   {:fx/type :stage
    :showing true
-   :title "Bleep"
-   :scene {:fx/type :scene
-           :root {:fx/type :v-box
-                  :padding 25
-                  :spacing 40
-                  :children [{:fx/type frequency-slider
-                              :frequency frequency}
-                             {:fx/type frequency-controls
-                              :frequency frequency}
-                             {:fx/type general-controls
-                              :frequency frequency
-                              :duration duration}]}}})
+   :title   "Bleep"
+   :scene   {:fx/type :scene
+             :root    {:fx/type  :v-box
+                       :padding  25
+                       :spacing  40
+                       :children [{:fx-type table/table
+                                   :data table/items}
+                                  ;{:fx/type   frequency-slider
+                                  ; :frequency frequency}
+                                  ;{:fx/type   frequency-controls
+                                  ; :frequency frequency}
+                                  {:fx/type   general-controls
+                                   :frequency frequency
+                                   :duration  duration}]}}})
 
 
-; region ;in hiccup this would be something like:
+; region ; in hiccup this would be something like:
 ;
-;[fx/stage {:showing true :title "Bleep"}
-; [fx/scene
-;  [fx/v-box {:padding 25 :spacing 40}
-;   [frequency-slider :frequency frequency]
-;   [frequency-controls :frequency frequency]
-;   [general-controls :frequency frequency :duration duration]]]]
+; [fx/stage {:showing true :title "Bleep"}
+;  [fx/scene
+;   [fx/v-box {:padding 25 :spacing 40}
+;    [frequency-slider :frequency frequency]
+;    [frequency-controls :frequency frequency]
+;    [general-controls :frequency frequency :duration duration]]]]
 ;
 ; or, more re-com like
 ;
@@ -203,7 +206,7 @@
 ; Renderer with middleware that maps incoming data to component description
 (def renderer
   (fx/create-renderer
-    :middleware (fx/wrap-map-desc assoc :fx/type root)))
+    :middleware (fx/wrap-map-desc assoc :fx/type main-window)))
 
 
 
@@ -216,6 +219,11 @@
 
   (Platform/setImplicitExit true)
   (fx/mount-renderer *state renderer)
+
+  (renderer)
+
+  (help)
+  (help-ui)
 
   ())
 

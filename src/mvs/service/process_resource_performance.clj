@@ -36,7 +36,6 @@
             [])
       value)))
 
-
 (defn average [coll]
   (double (/ (reduce + coll) (count coll))))
 
@@ -87,37 +86,79 @@
     (def resource-id #uuid"74bb49c1-4095-11ee-84d5-efb2362fd299"))
 
   (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id resource-id
+                         {:resource/id           resource-id
                           :measurement/attribute :googoo/metric
-                          :measurement/value 10}])
-  (average (get-in @view [resource-id :googoo/metric])) ; 10
+                          :measurement/value     10}])
+  (average (get-in @view [resource-id :googoo/metric]))     ; 10
 
   (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id resource-id
+                         {:resource/id           resource-id
                           :measurement/attribute :googoo/metric
-                          :measurement/value 20}])
-  (average (get-in @view [resource-id :googoo/metric])) ; 13
+                          :measurement/value     20}])
+  (average (get-in @view [resource-id :googoo/metric]))     ; 13
 
   (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id resource-id
+                         {:resource/id           resource-id
                           :measurement/attribute :googoo/metric
-                          :measurement/value 30}])
-  (average (get-in @view [resource-id :googoo/metric])) ; 20
+                          :measurement/value     30}])
+  (average (get-in @view [resource-id :googoo/metric]))     ; 20
 
   (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id resource-id
+                         {:resource/id           resource-id
                           :measurement/attribute :googoo/metric
-                          :measurement/value 40}])
+                          :measurement/value     40}])
   (average (get-in @view [resource-id :googoo/metric])) 30
 
   (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id resource-id
+                         {:resource/id           resource-id
                           :measurement/attribute :googoo/metric
-                          :measurement/value 50}])
-  (average (get-in @view [resource-id :googoo/metric])) ; 40
+                          :measurement/value     50}])
+  (average (get-in @view [resource-id :googoo/metric]))     ; 40
 
   ())
 
+
+; some explorations on mutating ATOMS
+(comment
+
+  (def event {:id "r-1" :att "a-1" :val 50})
+
+  (def ktable (atom {"r-1" {"a-1" [10 20 30 40,,,,]}}))
+
+  (let [current (get-in @ktable [(:id event) (:att event)])]
+    (conj current (:val event)))
+
+
+  (assoc-in @ktable [(:id event) (:att event)]
+    (conj (get-in @ktable
+            [(:id event) (:att event)])
+      (:val event)))
+
+  (get-in @ktable ["r-2" (:att event)])
+
+  (update-in @ktable [(:id event) (:att event)] conj,,, 60)
+  (update-in @ktable ["r-2" (:att event)] conj,,, 10)
+
+
+  (swap! ktable assoc-in,,, [(:id event) (:att event)]
+    (conj (get-in @ktable
+            [(:id event) (:att event)])
+      (:val event)))
+
+
+  (def a (atom {}))
+  @a
+  (assoc @a :a 10 :b 1000)
+
+  (assoc-in {} [:a :b] 100)
+
+  (swap! a assoc,, :a 10 :b 1000)
+  (reset! a {:c 200})
+
+
+
+
+  ())
 
 ; endregion
 
