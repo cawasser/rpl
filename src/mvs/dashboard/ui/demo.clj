@@ -20,12 +20,14 @@
               :x       100 :y 100
               :width   960 :height 540
               :content table/table-view
+              :title   "Customer Orders"
               :columns order-columns
               :data    orders}
              {:fx/type window/window
               :x       500 :y 500
               :width   960 :height 540
               :content table/table-view
+              :title   "Sales Dashboard"
               :columns order-columns
               :data    orders}]})
 
