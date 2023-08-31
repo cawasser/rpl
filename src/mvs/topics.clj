@@ -73,7 +73,6 @@
 
   (topic-name resource-measurement-topic)
 
-
   (def topic #'resource-measurement-topic)
 
   (filter #(and (var? (second %))
@@ -93,6 +92,13 @@
 
   (let [x resource-measurement-topic]
     (topic-name x))
+
+  ())
+
+
+(comment
+  (meta #'topic-name)
+
 
   ())
 

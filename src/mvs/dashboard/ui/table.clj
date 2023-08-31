@@ -16,10 +16,10 @@
     (when pref-width {:pref-width pref-width})))
 
 
-(defn table-view [{:keys [data columns pref-width pref-height]}]
+(defn table-view [{:keys [data columns width height]}]
   {:fx/type     :table-view
-   :pref-width  pref-width
-   :pref-height pref-height
+   :pref-width  width
+   :pref-height height
    :columns     (map header-cell columns)
    :items       data})
 
