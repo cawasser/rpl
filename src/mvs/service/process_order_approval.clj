@@ -15,10 +15,11 @@
   to be submitted for actual 'fulfillment' (as opposed to what planning does, which is sort of
   hypothetical)
   "
-  [_ _ _ [{:keys [order/id] :as event-key} {status      :order/status
-                                            customer-id :customer/id
-                                            order-id    :order/id
-                                            :as         approval}]]
+  [[{:keys [order/id] :as event-key} {status      :order/status
+                                      customer-id :customer/id
+                                      order-id    :order/id
+                                      :as         approval}
+    :as event]]
 
   (println "process-order-approval" event-key)
 

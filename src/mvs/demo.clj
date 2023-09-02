@@ -67,6 +67,8 @@
     (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
     (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
 
+  @app-db
+
   ; endregion
 
   ; region ; 2b) view read-models as a sanity check
@@ -222,7 +224,21 @@
 
   ; endregion
 
-  ; region ; 6) all shipped resources start reporting automatically (every 5 sends)
+
+  ; region 6a) each shipped resource reports 1 time
+  (do
+    ; register all the resources
+    (->> @resource-state-view
+      keys
+      (map (fn [id] (measure/register-resource-update id
+                      :googoo/metric #(measure/generate-integer 100))))
+      doall))
+
+  (measure/report-once resource-measurement-topic)
+
+  ; endregion
+
+  ; region ; 6b) all shipped resources start reporting automatically (every 5 sends)
 
   (do
     ; register all the resources
@@ -235,6 +251,7 @@
     ; start the background thread to publish the reports
     (measure/start-reporting resource-measurement-topic 5))
 
+  (provider-catalogs @app-db)
 
   @resource-state-view
   @mvs.demo.measurement/registry
@@ -251,8 +268,9 @@
   @usage-topic
 
 
-  (get @resource-state-view #uuid"be9e6632-42c0-11ee-af47-b45e435986d5")
-  (get @resource-performance-view #uuid"be9e6632-42c0-11ee-af47-b45e435986d5")
+  (first @resource-state-view)
+  (first @resource-performance-view)
+
   (double (/ (+ 58 15 70 89 0) 5))
 
   ; endregion

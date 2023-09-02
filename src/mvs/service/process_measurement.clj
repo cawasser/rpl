@@ -27,10 +27,11 @@
 
   > NOTE: the inbound event is keyed by :resource/id, but this is domain specific
   "
-  [_ _ _ [event-key {:keys [resource/id
-                            measurement/attribute
-                            measurement/value]
-                     :as   measurement}]]
+  [[event-key {:keys [resource/id
+                      measurement/attribute
+                      measurement/value]
+               :as   measurement}
+    :as event]]
 
   (println "process-measurement" event-key " // " measurement)
 
@@ -74,6 +75,7 @@
   (do
     (def view (atom @resource-state-view))
     (def resource-id (-> @resource-state-view keys first))
+    (def event-key {:resource/id resource-id})
     (def id resource-id)
     (def attribute :googoo/metric)
     (def value 100)
@@ -88,13 +90,25 @@
 
   (spec/explain :resource/measurement @last-event)
 
+  (get @resource-state-view id)
+  (get-in @resource-state-view [id :resource/measurements])
 
   (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
           [])
     value)
 
   (swap! view
-    assoc-in [id :resource/measurements attribute] value)
+    assoc-in [id :resource/measurements attribute]
+    (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
+            [])
+      value))
+
+
+  (def enrichment (->> (get @resource-state-view id)
+                    ((juxt :order/id :customer/id :sales/request-id
+                       :agreement/id :order/needs))
+                    (zipmap [:order/id :customer/id :sales/request-id
+                             :agreement/id :order/needs])))
 
 
   ())

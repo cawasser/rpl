@@ -3,7 +3,7 @@
             [cljfx.dev :refer :all]))
 
 
-(defn planning-dashboard [_ _ _ event]
+(defn planning-dashboard [event]
   (println "PLANNING received " event))
 
 

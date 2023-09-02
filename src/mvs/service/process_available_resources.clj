@@ -15,7 +15,7 @@
                       <:resource/type> #{ { <:resource/time> <:provider/id> }
                                           { <:resource/time> <:provider/id> } } }`
   "
-  [_ _ _ [_ catalog]]
+  [[_ catalog :as event]]
 
   (println "process-available-resources" (:provider/id catalog))
 

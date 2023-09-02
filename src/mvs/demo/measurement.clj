@@ -45,8 +45,12 @@
   (.stop @thread))
 
 
+(defn report-once [topic]
+  (measurements topic))
+
+
 (defn register-resource-update
-  "add ean entry to the registry for producing a :resource/measurement event
+  "add an entry to the registry for producing a :resource/measurement event
   on a periodic schedule
 
   - resource-di (UUID) : id of the resource report reporting

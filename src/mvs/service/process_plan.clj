@@ -16,12 +16,13 @@
   sent to the providers for fulfillment.
 
   "
-  [_ _ _ [{:keys [order/id] :as event-key}
-          {plan-id          :plan/id
-           customer-id      :customer/id
-           sales-request-id :sales/request-id
-           resources        :commitment/resources
-           :as              plan}]]
+  [[{:keys [order/id] :as event-key}
+    {plan-id          :plan/id
+     customer-id      :customer/id
+     sales-request-id :sales/request-id
+     resources        :commitment/resources
+     :as              plan}
+    :as event]]
 
   (println "process-plan" event-key)
 

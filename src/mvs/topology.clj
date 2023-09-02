@@ -82,6 +82,12 @@
    :penwidth  3})
 
 
+(defn- wrapper [func]
+  (println "wrapper" func)
+  (fn [_ _ _ event]
+    (func event)))
+
+
 (defn view-topo [{:keys [mvs/messages mvs/entities mvs/workflow] :as topo}]
   (let [nodes (->> topo
                 :mvs/entities
@@ -114,13 +120,14 @@
   (let [entities (:mvs/entities topo)
         workflow (:mvs/workflow topo)]
     (doall
-      (map (fn [[from to]]
+      (map (fn [[from to _]]
              (when (= (-> entities from :mvs/entity-type) :mvs/topic)
                (do
                  (println "add-watch " from " -> " to)
                  (add-watch (-> entities from :mvs/topic-name)
-                   to (-> entities to :mvs/name)))))
-        workflow))))
+                   to (wrapper (-> entities to :mvs/name))))))
+        workflow)))
+  nil)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -253,5 +260,21 @@
 
   ())
 
+
+
+; figure out a wrapper to make the services only need [event-key event-message]
+(comment
+  (do
+    (def entities (:mvs/entities mvs.core/mvs-topology))
+    (def workflow (:mvs/workflow mvs.core/mvs-topology))
+    (def edge (first workflow))
+    (def from (first edge))
+    (def to (second edge)))
+
+  (wrapper (-> entities to :mvs/topic-name))
+
+
+
+  ())
 
 ; endregion

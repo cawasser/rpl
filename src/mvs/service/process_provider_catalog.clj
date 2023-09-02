@@ -15,15 +15,14 @@
   i.e., tuple of hash-maps (key and message-content) with the producer encoded inside the 'key'
   and the catalog itself being the message-content"
 
-  [k _ _ [{:keys [:provider/id]} catalog]]
+  [[{:keys [provider/id]} catalog :as event]]
 
-
-  (println "process-provider-catalog" k)
+  (println "process-provider-catalog" id)
 
   (if (spec/valid? :provider/catalog catalog)
     (do
       ; 1) update provider-catalog-view
-      (swap! provider-catalog-view assoc id catalog)
+      (provider-catalog-view event)
 
       ; 2) update service-catalog-view (for later use)
       (reset! service-catalog-view service-catalog)
@@ -31,7 +30,7 @@
       ; 3) 'publish' ACME's "Service Catalog"
       (publish! sales-catalog-topic service-catalog))
 
-    (malformed "process-provider-catalog" :provider/catalog)))
+    (malformed "process-provider-catalog" :provider/catalog catalog)))
 
 
 

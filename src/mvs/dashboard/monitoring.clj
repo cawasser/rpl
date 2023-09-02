@@ -8,7 +8,8 @@
 
 
 
-(defn monitoring-dashboard [_ _ _ event]
+(defn monitoring-dashboard [;_ _ _
+                            event]
   (println "MONITORING received " event))
 
 
@@ -168,12 +169,10 @@
              :root    {:fx/type  :v-box
                        :padding  25
                        :spacing  40
-                       :children [{:fx-type table/table
-                                   :data table/items}
-                                  ;{:fx/type   frequency-slider
-                                  ; :frequency frequency}
-                                  ;{:fx/type   frequency-controls
-                                  ; :frequency frequency}
+                       :children [{:fx/type   frequency-slider
+                                   :frequency frequency}
+                                  {:fx/type   frequency-controls
+                                   :frequency frequency}
                                   {:fx/type   general-controls
                                    :frequency frequency
                                    :duration  duration}]}}})

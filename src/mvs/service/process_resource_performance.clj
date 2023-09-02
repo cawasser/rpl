@@ -54,7 +54,7 @@
   uses a 'local' ktable (atom) to materialize history for computing the average of the last
   `history-size` events"
 
-  [_ _ _ [event-key measurement :as event]]
+  [[event-key measurement :as event]]
 
   (println "process-resource-performance" event-key " // " measurement)
 

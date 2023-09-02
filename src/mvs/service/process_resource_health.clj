@@ -35,7 +35,7 @@
   "enriches a :resource/measurement event with an assessment of the resource's
   'health' (See `resource-health` for details) using a :resource/status key"
 
-  [_ _ _ [event-key measurement]]
+  [[event-key measurement :as event]]
 
   (println "process-resource-health" event-key " // " measurement)
 

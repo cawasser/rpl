@@ -45,21 +45,20 @@
    we get a :sales/failure because planning can't fulfil the customer's order, so we should
    tell the customer that we can't do anything, by sending a :sales/failure event"
 
-  [_ _ _ [event-key event]]
+  [[event-key commitment :as event]]
 
   (reset! last-event event)
 
-  (if (or (spec/valid? :sales/commitment event)
-        (spec/valid? :sales/failure event))
+  (if (or (spec/valid? :sales/commitment commitment)
+        (spec/valid? :sales/failure commitment))
 
     ; region ; handle a success or failure from planning
-    (condp = (:request/status event)
+    (condp = (:request/status commitment)
       :request/successful
       (do
-        (println "process-sales-commitment SUCCESS" event-key "//" event)
+        (println "process-sales-commitment SUCCESS" event-key "//" commitment)
 
-        (let [commitment           event
-              agreement-id         (uuid/v1)
+        (let [agreement-id         (uuid/v1)
               sales-request-id     (:sales/request-id commitment)
               associated-order     (associated-order sales-request-id)
               customer-id          (:customer/id associated-order)
@@ -99,7 +98,7 @@
       (println "process-sales-commitment ******* FAILURE ******" event-key "//" event))
     ; endregion
 
-    (malformed "process-sales-commitment" :sales/commitment event)))
+    (malformed "process-sales-commitment" :sales/commitment commitment)))
 
 
 

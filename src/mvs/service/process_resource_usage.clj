@@ -52,10 +52,11 @@
 
   uses a local Ktable (atom) to track the :resource/ids that have reported to-date"
 
-  [_ _ _ [event-key {resource-id :resource/id
-                     order-id    :order/id
-                     customer-id :customer/id
-                     :as         measurement}]]
+  [[event-key {resource-id :resource/id
+               order-id    :order/id
+               customer-id :customer/id
+               :as         measurement}
+    :as event]]
 
   (println "process-resource-usage" event-key " // " measurement)
   (println "process-resource-usage (b)" order-id)

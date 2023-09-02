@@ -3,7 +3,7 @@
             [cljfx.dev :refer :all]))
 
 
-(defn sales-dashboard [_ _ _ event]
+(defn sales-dashboard [event]
   (println "SALES received " event))
 
 

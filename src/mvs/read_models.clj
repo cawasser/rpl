@@ -1,5 +1,7 @@
 (ns mvs.read-models
   (:require [mvs.constants :refer :all]
+            [cljfx.api :as fx]
+            [clojure.core.cache :as cache]
             [clojure.spec.alpha :as spec]
             [clj-uuid :as uuid]))
 
@@ -49,9 +51,131 @@
 ;      the available-resources-view KTable by remote control. This kind of logic is
 ;      what should be 'inside' the KTable.
 
-(def provider-catalog-view
-  "summary of all the provider catalogs" (atom {}))
-(defn reset-provider-catalog-view [] (reset! provider-catalog-view {}))
+(def initial-state {:provider-catalog-view      {}
+                    :available-resources-view   {}
+                    :service-catalog-view       []
+                    :sales-catalog-history-view {}
+                    :order->sales-request-view  {}
+                    :committed-resources-view   []
+                    :resource-state-view        {}
+                    :resource-performance-view  {}
+                    :resource-usage-view        {}
+                    :customer-order-view        {}
+                    :customer-agreement-view    {}})
+
+(def app-db (atom (fx/create-context initial-state cache/lru-cache-factory)))
+
+
+
+; work out new logic for storing all the read-models in app-db and using "events"
+; to process them
+;
+; NOTE: we have 2 different definitions of "events" mow:
+;     1) Kafka-like tuples between services and read-models
+;     2) Cljfx hash-maps for managing the state so the UI can handle it
+;
+;
+
+(defmulti event-handler :event/type)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; region ; ::provider-catalog
+
+(defn- update-catalog [event current new-value]
+  ; planning for the future...
+  ;       more flexible changes to an existing catalog
+  (condp = event
+    :catalog/time-revision (vec current)
+    :catalog/cost-revision (vec current)
+    (vec new-value)))
+
+
+(defmethod event-handler ::provider-catalog
+  [{k                                      :event/key
+    {:keys [catalog/event resource/id resource/catalog]} :event/content :as params}]
+  (println "::provider-catalog" params)
+  (swap! app-db
+    fx/swap-context
+    update-in
+    [:provider-catalog-view (:provider/id k) :resource/catalog]
+    #(update-catalog event % catalog)))
+
+
+(defn provider-catalogs [context]
+  (fx/sub-val context :provider-catalog-view))
+
+
+(defn provider-catalog-view [[event-key event-content :as event]]
+  (println "provider-catalog-view" event)
+  (event-handler {:event/type    ::provider-catalog
+                  :event/key     event-key
+                  :event/content event-content}))
+
+
+(defn reset-provider-catalog-view []
+  (swap! app-db
+    fx/swap-context
+    assoc :provider-catalog-view {}))
+
+
+
+
+
+(comment
+
+  (provider-catalogs @app-db)
+
+
+  ; NEW catalog (replace)
+  (def event [{:provider/id "alpha-googoos"}
+              {:provider/id      "alpha-googoos"
+               :resource/catalog [{:resource/type        10,
+                                   :resource/time-frames [10 11 12 13 14 15],
+                                   :resource/cost        20}]}])
+
+  (let [[event-key event-content] event]
+    (event-handler {:event/type    ::provider-catalog
+                    :event/key     event-key
+                    :event/content event-content}))
+
+
+  (provider-catalog-view event)
+  (provider-catalog-view [{:provider/id "alpha-googoos"}
+                          {:provider/id      "alpha-googoos"
+                           :resource/catalog [{:resource/type        10,
+                                               :resource/time-frames [1 2 3 4 5],
+                                               :resource/cost        10}]}])
+
+
+  ; update just the cost of existing :resource/id
+  (do
+    (def current [{:resource/type        10,
+                   :resource/time-frames [1 2 3 4 5],
+                   :resource/cost        10}])
+    (def new-value [{:resource/type        10,
+                     :resource/cost        50}]))
+
+
+
+
+  (provider-catalog-view [{:provider/id "alpha-googoos"}
+                          {:provider/id      "alpha-googoos"
+                           :catalog/event    :catalog/cost-update
+                           :resource/catalog [{:resource/type        10,
+                                               :resource/cost        40}]}])
+
+
+  ())
+
+; endregion
+
+
+
+;(def provider-catalog-view
+;  "summary of all the provider catalogs" (atom {}))
+;(defn reset-provider-catalog-view [] (reset! provider-catalog-view {}))
 
 (def available-resources-view
   "denormalized arrangements of all resources available" (atom {}))
@@ -80,7 +204,12 @@
 (def resource-performance-view
   "track update events against resources over time"
   (atom {}))
-(defn reset-available-resources-view [] (reset! available-resources-view {}))
+(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
+
+(def resource-health-view
+  "track heath of resources over time"
+  (atom {}))
+(defn reset-resource-health-view [] (reset! resource-health-view {}))
 
 (def resource-usage-view
   "track resources that have produces any events over time, tracking the frist only"

@@ -10,21 +10,21 @@
 
 
 
-(defn customer-dashboard [_ _ _ event]
+(defn customer-dashboard [event]
   (println "CUSTOMER received " event))
 
 
 
-(defn provider-dashboard [_ _ _ event]
+(defn provider-dashboard [event]
   (println "PROVIDER " (:provider/id (second event)) " received " event))
 
 
 
-(defn billing-dashboard [_ _ _ event]
+(defn billing-dashboard [event]
   (println "BILLING received " event))
 
 
-(defn customer-support-dashboard [_ _ _ event]
+(defn customer-support-dashboard [event]
   (println "CUSTOMER SUPPORT received " event))
 
 

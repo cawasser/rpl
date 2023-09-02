@@ -22,7 +22,7 @@
    we also associate the :order-id with the :sales/request-id generated here, so we
    can find all the relevant data as we need
    "
-  [_ _ _ [event-key order]]
+  [[event-key order :as event]]
 
   (println "process-customer-order" (:order/id order))
 

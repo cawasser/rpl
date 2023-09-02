@@ -36,7 +36,7 @@
 
 
 (defn- get-provider-resource-cost [provider-id resource-type]
-  (as-> @provider-catalog-view v
+  (as-> (provider-catalogs @app-db) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -86,7 +86,7 @@
 
   - request : (:sales/request) everything we need to locate in the 'warehouse' for a given customer"
 
-  [_ _ _ [event-key request]]
+  [[event-key request :as event]]
 
   (reset! last-event request)
 
@@ -180,7 +180,7 @@
     (def provider-id "alpha")
     (def resource-type 3))
 
-  (as-> @provider-catalog-view v
+  (as-> (provider-catalogs @app-db) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -526,9 +526,9 @@
             :provider/id          provider
             :resource/time-frames (into [] (map first t))
             :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in @provider-catalog-view [provider
-                                                                    resource-type
-                                                                    :resource/cost]))})))
+                                    (get-in (provider-catalogs @app-db) [provider
+                                                                         resource-type
+                                                                         :resource/cost]))})))
 
 
 
