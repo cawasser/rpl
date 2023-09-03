@@ -6,7 +6,7 @@
 
 (def monitoring-dashboard #'monitoring/monitoring-dashboard)
 (def planning-dashboard #'planning/planning-dashboard)
-(def sales-dashboard #'sales/sales-dashboard)
+(def sales-dashboard #'sales/dashboard)
 
 
 

@@ -4,6 +4,7 @@
             [mvs.dashboards :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
@@ -75,7 +76,7 @@
                                   :resource-usage-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-usage-view}
 
                                   ; TODO: finish the conversion form atoms to app-db events
-                                  :provider-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/name #'provider-catalog-view}
+                                  :provider-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/name #'pcv/provider-catalog-view}
 
                                   :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
                                   :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}

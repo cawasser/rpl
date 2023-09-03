@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.provider-catalog-view :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]

@@ -6,6 +6,8 @@
 (defn header-cell [{:keys [column/name column/render
                            column/min-width column/max-width column/pref-width]
                     :as   cell-heading}]
+  (println "header-cell" name render)
+
   (merge {:fx/type            :table-column
           :text               name
           :cell-value-factory identity
@@ -17,6 +19,8 @@
 
 
 (defn table-view [{:keys [data columns width height]}]
+  (println "table-view" data)
+
   {:fx/type     :table-view
    :pref-width  width
    :pref-height height

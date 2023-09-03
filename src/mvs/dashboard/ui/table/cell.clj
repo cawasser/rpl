@@ -2,12 +2,12 @@
 
 
 
-(defn string-cell [{:keys [column/id]}]
+(defn- string-cell [{:keys [column/id]}]
   (fn [x]
     {:text (str (id x))}))
 
 
-(defn color-cell [_]
+(defn- color-cell [_]
   (fn [x]
     {:style {:-fx-background-color
              (:color x)}}))

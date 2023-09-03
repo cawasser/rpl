@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.provider-catalog-view :as v]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -36,7 +37,7 @@
 
 
 (defn- get-provider-resource-cost [provider-id resource-type]
-  (as-> (provider-catalogs @app-db) v
+  (as-> (v/provider-catalogs @app-db) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
