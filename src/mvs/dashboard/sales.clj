@@ -35,11 +35,16 @@
                                    catalog)))
                        vec
                        doall)]
-    {:fx/type table/table-view
-     :width   width
-     :height  height
-     :columns provider-catalog-columns
-     :data    presentation}))
+    {:fx/type :v-box
+     :spacing 2
+     :children [{:fx/type :label
+                 :text "Provider Catalogs"
+                 :style   {:-fx-font [:bold 20 :sans-serif]}}
+                {:fx/type table/table-view
+                 :width   width
+                 :height  height
+                 :columns provider-catalog-columns
+                 :data    presentation}]}))
 
 ; endregion
 
@@ -104,19 +109,18 @@
 (defn- order-table [{:keys [fx/context width height]}]
   (let [orders       dummy-orders
         presentation (vals orders)]
-    {:fx/type table/table-view
-     :width   width
-     :height  height
-     :columns order-columns
-     :data    presentation}))
+    {:fx/type :v-box
+     :spacing 2
+     :children [{:fx/type :label
+                 :text "Customer Orders"
+                 :style   {:-fx-font [:bold 20 :sans-serif]}}
+                {:fx/type table/table-view
+                 :width   width
+                 :height  height
+                 :columns order-columns
+                 :data    presentation}]}))
 
-
-(comment
-
-  (def orders       dummy-orders)
-  (def presentation (vals orders))
-
-  ())
+; endregion
 
 
 (defn dashboard [{:keys [fx/context x y width height]}]
