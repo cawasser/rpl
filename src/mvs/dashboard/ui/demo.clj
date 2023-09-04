@@ -53,6 +53,8 @@
     ns-name)
 
 
+  (cljfx.dev/help-ui)
+
 
 
   ())
