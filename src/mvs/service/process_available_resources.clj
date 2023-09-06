@@ -32,7 +32,7 @@
 
       (swap! available-resources-view #(merge-with into %1 %2) new-values))
 
-    (malformed "process-available-resources" :provider/catalog)))
+    (malformed "process-available-resources" :provider/catalog catalog)))
 
 
 
@@ -105,10 +105,11 @@
     (reset! available-resources-view {})
     (def provider-id (:provider/id provider-alpha)))
 
-  (process-available-resources [] [] [] [{:provider/id provider-id}
-                                         provider-alpha])
+  (process-available-resources [{:provider/id provider-id}
+                                provider-alpha])
 
   ())
+
 
 ; endregion
 

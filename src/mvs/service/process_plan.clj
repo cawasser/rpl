@@ -30,6 +30,7 @@
     (let [resources     (->> plan
                           :commitment/resources
                           (group-by :provider/id))
+          ; TODO: map -> for?
           expanded-plan (map (fn [[id r]]
                                {id (map (fn [m]
                                           (dissoc m :provider/id :resource/cost))
@@ -85,6 +86,7 @@
 
   ; then, drop the :provider/id and :resource/cost keys from each resource
   ; (this is a map inside a map)
+  ; TODO: map -> for?
   (def expanded-plan (map (fn [[id r]]
                             {id (map (fn [m]
                                        (dissoc m :provider/id :resource/cost))
@@ -105,6 +107,7 @@
 
   (spec/explain :provider/order provider-order)
 
+  ; TODO: map -> for?
   ; create an event for each provider in expanded-plan
   (doall
     (mapcat (fn [m]

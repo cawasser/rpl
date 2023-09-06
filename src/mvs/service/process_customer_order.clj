@@ -49,10 +49,11 @@
 
           ; 2) publish the :sales/request or send the customer some kind of Error
 
-          (publish! sales-request-topic [{:order/id         (:order/id order)}
+          (publish! sales-request-topic [{:order/id (:order/id order)}
                                          {:sales/request-id request-id
                                           :request/status   :request/submitted
                                           :order/id         (:order/id order)
+                                          :order/status     :order/accepted ; ???
                                           :customer/id      (:customer/id order)
                                           :order/needs      (:order/needs order)
                                           :sales/resources  resources}]))

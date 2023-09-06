@@ -81,7 +81,8 @@
 
   (value-fn)
 
-  (publish-measurement resource-id attribute value-fn)
+  (publish-measurement resource-measurement-topic
+    resource-id attribute value-fn)
 
   ())
 
@@ -97,7 +98,8 @@
 
   (doall
     (map (fn [[resource-id {:keys [attribute value-fn]}]]
-           (publish-measurement resource-id attribute value-fn))
+           (publish-measurement resource-measurement-topic
+             resource-id attribute value-fn))
       @local-reg))
 
   ())
@@ -116,7 +118,8 @@
 
   (doall
     (map (fn [[resource-id {:keys [attribute value-fn]}]]
-           (publish-measurement resource-id attribute value-fn))
+           (publish-measurement resource-measurement-topic
+             resource-id attribute value-fn))
       @registry))
 
   ())
@@ -133,7 +136,7 @@
 
   @registry
 
-  (start-reporting)
+  (start-reporting resource-measurement-topic 5)
 
   (stop-reporting)
 

@@ -119,6 +119,66 @@
   ())
 
 
+
+; can we convert from (map (map (map ...) ) ) to (for ...)?
+(comment
+  (do
+    (def order-id #uuid"0f5bf774-4c64-11ee-b4ec-b9081dfd246f")
+    (def local (atom {#uuid"0f5bf774-4c64-11ee-b4ec-b9081dfd246f"
+                      {:customer/id         #uuid"0f5bf770-4c64-11ee-b4ec-b9081dfd246f",
+                       :order/id            #uuid"0f5bf774-4c64-11ee-b4ec-b9081dfd246f",
+                       :order/status        :order/submitted,
+                       :order/needs         [0 1],
+                       :sales/request-id    #uuid"155003b0-4c64-11ee-b4ec-b9081dfd246f",
+                       :agreement/id        #uuid"1551d870-4c64-11ee-b4ec-b9081dfd246f",
+                       :agreement/resources '({:resource/type        0,
+                                               :provider/id          "delta-googoos",
+                                               :resource/time-frames [0 1],
+                                               :resource/cost        10}
+                                              {:resource/type        0,
+                                               :provider/id          "alpha-googoos",
+                                               :resource/time-frames [2 3 4],
+                                               :resource/cost        30})}})))
+
+  (as-> @local d
+    (get d order-id)
+    (:agreement/resources d)
+    (group-by :provider/id d)
+    (map (fn [[provider-id items]]
+           {:shipment/id    (uuid/v1)
+            :provider/id    provider-id
+            :order/id       order-id
+            :shipment/items (into []
+                              (mapcat (fn [{:keys [resource/type resource/time-frames]}]
+                                        (map (fn [t]
+                                               {:resource/id   (uuid/v1)
+                                                :resource/type type
+                                                :resource/time t})
+                                          time-frames))
+                                items))})
+      d))
+
+  (as-> @local d
+    (get d order-id)
+    (:agreement/resources d)
+    (group-by :provider/id d)
+    (for [[provider-id items] d
+          {:keys [resource/type resource/time-frames]} items
+          t time-frames]
+      {:shipment/id    (uuid/v1)
+       :provider/id    provider-id
+       :order/id       order-id
+       :shipment/items [{:resource/id   (uuid/v1)
+                         :resource/type type
+                         :resource/time t}]}))
+  ; => produces 5 maps (one for each resource), rather than 2 (one for each provider)...
+
+
+
+
+  ())
+
+
 (comment
   (do
     (def events (make-shipment-events order-id))

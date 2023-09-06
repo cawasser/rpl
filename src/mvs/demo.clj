@@ -73,7 +73,7 @@
 
   ; region ; 2b) view read-models as a sanity check
 
-  @provider-catalog-view
+  (mvs.read-model.provider-catalog-view/provider-catalogs @app-db)
   @available-resources-view
   @order->sales-request-view
   @service-catalog-view

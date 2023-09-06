@@ -101,6 +101,7 @@
   (if (spec/valid? :sales/request request)
     ; region ; handle the valid request
     (let [customer-actual-needs (:sales/resources request)
+          ; TODO: map -> for?
           allocations           (into {}
                                   (map (fn [{:keys [resource/type resource/time-frames]}]
                                          {type (into [] (map (fn [time-t]
@@ -117,6 +118,7 @@
           time-frame            (if all-times
                                   [(apply min all-times) (apply max all-times)]
                                   [])
+          ; TODO: map -> for?
           successful-allocation (every? false?
                                   (mapcat (fn [[resource-type time-frames]]
                                             (map nil? time-frames))
