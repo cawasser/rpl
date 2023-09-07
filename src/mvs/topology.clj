@@ -4,9 +4,37 @@
             [dorothy.core :as dot]
             [dorothy.jvm :as dj]
             [clojure.java.io :refer [file]]
-            [clojure.java.shell :refer [sh]])
+            [clojure.java.shell :refer [sh]]
+
+            [mvs.topology.approve-order :as a]
+            [mvs.topology.create-catalog :as c]
+            [mvs.topology.customer-support :as cs]
+            [mvs.topology.fulfill-order :as fo]
+            [mvs.topology.place-order :as po]
+            [mvs.topology.report-metrics :as rm]
+            [mvs.topology.revenue :as r]
+            [mvs.topology.ship-order :as so]
+            [mvs.topology.troubleshooting :as t])
   (:import (java.io FileWriter
                     FileOutputStream)))
+
+
+(def approve-order #'a/topo)
+(def create-catalog #'c/topo)
+(def customer-support #'cs/topo)
+(def fulfill-order #'fo/topo)
+(def place-order #'po/topo)
+(def report-metrics #'rm/topo)
+(def revenue #'r/topo)
+(def ship-order #'so/topo)
+(def troubleshooting #'t/topo)
+
+
+(def complete-system [(var-get approve-order) (var-get create-catalog)
+                      (var-get customer-support) (var-get fulfill-order)
+                      (var-get place-order) (var-get report-metrics)
+                      (var-get revenue) (var-get ship-order)
+                      (var-get troubleshooting)])
 
 
 (defn- build-graph [nodes edges]
@@ -128,6 +156,18 @@
                    to (wrapper (-> entities to :mvs/name))))))
         workflow)))
   nil)
+
+
+
+(defn compose-topology [sub-elements]
+  (let [empty-topo {:mvs/messages {} :mvs/entities {} :mvs/workflow #{}}]
+    (reduce (fn [accum new-data]
+              {:mvs/messages (merge-with merge (:mvs/messages accum) (:mvs/messages new-data))
+               :mvs/entities (merge-with merge (:mvs/entities accum) (:mvs/entities new-data))
+               :mvs/workflow (clojure.set/union (:mvs/workflow accum) (:mvs/workflow new-data))})
+      empty-topo sub-elements)))
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

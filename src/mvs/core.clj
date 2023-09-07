@@ -9,7 +9,7 @@
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
-            [mvs.topology :refer :all]))
+            [mvs.topology :as topo]))
 
 
 (set! *print-namespace-maps* false)
@@ -22,7 +22,8 @@
 
 (def mvs-topology {
                    ; region ; :mvs/messages
-                   :mvs/messages {:provider/catalog          {:mvs/message-type :mvs/event}
+                   :mvs/messages {
+                                  :provider/catalog          {:mvs/message-type :mvs/event}
                                   :sales/catalog             {:mvs/message-type :mvs/event}
                                   :customer/order            {:mvs/message-type :mvs/command}
                                   :orders/state              {:mvs/message-type :mvs/view}
@@ -48,9 +49,10 @@
                    ; endregion
 
                    ; region ; :mvs/entities
-                   :mvs/entities {;:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
+                   :mvs/entities {
+                                  :provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
                                   :provider-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
-                                  ;:sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
+                                  :sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
                                   :customer-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
                                   :sales-request-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
                                   :sales-commitment-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
@@ -68,7 +70,7 @@
                                   :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                   :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                   :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
-                                  ;:available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
+                                  :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
                                   :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
                                   :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
                                   :committed-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
@@ -87,9 +89,9 @@
                                   :customer-support-dashboard   {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-support-dashboard}
                                   :sales-dashboard              {:mvs/entity-type :mvs/dashboard :mvs/name #'sales-dashboard}
 
-                                  ;:process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
-                                  ;:process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
-                                  ;:process-sales-catalog       {:mvs/entity-type :mvs/service :mvs/name #'process-sales-catalog}
+                                  :process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
+                                  :process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
+                                  ;:process-sales-catalog        {:mvs/entity-type :mvs/service :mvs/name #'process-sales-catalog}
                                   :process-customer-order       {:mvs/entity-type :mvs/service :mvs/name #'process-customer-order}
                                   :process-sales-request        {:mvs/entity-type :mvs/service :mvs/name #'process-sales-request}
                                   :process-sales-commitment     {:mvs/entity-type :mvs/service :mvs/name #'process-sales-commitment}
@@ -104,85 +106,85 @@
                    ; endregion
 
                    ; region ; :mvs/workflow
-                   :mvs/workflow [
-                                  ;[:provider-catalog-topic :process-provider-catalog :provider/catalog]
-                                  ;[:provider-catalog-topic :process-available-resources :provider/catalog]
-                                  ;[:provider-catalog-topic :provider-catalog-view :provider/catalog]
-                                  ;[:service-catalog-view :process-provider-catalog :provider/catalog]
-                                  ;[:process-provider-catalog :service-catalog-view :provider/catalog]
-                                  ;[:process-provider-catalog :sales-catalog-view :sales/catalog]
-                                  ;[:process-available-resources :available-resources-view :resource/resources]
-                                  ;[:sales-catalog-view :customer-dashboard :sales/catalog]
+                   :mvs/workflow #{
+                                   [:provider-catalog-topic :process-provider-catalog :provider/catalog]
+                                   [:provider-catalog-topic :process-available-resources :provider/catalog]
+                                   [:provider-catalog-topic :provider-catalog-view :provider/catalog]
+                                   [:service-catalog-view :process-provider-catalog :provider/catalog]
+                                   [:process-provider-catalog :service-catalog-view :provider/catalog]
+                                   [:process-provider-catalog :sales-catalog-view :sales/catalog]
+                                   [:process-available-resources :available-resources-view :resource/resources]
+                                   [:sales-catalog-view :customer-dashboard :sales/catalog]
 
-                                  [:customer-order-topic :process-customer-order :customer/order]
-                                  [:process-customer-order :customer-order-view :orders/state]
-                                  [:customer-order-view :sales-dashboard :orders/state]
+                                   [:customer-order-topic :process-customer-order :customer/order]
+                                   [:process-customer-order :customer-order-view :orders/state]
+                                   [:customer-order-view :sales-dashboard :orders/state]
 
-                                  [:customer-agreement-view :sales-dashboard :agreement/state]
-                                  [:planning-dashboard :customer-agreement-view :agreement/state]
-                                  [:customer-order-approval :process-order-approval :customer/approval]
-                                  [:process-order-approval :customer-agreement-view :agreement/state]
-                                  [:process-order-approval :customer-order-view :orders/state]
-                                  [:sales-request-topic :process-sales-request :sales/request]
-                                  [:available-resources-view :process-sales-request :resource/resources]
-                                  [:process-sales-request :committed-resource-view :resource/resources]
+                                   [:customer-agreement-view :sales-dashboard :agreement/state]
+                                   [:planning-dashboard :customer-agreement-view :agreement/state]
+                                   [:customer-order-approval :process-order-approval :customer/approval]
+                                   [:process-order-approval :customer-agreement-view :agreement/state]
+                                   [:process-order-approval :customer-order-view :orders/state]
+                                   [:sales-request-topic :process-sales-request :sales/request]
+                                   [:available-resources-view :process-sales-request :resource/resources]
+                                   [:process-sales-request :committed-resource-view :resource/resources]
 
-                                  [:sales-commitment-topic :process-sales-commitment :sales/commitment]
-                                  [:sales-failure-topic :process-sales-commitment :sales/failure]
-                                  [:process-sales-commitment :customer-order-view :orders/state]
-                                  [:process-sales-commitment :customer-agreement-view :agreement/state]
-                                  [:sales-agreement-topic :customer-dashboard :customer/agreement]
+                                   [:sales-commitment-topic :process-sales-commitment :sales/commitment]
+                                   [:sales-failure-topic :process-sales-commitment :sales/failure]
+                                   [:process-sales-commitment :customer-order-view :orders/state]
+                                   [:process-sales-commitment :customer-agreement-view :agreement/state]
+                                   [:sales-agreement-topic :customer-dashboard :customer/agreement]
 
-                                  [:process-order-approval :plan-topic :resource/plan]
-                                  [:plan-topic :process-plan :resource/plan]
+                                   [:process-order-approval :plan-topic :resource/plan]
+                                   [:plan-topic :process-plan :resource/plan]
 
-                                  [:committed-resource-view :process-order-approval :resource/resources]
+                                   [:committed-resource-view :process-order-approval :resource/resources]
 
-                                  [:process-customer-order :sales-request-topic :sales/request]
-                                  [:process-sales-request :sales-commitment-topic :sales/commitment]
-                                  [:process-sales-request :sales-failure-topic :sales/failure]
-                                  [:process-sales-commitment :sales-agreement-topic :sales/commitment]
+                                   [:process-customer-order :sales-request-topic :sales/request]
+                                   [:process-sales-request :sales-commitment-topic :sales/commitment]
+                                   [:process-sales-request :sales-failure-topic :sales/failure]
+                                   [:process-sales-commitment :sales-agreement-topic :sales/commitment]
 
-                                  [:process-plan :provider-order-topic :provider/order]
-                                  [:process-plan :resource-state-view :resource/resources]
-                                  [:provider-order-topic :provider-dashboard :provider/order]
+                                   [:process-plan :provider-order-topic :provider/order]
+                                   [:process-plan :resource-state-view :resource/resources]
+                                   [:provider-order-topic :provider-dashboard :provider/order]
 
-                                  [:shipment-topic :process-shipment :provider/shipment]
-                                  [:process-shipment :resource-state-view :resource/resources]
+                                   [:shipment-topic :process-shipment :provider/shipment]
+                                   [:process-shipment :resource-state-view :resource/resources]
 
-                                  [:resource-measurement-topic :process-measurement :resource/measurement]
-                                  [:resource-state-view :process-measurement :resource/state]
-                                  [:resource-state-view :monitoring-dashboard :resource/state]
-                                  [:process-measurement :resource-state-view :resource/state]
-                                  [:process-measurement :measurement-topic :resource/measurement]
+                                   [:resource-measurement-topic :process-measurement :resource/measurement]
+                                   [:resource-state-view :process-measurement :resource/state]
+                                   [:resource-state-view :monitoring-dashboard :resource/state]
+                                   [:process-measurement :resource-state-view :resource/state]
+                                   [:process-measurement :measurement-topic :resource/measurement]
 
-                                  [:measurement-topic :process-resource-health :resource/measurement]
-                                  [:process-resource-health :health-topic :resource/health]
-                                  [:health-topic :resource-health-view :resource/health]
-                                  [:resource-health-view :planning-dashboard :resource/health-view]
-                                  [:resource-health-view :customer-support-dashboard :resource/health-view]
-                                  [:resource-health-view :monitoring-dashboard :resource/health-view]
+                                   [:measurement-topic :process-resource-health :resource/measurement]
+                                   [:process-resource-health :health-topic :resource/health]
+                                   [:health-topic :resource-health-view :resource/health]
+                                   [:resource-health-view :planning-dashboard :resource/health-view]
+                                   [:resource-health-view :customer-support-dashboard :resource/health-view]
+                                   [:resource-health-view :monitoring-dashboard :resource/health-view]
 
-                                  [:measurement-topic :process-resource-performance :resource/measurement]
-                                  [:process-resource-performance :performance-topic :resource/performance]
-                                  [:performance-topic :resource-performance-view :resource/performance]
-                                  [:resource-performance-view :planning-dashboard :resource/performance-view]
-                                  [:resource-performance-view :customer-support-dashboard :resource/performance-view]
-                                  [:resource-performance-view :monitoring-dashboard :resource/performance-view]
-                                  [:resource-performance-view :customer-dashboard :resource/performance-view]
+                                   [:measurement-topic :process-resource-performance :resource/measurement]
+                                   [:process-resource-performance :performance-topic :resource/performance]
+                                   [:performance-topic :resource-performance-view :resource/performance]
+                                   [:resource-performance-view :planning-dashboard :resource/performance-view]
+                                   [:resource-performance-view :customer-support-dashboard :resource/performance-view]
+                                   [:resource-performance-view :monitoring-dashboard :resource/performance-view]
+                                   [:resource-performance-view :customer-dashboard :resource/performance-view]
 
-                                  [:measurement-topic :process-resource-usage :resource/measurement]
-                                  [:process-resource-usage :usage-topic :resource/usage]
-                                  [:usage-topic :resource-usage-view :resource/usage]
-                                  [:resource-usage-view :billing-dashboard :resource/usage-view]
-                                  [:resource-usage-view :customer-support-dashboard :resource/usage-view]
-                                  [:resource-usage-view :monitoring-dashboard :resource/usage-view]
+                                   [:measurement-topic :process-resource-usage :resource/measurement]
+                                   [:process-resource-usage :usage-topic :resource/usage]
+                                   [:usage-topic :resource-usage-view :resource/usage]
+                                   [:resource-usage-view :billing-dashboard :resource/usage-view]
+                                   [:resource-usage-view :customer-support-dashboard :resource/usage-view]
+                                   [:resource-usage-view :monitoring-dashboard :resource/usage-view]
 
-                                  [:customer-dashboard :customer-order-topic :customer/order]
-                                  [:customer-dashboard :customer-order-approval :customer/approval]
-                                  [:provider-dashboard :shipment-topic :provider/shipment]
-                                  [:provider-dashboard :provider-catalog-topic :provider/catalog]
-                                  [:provider-dashboard :resource-measurement-topic :resource/measurement]]
+                                   [:customer-dashboard :customer-order-topic :customer/order]
+                                   [:customer-dashboard :customer-order-approval :customer/approval]
+                                   [:provider-dashboard :shipment-topic :provider/shipment]
+                                   [:provider-dashboard :provider-catalog-topic :provider/catalog]
+                                   [:provider-dashboard :resource-measurement-topic :resource/measurement]}
                    ; endregion
                    :_            nil})
 
@@ -247,7 +249,7 @@
 ; region ; rich comments
 
 (comment
-  (view-topo mvs-topology)
+  (topo/view-topo mvs-topology)
 
   (init-topology mvs-topology)
 
@@ -255,5 +257,15 @@
 
   ())
 
+
+; try combining the partial-topos
+(comment
+  (-> topo/complete-system
+    topo/compose-topology
+    topo/view-topo)
+
+
+
+ ())
 
 ; endregion

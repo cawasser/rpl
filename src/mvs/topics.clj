@@ -13,6 +13,7 @@
 (def fix-topic (atom []))
 (def provider-order-topic (atom []))
 (def shipment-topic "provider -> config" (atom []))
+(def customer-delivery-topic "provider -> customer" (atom []))
 (def resource-measurement-topic "provider -> monitoring" (atom []))
 (def measurement-topic (atom []))
 (def health-topic (atom []))
