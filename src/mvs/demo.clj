@@ -4,6 +4,7 @@
             [mvs.dashboards :refer :all]
             [mvs.demo :refer :all]
             [mvs.helpers :refer :all]
+            [mvs.read-model.resource-measurements-view :as mv]
             [mvs.read-models :refer :all]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
@@ -186,7 +187,7 @@
 
   ; region ; (OBE) resources start reporting health & status (by hand)
   (do
-    (def resource-id (-> @resource-state-view keys first)))
+    (def resource-id (-> @app-db mv/resource-measurements keys first)))
 
   (publish! resource-measurement-topic [{:resource/id resource-id}
                                         {:measurement/id        (uuid/v1)

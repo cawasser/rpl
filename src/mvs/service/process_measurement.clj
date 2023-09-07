@@ -1,6 +1,7 @@
 (ns mvs.service.process-measurement
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
+            [mvs.read-model.resource-measurements-view :as mv]
             [mvs.read-models :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
@@ -39,21 +40,22 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-      ; 1) update the resource-state-view with the new data
-      (swap! resource-state-view
-        assoc-in [id :resource/measurements attribute]
-
-        ; measurements are a "time ordered" collection of values, so we can see
-        ; history (materialized view)
-        (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
-                [])
-          value))
+      ; 1) update the resource-measurement-view with the new data
+      (mv/resource-measurements-view event)
+      ;(swap! resource-state-view
+      ;  assoc-in [id :resource/measurements attribute]
+      ;
+      ;  ; measurements are a "time ordered" collection of values, so we can see
+      ;  ; history (materialized view)
+      ;  (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
+      ;          [])
+      ;    value))
 
       ; 2) republish this data upstream (?)
       ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
       ;       @resource-state-view
       ;
-      (let [enrichment (->> (get @resource-state-view id)
+      (let [enrichment (->> (get (mv/resource-measurements @app-db) id)
                          ((juxt :order/id :customer/id :sales/request-id
                             :agreement/id :order/needs))
                          (zipmap [:order/id :customer/id :sales/request-id
@@ -70,6 +72,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; rich comments
 ;
+
+
+; convert to app-db
+(comment
+  (do
+    (def measurements (mv/resource-measurements @app-db)))
+
+
+
+
+  ())
+
 
 (comment
   (do

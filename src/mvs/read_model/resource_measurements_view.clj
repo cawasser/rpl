@@ -6,32 +6,21 @@
 
 
 
-(defn- update [current event new-value]
-  ; planning for the future...
-  ;       more flexible changes to an existing catalog
-  (println "update-catalog (a)"
-    event)
-  ;current new-value "//"
-  ;(conj current new-value))
-
-  (condp = event
-    :catalog/add-service (conj current new-value)
-    :catalog/time-revision current
-    :catalog/cost-revision current
-    new-value))
-
-
 (defmethod e/event-handler :resource-measurement
   [{event-key                             :event/key
-    {:keys [catalog/event resource/id] :as content} :event/content :as params}]
+    {:keys [resource/id measurement/attribute
+            measurement/value] :as content} :event/content :as params}]
 
-  (println ":sales-catalog" event-key "//" event "//" content)
+  (println ":resource-measurement" event-key "//" content)
+
+  ; measurements are a "time ordered" collection of values, so we can see
+  ; history (materialized view)
 
   (swap! state/app-db
     fx/swap-context
     update-in
-    [:resource-measurements-view id]
-    update event (dissoc content :catalog/event)))
+    [:resource-measurements-view id :resource/measurements attribute]
+    conj value))
 
 
 (defn resource-measurements [context]
