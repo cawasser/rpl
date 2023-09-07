@@ -14,16 +14,16 @@
   {:fx/type fx/ext-many
    :desc    [
              {:fx/type sales/dashboard
-              :x       100 :y 100
-              :width   960 :height 540
+              :x       0 :y 0
+              :width   600 :height 400
               :title   "Sales"}
              {:fx/type customer/dashboard
-              :x       400 :y 300
-              :width   960 :height 540
+              :x       650 :y 0
+              :width   600 :height 400
               :title   "Customer Dashboard"}
              {:fx/type monitoring/dashboard
-              :x       600 :y 400
-              :width   960 :height 540
+              :x       0 :y 450
+              :width   1000 :height 500
               :title   "Monitoring Dashboard"}]})
 
 
