@@ -2,7 +2,7 @@
   (:require [mvs.dashboard.sales :as sales]
             [mvs.dashboard.customer :as customer]
             [mvs.dashboard.monitoring :as monitoring]
-            [mvs.read-models :as state]
+            [mvs.read-model.state :as state]
             [mvs.read-model.event-handler :as e]
             [cljfx.api :as fx]
             [cljfx.dev :refer :all]
@@ -12,7 +12,8 @@
 
 (defn root [_]
   {:fx/type fx/ext-many
-   :desc    [{:fx/type sales/dashboard
+   :desc    [
+             {:fx/type sales/dashboard
               :x       100 :y 100
               :width   960 :height 540
               :title   "Sales"}

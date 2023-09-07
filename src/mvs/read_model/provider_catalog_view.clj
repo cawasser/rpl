@@ -30,6 +30,7 @@
 
 
 (defn provider-catalogs [context]
+  (println "provider-catalogs" context)
   (fx/sub-val context :provider-catalog-view))
 
 
@@ -49,6 +50,12 @@
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; region ; rich comments
+
+; work out the logic
 (comment
 
   (provider-catalogs @state/app-db)

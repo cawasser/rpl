@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.state :as state]
             [mvs.read-model.provider-catalog-view :as v]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
@@ -37,7 +38,7 @@
 
 
 (defn- get-provider-resource-cost [provider-id resource-type]
-  (as-> (v/provider-catalogs @app-db) v
+  (as-> (v/provider-catalogs @state/app-db) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -89,7 +90,7 @@
 
   [[event-key request :as event]]
 
-  (reset! last-event request)
+  (reset! last-event event)
 
   ; TODO: where does process-service-request get the available-resources?
   ;         currently using @available-resources-view
@@ -127,12 +128,16 @@
                                   (map :resource/cost)
                                   (reduce +))]
 
+      (println "process-sales-request (a)")
+
       (if successful-allocation
         (do
           ; 1) commit the allocations, durably
+          (println "process-sales-request (b)")
           (commit-resources allocations)
 
           ; 2) publish the :sales/committed event
+          (println "process-sales-request (c)")
           (publish! sales-commitment-topic
             [{:sales/request-id (:sales/request-id request)}
              {:commitment/id         (uuid/v1)
@@ -143,13 +148,15 @@
               :commitment/cost       total-cost}]))
 
         ; OR, we failed to satisfy (allocate) all the customer needs
-        (publish! sales-failure-topic
-          [{:sales/request-id (:sales/request-id request)}
-           {:failure/id       (uuid/v1)
-            :sales/request-id (:sales/request-id request)
-            :request/status   :request/failed
-            :failure/reasons  ["we will one day put some reasons here"
-                               "should the reasons also include the failed 'needs'?"]}])))
+        (do
+          (println "process-sales-request (d)")
+          (publish! sales-failure-topic
+            [{:sales/request-id (:sales/request-id request)}
+             {:failure/id       (uuid/v1)
+              :sales/request-id (:sales/request-id request)
+              :request/status   :request/failed
+              :failure/reasons  ["we will one day put some reasons here"
+                                 "should the reasons also include the failed 'needs'?"]}]))))
     ; endregion
 
     (malformed "process-sales-request" :sales/request request)))
@@ -183,7 +190,7 @@
     (def provider-id "alpha")
     (def resource-type 3))
 
-  (as-> (provider-catalogs @app-db) v
+  (as-> (provider-catalogs @state/app-db) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -465,10 +472,10 @@
 
   ; happy-path
   (spec/explain :sales/commitment
-    (second (process-sales-request [] [] [] event)))
+    (second (process-sales-request event)))
 
   (spec/explain :sales/failure
-    (second (process-sales-request [] [] [] event2)))
+    (second (process-sales-request event2)))
 
 
   (do
@@ -529,9 +536,9 @@
             :provider/id          provider
             :resource/time-frames (into [] (map first t))
             :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in (provider-catalogs @app-db) [provider
-                                                                         resource-type
-                                                                         :resource/cost]))})))
+                                    (get-in (provider-catalogs @state/app-db) [provider
+                                                                               resource-type
+                                                                               :resource/cost]))})))
 
 
 
@@ -630,5 +637,45 @@
 
 
   ())
+
+; debuggging "Execution error (NullPointerException) at cljfx.context/sub-ctx (context.clj:107)."
+(comment
+  (do
+    (def event @last-event)
+    (def request (second event)))
+
+
+  (def customer-actual-needs (:sales/resources request))
+  ; TODO: map -> for?
+  (def allocations (into {}
+                     (map (fn [{:keys [resource/type resource/time-frames]}]
+                            {type (into [] (map (fn [time-t]
+                                                  (allocate @available-resources-view type time-t))
+                                             time-frames))})
+                       customer-actual-needs)))
+  (def allocated-resources (mapcat (fn [[provider-id allocs]]
+                                     (allocation->resource provider-id allocs))
+                             allocations))
+  (def all-times (when (not-empty allocated-resources)
+                   (->> allocated-resources
+                     (map :resource/time-frames)
+                     (reduce #(apply conj %1 %2)))))
+  (def time-frame (if all-times
+                    [(apply min all-times) (apply max all-times)]
+                    []))
+  ; TODO: map -> for?
+  (def successful-allocation (every? false?
+                               (mapcat (fn [[resource-type time-frames]]
+                                         (map nil? time-frames))
+                                 allocations)))
+  (def total-cost (->> allocated-resources
+                    (map :resource/cost)
+                    (reduce +)))
+
+
+
+
+  ())
+
 
 ; endregion

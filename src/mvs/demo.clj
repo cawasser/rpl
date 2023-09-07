@@ -5,6 +5,7 @@
             [mvs.demo :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-model.resource-measurements-view :as mv]
+            [mvs.read-model.state :as state]
             [mvs.read-models :refer :all]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
@@ -62,7 +63,7 @@
     (start-ui))
 
 
-  @app-db
+  @state/app-db
   ; endregion
 
   ; region ; 2) re-load the catalog(s)
@@ -73,13 +74,13 @@
     (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
     (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
 
-  @app-db
+  @state/app-db
 
   ; endregion
 
   ; region ; 2b) view read-models as a sanity check
 
-  (mvs.read-model.provider-catalog-view/provider-catalogs @app-db)
+  (mvs.read-model.provider-catalog-view/provider-catalogs @state/app-db)
   @service-catalog-view
   @available-resources-view
   @order->sales-request-view
@@ -187,7 +188,7 @@
 
   ; region ; (OBE) resources start reporting health & status (by hand)
   (do
-    (def resource-id (-> @app-db mv/resource-measurements keys first)))
+    (def resource-id (-> @state/app-db mv/resource-measurements keys first)))
 
   (publish! resource-measurement-topic [{:resource/id resource-id}
                                         {:measurement/id        (uuid/v1)
@@ -257,7 +258,7 @@
     ; start the background thread to publish the reports
     (measure/start-reporting resource-measurement-topic 5))
 
-  (provider-catalogs @app-db)
+  (provider-catalogs @state/app-db)
 
   @resource-state-view
   @mvs.demo.measurement/registry

@@ -208,7 +208,7 @@
 
 (defn reset-topology [topo]
   (reset-read-models)
-  (init-topology topo))
+  (topo/init-topology topo))
 
 
 (defn start-ui [])
@@ -251,7 +251,7 @@
 (comment
   (topo/view-topo mvs-topology)
 
-  (init-topology mvs-topology)
+  (topo/init-topology mvs-topology)
 
   (reset-topology mvs-topology)
 

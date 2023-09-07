@@ -57,6 +57,7 @@
 ;
 ; region ; rich comments
 
+; play with the logic (local data)
 (comment
   (do
     (def local (atom {:sales-catalog-view []}))
@@ -83,6 +84,7 @@
   ())
 
 
+; map the updates into the app-db
 (comment
   (map (fn [{:keys [service/id service/price service/description
                     service/elements]}]
@@ -101,6 +103,7 @@
   ())
 
 
+; whats' in the app-db
 (comment
 
   (sales-catalog @state/app-db)

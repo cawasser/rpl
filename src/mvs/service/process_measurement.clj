@@ -3,6 +3,7 @@
             [mvs.constants :refer :all]
             [mvs.read-model.resource-measurements-view :as mv]
             [mvs.read-models :refer :all]
+            [mvs.read-model.state :as state]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
@@ -55,7 +56,7 @@
       ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
       ;       @resource-state-view
       ;
-      (let [enrichment (->> (get (mv/resource-measurements @app-db) id)
+      (let [enrichment (->> (get (mv/resource-measurements @state/app-db) id)
                          ((juxt :order/id :customer/id :sales/request-id
                             :agreement/id :order/needs))
                          (zipmap [:order/id :customer/id :sales/request-id
@@ -77,7 +78,7 @@
 ; convert to app-db
 (comment
   (do
-    (def measurements (mv/resource-measurements @app-db)))
+    (def measurements (mv/resource-measurements @state/app-db)))
 
 
 

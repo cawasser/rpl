@@ -1,6 +1,5 @@
 (ns mvs.dashboard.sales
   (:require [mvs.dashboard.ui.table :as table]
-            [mvs.dashboard.ui.text-area :as text-area]
             [mvs.dashboard.ui.window :as w]
             [mvs.read-model.provider-catalog-view :as v]))
 
@@ -24,6 +23,7 @@
 
 
 (defn- provider-catalog-table [{:keys [fx/context width height]}]
+  (println "provider-catalog-table" context)
   (let [catalog      (v/provider-catalogs context)
         presentation (into []
                        (for [[id {cat :resource/catalog}] catalog
@@ -141,14 +141,15 @@
 
 
 (comment
-  (def catalog (v/provider-catalogs @mvs.read-models/app-db))
+  (require '[mvs.read-model.state :as state])
+  (def catalog (v/provider-catalogs @state/app-db))
 
-  (def presentation (for [[id {cat :resource/catalog}] catalog]
-                        {:keys [resource/type resource/time-frames resource/cost]} cat)
-                    {:provider/id          id
-                     :resource/type        type
-                     :resource/time-frames type
-                     :resource/cost        cost})
+  (def presentation (for [[id {cat :resource/catalog}] catalog
+                          {:keys [resource/type resource/time-frames resource/cost]} cat]
+                      {:provider/id          id
+                       :resource/type        type
+                       :resource/time-frames time-frames
+                       :resource/cost        cost}))
 
   (for [[id {:keys [resource/catalog]}] catalog]
     {:id id :cat catalog})

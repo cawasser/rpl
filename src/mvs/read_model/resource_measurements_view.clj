@@ -24,6 +24,7 @@
 
 
 (defn resource-measurements [context]
+  (println "resource-measurements" context)
   (fx/sub-val context :resource-measurements-view))
 
 
