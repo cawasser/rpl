@@ -30,7 +30,7 @@
                              {:keys [resource/type resource/time-frames resource/cost]} cat]
                          {:provider/id          id
                           :resource/type        type
-                          :resource/time-frames type
+                          :resource/time-frames time-frames
                           :resource/cost        cost}))]
     {:fx/type  :v-box
      :spacing  2
@@ -121,8 +121,6 @@
 
 
 (defn dashboard [{:keys [fx/context x y width height]}]
-  (println "SALES dashboard")
-
   {:fx/type w/window
    :title   "Sales Dashboard"
    :x       x

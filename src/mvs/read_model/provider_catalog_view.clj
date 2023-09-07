@@ -6,23 +6,22 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; region ; ::provider-catalog
-
 (defn- update-catalog [event current new-value]
   ; planning for the future...
   ;       more flexible changes to an existing catalog
   (condp = event
-    :catalog/time-revision (vec current)
-    :catalog/cost-revision (vec current)
-    (vec new-value)))
+    :catalog/add-resource current
+    :catalog/remove-resource current
+    :catalog/time-revision current
+    :catalog/cost-revision current
+    :catalog/remove-provider new-value
+    new-value))
 
 
 (defmethod e/event-handler :provider-catalog
   [{event-key                                            :event/key
     {:keys [catalog/event resource/id resource/catalog]} :event/content :as params}]
-  (println "::provider-catalog" params)
+  (println ":provider-catalog" params)
   (swap! state/app-db
     fx/swap-context
     update-in

@@ -44,6 +44,9 @@
 ; endregion
 
 
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; Scripting
@@ -57,6 +60,8 @@
     (reset-topology mvs-topology)
     (start-ui))
 
+
+  @app-db
   ; endregion
 
   ; region ; 2) re-load the catalog(s)
@@ -74,9 +79,9 @@
   ; region ; 2b) view read-models as a sanity check
 
   (mvs.read-model.provider-catalog-view/provider-catalogs @app-db)
+  @service-catalog-view
   @available-resources-view
   @order->sales-request-view
-  @service-catalog-view
   @resource-state-view
   @resource-performance-view
   @resource-usage-view

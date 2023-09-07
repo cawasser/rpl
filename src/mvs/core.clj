@@ -4,6 +4,7 @@
             [mvs.dashboards :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.sales-catalog-view :as scv]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
@@ -103,14 +104,15 @@
                    ; endregion
 
                    ; region ; :mvs/workflow
-                   :mvs/workflow [[:provider-catalog-topic :process-provider-catalog :provider/catalog]
+                   :mvs/workflow [
+                                  [:provider-catalog-topic :process-provider-catalog :provider/catalog]
+                                  [:provider-catalog-topic :process-available-resources :provider/catalog]
                                   [:provider-catalog-topic :provider-catalog-view :provider/catalog]
                                   [:service-catalog-view :process-provider-catalog :provider/catalog]
                                   [:process-provider-catalog :service-catalog-view :provider/catalog]
-                                  [:provider-catalog-topic :process-available-resources :provider/catalog]
-                                  [:process-provider-catalog :sales-catalog-topic :sales/catalog]
+                                  [:process-provider-catalog :sales-catalog-view :sales/catalog]
                                   [:process-available-resources :available-resources-view :resource/resources]
-                                  [:sales-catalog-topic :customer-dashboard :sales/catalog]
+                                  [:sales-catalog-view :customer-dashboard :sales/catalog]
 
                                   [:customer-order-topic :process-customer-order :customer/order]
                                   [:process-customer-order :customer-order-view :orders/state]
@@ -183,6 +185,23 @@
                                   [:provider-dashboard :resource-measurement-topic :resource/measurement]]
                    ; endregion
                    :_            nil})
+
+
+(defn reset-read-models
+  "reset all the read-models to their starting value (generally, empty)"
+  []
+  (pcv/reset-provider-catalog-view)
+  (scv/reset-sales-catalog-view)
+  (reset-available-resources-view)
+  ;(reset-service-catalog-view)
+  ;(reset-sales-catalog-history-view)
+  (reset-order->sales-request-view)
+  (reset-committed-resources-view)
+  (reset-resource-state-view)
+  (reset-available-resources-view)
+  (reset-resource-performance-view)
+  (reset-customer-order-view)
+  (reset-customer-agreement-view))
 
 
 (defn reset-topology [topo]

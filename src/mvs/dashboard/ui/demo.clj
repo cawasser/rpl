@@ -1,5 +1,7 @@
 (ns mvs.dashboard.ui.demo
   (:require [mvs.dashboard.sales :as sales]
+            [mvs.dashboard.customer :as customer]
+            [mvs.dashboard.monitoring :as monitoring]
             [mvs.read-models :as state]
             [mvs.read-model.event-handler :as e]
             [cljfx.api :as fx]
@@ -13,7 +15,15 @@
    :desc    [{:fx/type sales/dashboard
               :x       100 :y 100
               :width   960 :height 540
-              :title   "Customer Orders"}]})
+              :title   "Sales"}
+             {:fx/type customer/dashboard
+              :x       400 :y 300
+              :width   960 :height 540
+              :title   "Customer Dashboard"}
+             {:fx/type monitoring/dashboard
+              :x       600 :y 400
+              :width   960 :height 540
+              :title   "Monitoring Dashboard"}]})
 
 
 (def renderer
