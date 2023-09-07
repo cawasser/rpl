@@ -48,9 +48,9 @@
                    ; endregion
 
                    ; region ; :mvs/entities
-                   :mvs/entities {:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
+                   :mvs/entities {;:provider-catalog-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name provider-catalog-topic}
                                   :provider-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name provider-order-topic}
-                                  :sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
+                                  ;:sales-catalog-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-catalog-topic}
                                   :customer-order-topic         {:mvs/entity-type :mvs/topic :mvs/topic-name customer-order-topic}
                                   :sales-request-topic          {:mvs/entity-type :mvs/topic :mvs/topic-name sales-request-topic}
                                   :sales-commitment-topic       {:mvs/entity-type :mvs/topic :mvs/topic-name sales-commitment-topic}
@@ -68,7 +68,7 @@
                                   :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                   :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                   :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
-                                  :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
+                                  ;:available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
                                   :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
                                   :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
                                   :committed-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
@@ -87,8 +87,8 @@
                                   :customer-support-dashboard   {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-support-dashboard}
                                   :sales-dashboard              {:mvs/entity-type :mvs/dashboard :mvs/name #'sales-dashboard}
 
-                                  :process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
-                                  :process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
+                                  ;:process-available-resources  {:mvs/entity-type :mvs/service :mvs/name #'process-available-resources}
+                                  ;:process-provider-catalog     {:mvs/entity-type :mvs/service :mvs/name #'process-provider-catalog}
                                   ;:process-sales-catalog       {:mvs/entity-type :mvs/service :mvs/name #'process-sales-catalog}
                                   :process-customer-order       {:mvs/entity-type :mvs/service :mvs/name #'process-customer-order}
                                   :process-sales-request        {:mvs/entity-type :mvs/service :mvs/name #'process-sales-request}
@@ -105,14 +105,14 @@
 
                    ; region ; :mvs/workflow
                    :mvs/workflow [
-                                  [:provider-catalog-topic :process-provider-catalog :provider/catalog]
-                                  [:provider-catalog-topic :process-available-resources :provider/catalog]
-                                  [:provider-catalog-topic :provider-catalog-view :provider/catalog]
-                                  [:service-catalog-view :process-provider-catalog :provider/catalog]
-                                  [:process-provider-catalog :service-catalog-view :provider/catalog]
-                                  [:process-provider-catalog :sales-catalog-view :sales/catalog]
-                                  [:process-available-resources :available-resources-view :resource/resources]
-                                  [:sales-catalog-view :customer-dashboard :sales/catalog]
+                                  ;[:provider-catalog-topic :process-provider-catalog :provider/catalog]
+                                  ;[:provider-catalog-topic :process-available-resources :provider/catalog]
+                                  ;[:provider-catalog-topic :provider-catalog-view :provider/catalog]
+                                  ;[:service-catalog-view :process-provider-catalog :provider/catalog]
+                                  ;[:process-provider-catalog :service-catalog-view :provider/catalog]
+                                  ;[:process-provider-catalog :sales-catalog-view :sales/catalog]
+                                  ;[:process-available-resources :available-resources-view :resource/resources]
+                                  ;[:sales-catalog-view :customer-dashboard :sales/catalog]
 
                                   [:customer-order-topic :process-customer-order :customer/order]
                                   [:process-customer-order :customer-order-view :orders/state]
@@ -245,8 +245,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; region ; rich comments
-
-
 
 (comment
   (view-topo mvs-topology)

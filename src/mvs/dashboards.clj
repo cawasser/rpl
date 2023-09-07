@@ -1,11 +1,13 @@
 (ns mvs.dashboards
-  (:require [mvs.dashboard.monitoring :as monitoring]
+  (:require [mvs.dashboard.customer :as customer]
+            [mvs.dashboard.monitoring :as monitoring]
             [mvs.dashboard.planning :as planning]
             [mvs.dashboard.sales :as sales]))
 
 
-(def monitoring-dashboard #'monitoring/monitoring-dashboard)
-(def planning-dashboard #'planning/planning-dashboard)
+(def customer-dashboard #'customer/dashboard)
+(def monitoring-dashboard #'monitoring/dashboard)
+(def planning-dashboard #'planning/dashboard)
 (def sales-dashboard #'sales/dashboard)
 
 

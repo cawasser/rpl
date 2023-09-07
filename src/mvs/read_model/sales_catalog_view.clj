@@ -1,7 +1,7 @@
 (ns mvs.read-model.sales-catalog-view
   (:require [mvs.constants :refer :all]
             [cljfx.api :as fx]
-            [mvs.read-models :as state]
+            [mvs.read-model.state :as state]
             [mvs.read-model.event-handler :as e]))
 
 
@@ -51,6 +51,11 @@
 
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+; region ; rich comments
 
 (comment
   (do
@@ -102,3 +107,4 @@
 
   ())
 
+; endregion
