@@ -107,7 +107,7 @@
                     :sales-catalog-view         []
                     :order->sales-request-view  {}
                     :committed-resources-view   []
-                    :resource-measurements-view resource-measurement-init
+                    :resource-measurements-view {} ;resource-measurement-init
                     :resource-performance-view  {}
                     :resource-usage-view        {}
                     :customer-order-view        {}

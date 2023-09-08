@@ -6,6 +6,7 @@
             [mvs.read-models :refer :all]
             [mvs.read-model.sales-catalog-view :as scv]
             [mvs.read-model.provider-catalog-view :as pcv]
+            [mvs.read-model.resource-measurements-view :as rmv]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
@@ -194,6 +195,7 @@
   []
   (pcv/reset-provider-catalog-view)
   (scv/reset-sales-catalog-view)
+  (rmv/reset-resource-measurements-view)
   (reset-available-resources-view)
   ;(reset-service-catalog-view)
   ;(reset-sales-catalog-history-view)

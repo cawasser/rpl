@@ -7,8 +7,9 @@
 
 
 (defmethod e/event-handler :resource-measurement
-  [{event-key                             :event/key
-    {:keys [resource/id measurement/attribute
+  [{event-key                               :event/key
+    {:keys [resource/id
+            measurement/attribute
             measurement/value] :as content} :event/content :as params}]
 
   (println ":resource-measurement" event-key "//" content)
@@ -35,10 +36,10 @@
                     :event/content event-content}))
 
 
-(defn reset-sales-catalog-view []
+(defn reset-resource-measurements-view []
   (swap! state/app-db
     fx/swap-context
-    assoc :sales-catalog-view []))
+    assoc :resource-measurements-view {}))
 
 
 
@@ -47,6 +48,8 @@
 
 (comment
   (resource-measurements @state/app-db)
+
+
 
 
   ())

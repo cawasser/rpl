@@ -84,7 +84,7 @@
   @service-catalog-view
   @available-resources-view
   @order->sales-request-view
-  @resource-state-view
+  (mvs.read-model.resource-state-view/resource-states @mstate/app-db)
   @resource-performance-view
   @resource-usage-view
 
@@ -182,7 +182,7 @@
   ; this should fail since order-3 cannot be committed...
   (ship/providers-ship-order carol-order-1)
 
-  @resource-state-view
+  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
 
   ; endregion
 
@@ -219,7 +219,7 @@
                                          :resource/id           resource-id
                                          :measurement/attribute :googoo/metric
                                          :measurement/value     0}])
-  @resource-state-view
+  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
   @resource-performance-view
   @resource-usage-view
 
@@ -235,7 +235,7 @@
   ; region 6a) each shipped resource reports 1 time
   (do
     ; register all the resources
-    (->> @resource-state-view
+    (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
       keys
       (map (fn [id] (measure/register-resource-update id
                       :googoo/metric #(measure/generate-integer 100))))
@@ -249,7 +249,7 @@
 
   (do
     ; register all the resources
-    (->> @resource-state-view
+    (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
       keys
       (map (fn [id] (measure/register-resource-update id
                       :googoo/metric #(measure/generate-integer 100))))
@@ -260,7 +260,7 @@
 
   (provider-catalogs @state/app-db)
 
-  @resource-state-view
+  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
   @mvs.demo.measurement/registry
   @resource-measurement-topic
   (reset! resource-measurement-topic nil)
@@ -269,13 +269,13 @@
 
   (measure/stop-reporting)
 
-  @measurement-topic
+  (first (mv/resource-measurements @state/app-db))
   @health-topic
   @performance-topic
   @usage-topic
 
 
-  (first @resource-state-view)
+  (first (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db))
   (first @resource-performance-view)
 
   (double (/ (+ 58 15 70 89 0) 5))

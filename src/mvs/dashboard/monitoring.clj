@@ -36,7 +36,7 @@
     {:fx/type  :v-box
      :spacing  2
      :children [{:fx/type :label
-                 :text    "Provider Catalogs"
+                 :text    "Resource Metrics"
                  :style   {:-fx-font [:bold 20 :sans-serif]}}
                 {:fx/type table/table-view
                  :width   width
@@ -64,7 +64,7 @@
      :y-axis  {:fx/type :number-axis
                :label   "Measurement"}
      :data    [{:fx/type :xy-chart-series
-                :name    "Position by time"
+                :name    "Metric by time"
                 :data    presentation}]}))
 
 
@@ -92,7 +92,7 @@
 
 (comment
   (do
-    (def measurements (mv/resource-measurements @mvs.read-models/app-db)))
+    (def measurements (mv/resource-measurements @mvs.read-model.state/app-db)))
 
   (map (fn [m]
          {:resource/id  "resource-1"

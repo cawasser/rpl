@@ -8,8 +8,8 @@
 (def topo
   {
    :mvs/messages {:provider/catalog   {:mvs/message-type :mvs/event}
-                  :sales/catalog      {:mvs/message-type :mvs/event}
-                  :resource/resources {:mvs/message-type :mvs/event}}
+                  :sales/catalog      {:mvs/message-type :mvs/view}
+                  :resource/resources {:mvs/message-type :mvs/view}}
 
    :mvs/entities {:provider-catalog-topic      {:mvs/entity-type :mvs/topic :mvs/topic-name #'t/provider-catalog-topic}
 

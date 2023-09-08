@@ -196,8 +196,8 @@
   (providers-ship-order order-1)
 
 
-  @resource-state-view
-  (reset! resource-state-view {})
+  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+  (mvs.read-model.resource-state-view/reset-resource-state-view)
 
 
 

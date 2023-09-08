@@ -3,6 +3,7 @@
             [mvs.read-model.state :as state]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
+            [mvs.read-model.resource-state-view :as rsv]
             [mvs.read-model.sales-catalog-view :as scv]
             [clojure.spec.alpha :as spec]
             [clj-uuid :as uuid]))
@@ -20,7 +21,11 @@
 (def reset-sales-catalog-view #'scv/reset-sales-catalog-view)
 (def resource-measurements-view #'rmv/resource-measurements-view)
 (def resource-measurements #'rmv/resource-measurements)
-(def reset-resource-measurements-view #'rmv/reset-sales-catalog-view)
+(def reset-resource-measurements-view #'rmv/reset-resource-measurements-view)
+(def resource-state-view #'rsv/resource-state-view)
+(def resource-states #'rsv/resource-states)
+(def reset-resource-state-view #'rsv/reset-resource-state-view)
+
 
 
 (def googoos (->> (range num-googoos)
@@ -106,9 +111,9 @@
   "all the resources that ACME has committed to customers" (atom []))
 (defn reset-committed-resources-view [] (reset! committed-resources-view []))
 
-(def resource-state-view
-  "all the resources that ACME must monitor" (atom {}))
-(defn reset-resource-state-view [] (reset! resource-state-view {}))
+;(def resource-state-view
+;  "all the resources that ACME must monitor" (atom {}))
+;(defn reset-resource-state-view [] (reset! resource-state-view {}))
 
 (def resource-performance-view
   "track update events against resources over time"

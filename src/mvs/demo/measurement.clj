@@ -128,7 +128,9 @@
 ; try using the thread
 (comment
   (do
-    (def resource-id (-> @resource-state-view keys first))
+    (def resource-id (-> (mvs.read-model.resource-state-view/resource-states
+                           @mvs.read-model.state/app-db)
+                       keys first))
     (def attribute :googoo/metric)
     (def value-fn #(generate-integer 100)))
 

@@ -46,6 +46,7 @@
                    [:process-sales-request :committed-resource-view :resource/resources]
                    [:sales-commitment-topic :process-sales-commitment :sales/commitment]
                    [:process-sales-commitment :sales-agreement-topic :customer/agreement]
+                   [:process-sales-commitment :order->sales-request-view :sales/order->request]
                    [:order->sales-request-view :sales-dashboard :sales/order->request]
                    [:available-resources-view :planning-dashboard :resource/resources]
                    [:committed-resource-view :planning-dashboard :resource/resources]

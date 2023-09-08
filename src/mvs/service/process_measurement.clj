@@ -43,14 +43,6 @@
     (do
       ; 1) update the resource-measurement-view with the new data
       (mv/resource-measurements-view event)
-      ;(swap! resource-state-view
-      ;  assoc-in [id :resource/measurements attribute]
-      ;
-      ;  ; measurements are a "time ordered" collection of values, so we can see
-      ;  ; history (materialized view)
-      ;  (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
-      ;          [])
-      ;    value))
 
       ; 2) republish this data upstream (?)
       ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
@@ -88,8 +80,11 @@
 
 (comment
   (do
-    (def view (atom @resource-state-view))
-    (def resource-id (-> @resource-state-view keys first))
+    (def view (atom (mvs.read-model.resource-state-view/resource-states
+                      @mvs.read-model.state/app-db)))
+    (def resource-id (-> (mvs.read-model.resource-state-view/resource-states
+                           @mvs.read-model.state/app-db)
+                       keys first))
     (def event-key {:resource/id resource-id})
     (def id resource-id)
     (def attribute :googoo/metric)
@@ -105,21 +100,22 @@
 
   (spec/explain :resource/measurement @last-event)
 
-  (get @resource-state-view id)
-  (get-in @resource-state-view [id :resource/measurements])
+  (get (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db) id)
+  (get-in (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db) [id :resource/measurements])
 
-  (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
+  (conj (or (get-in (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db) [id :resource/measurements attribute])
           [])
     value)
 
   (swap! view
     assoc-in [id :resource/measurements attribute]
-    (conj (or (get-in @resource-state-view [id :resource/measurements attribute])
+    (conj (or (get-in (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db) [id :resource/measurements attribute])
             [])
       value))
 
 
-  (def enrichment (->> (get @resource-state-view id)
+  (def enrichment (->> (get (mvs.read-model.resource-state-view/resource-states
+                              @mvs.read-model.state/app-db) id)
                     ((juxt :order/id :customer/id :sales/request-id
                        :agreement/id :order/needs))
                     (zipmap [:order/id :customer/id :sales/request-id

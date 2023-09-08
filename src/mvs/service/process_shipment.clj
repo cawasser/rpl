@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.resource-state-view :as v]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -15,10 +16,10 @@
   "'select' the actual resources (by assigning them a `:resource/id`) to fulfil a `:provider/order`
   and publish the :provider/shipment"
 
-  [[event-key {items :shipment/items
-               order-id :order/id
+  [[event-key {items       :shipment/items
+               order-id    :order/id
                provider-id :provider/id
-               :as   shipment}
+               :as         shipment}
     :as event]]
 
   (if (spec/valid? :provider/shipment shipment)
@@ -26,10 +27,15 @@
     (do
       (println "process-shipment" event-key " // " shipment)
 
-      (reset! last-event shipment)
+      (reset! last-event event)
 
       ; create a place to hold the measurements for each :resource/id:
       ;    { <:resource/id> { <attributes & values go here> } }
+
+      ; which SHOULD be in resource-measurements-view...
+      ;
+      ;
+      ;
       ;
       ; TODO: we should also enrich with :customer/id, :order/id, :sales/request/id,
       ;       :agreement/id, & :order/needs for later use
@@ -51,9 +57,8 @@
                                       enrichment)}))
                          (into {}))]
 
-        (reset! resource-state-view
-          (reduce (fn [m [k v :as x]] (assoc m k v))
-            @resource-state-view new-vals))))
+        (doseq [[k v] new-vals]
+          (v/resource-state-view [{:resource/id k} v]))))
 
     (malformed "process-shipment" :provider/shipment shipment)))
 
@@ -96,7 +101,7 @@
                   (into {})))
 
   (reduce (fn [m [k v :as x]] (assoc m k v))
-    @resource-state-view new-vals)
+    (v/resource-states @mvs.read-model.state/app-db) new-vals)
 
 
   ((juxt :resource/id :resource/time) (first items))
@@ -107,7 +112,7 @@
        :agreement/id :order/needs)))
 
   (do
-    (def local (atom @resource-state-view))
+    (def local (atom (v/resource-states @mvs.read-model.state/app-db)))
     (def id items)
     (def id (-> @order->sales-request-view keys first))
     (def new-vals (->> items
@@ -130,7 +135,79 @@
 
   (reset! resource-state-view {})
 
-  (process-shipment [] [] [] [{} @last-event])
+  (process-shipment [{} @last-event])
+
+  ())
+
+
+(comment
+  (do
+    (def event @last-event)
+    (def event-key (first event))
+    (def shipment (second event))
+    (def items (:shipment/items shipment))
+    (def order-id (:order/id shipment))
+    (def provider-id (:provider/id shipment))
+    (def local
+      (atom {#uuid"02bbba94-4db9-11ee-918b-b9081dfd246f"
+             {:customer/id         #uuid"02bbba90-4db9-11ee-918b-b9081dfd246f",
+              :order/id            #uuid"02bbba94-4db9-11ee-918b-b9081dfd246f",
+              :order/status        :order/submitted,
+              :order/needs         [0 1],
+              :sales/request-id    #uuid"2224a720-4db9-11ee-918b-b9081dfd246f",
+              :agreement/id        #uuid"222654d0-4db9-11ee-918b-b9081dfd246f",
+              :agreement/resources '({:resource/type        0,
+                                      :provider/id          "delta-googoos",
+                                      :resource/time-frames [0 1],
+                                      :resource/cost        10}
+                                     {:resource/type        0,
+                                      :provider/id          "alpha-googoos",
+                                      :resource/time-frames [2 3 4],
+                                      :resource/cost        30}
+                                     {:resource/type        0,
+                                      :provider/id          "bravo-googoos",
+                                      :resource/time-frames [5],
+                                      :resource/cost        5}
+                                     {:resource/type        1,
+                                      :provider/id          "delta-googoos",
+                                      :resource/time-frames [0 1],
+                                      :resource/cost        10}
+                                     {:resource/type        1,
+                                      :provider/id          "alpha-googoos",
+                                      :resource/time-frames [2 3 4],
+                                      :resource/cost        30}
+                                     {:resource/type        1,
+                                      :provider/id          "bravo-googoos",
+                                      :resource/time-frames [5],
+                                      :resource/cost        5})}}))
+
+
+    (def extra-data (-> @local
+                      (get order-id)
+                      ((juxt :order/id :customer/id :sales/request-id
+                         :agreement/id :order/needs))))
+    (def enrichment (zipmap [:order/id :customer/id :sales/request-id
+                             :agreement/id :order/needs]
+                      extra-data))
+    (def new-vals (->> items
+                    (map (fn [{:keys [resource/id] :as i}]
+                           {id (merge {:resource/attributes   (dissoc i :resource/id)
+                                       :resource/measurements {}}
+                                 {:provider/id provider-id}
+                                 enrichment)}))
+                    (into {})))
+
+    (def resource (first new-vals))
+    (def resource-id (first resource))
+    (def content (second resource)))
+
+  (v/resource-state-view [{:resource/id resource-id} content])
+
+  (count new-vals)
+
+  (doseq [[k v] new-vals]
+    (v/resource-state-view [{:resource/id k} v]))
+
 
   ())
 

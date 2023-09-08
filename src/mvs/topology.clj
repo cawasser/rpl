@@ -158,12 +158,11 @@
   nil)
 
 
-
 (defn compose-topology [sub-elements]
   (let [empty-topo {:mvs/messages {} :mvs/entities {} :mvs/workflow #{}}]
     (reduce (fn [accum new-data]
-              {:mvs/messages (merge-with merge (:mvs/messages accum) (:mvs/messages new-data))
-               :mvs/entities (merge-with merge (:mvs/entities accum) (:mvs/entities new-data))
+              {:mvs/messages (merge (:mvs/messages accum) (:mvs/messages new-data))
+               :mvs/entities (merge (:mvs/entities accum) (:mvs/entities new-data))
                :mvs/workflow (clojure.set/union (:mvs/workflow accum) (:mvs/workflow new-data))})
       empty-topo sub-elements)))
 
@@ -313,6 +312,21 @@
 
   (wrapper (-> entities to :mvs/topic-name))
 
+
+
+  ())
+
+
+; merge vs merge-with
+
+(comment
+  (merge {:a 1} {:b 2})
+
+  (merge {:a 1 :b 1} {:a 2 :b 2})
+
+  (merge {:a {:c 1}} {:a {:d 3}} {:a {:e 7}})
+
+  (merge-with merge {:a {:c 1}} {:a {:d 3}} {:a {:e 7}})
 
 
   ())

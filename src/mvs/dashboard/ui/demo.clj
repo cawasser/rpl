@@ -23,7 +23,7 @@
               :title   "Customer Dashboard"}
              {:fx/type monitoring/dashboard
               :x       0 :y 450
-              :width   1000 :height 500
+              :width   1300 :height 500
               :title   "Monitoring Dashboard"}]})
 
 
