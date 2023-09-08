@@ -1,8 +1,7 @@
 (ns mvs.service.process-shipment
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
-            [mvs.read-model.resource-state-view :as v]
+            [mvs.read-models :as rm :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -42,7 +41,7 @@
       ;
       ;     use :order/id to find other data view from order->sales-request-view
       ;
-      (let [extra-data (-> @order->sales-request-view
+      (let [extra-data (-> (rm/order->sales-request (rm/state))
                          (get order-id)
                          ((juxt :order/id :customer/id :sales/request-id
                             :agreement/id :order/needs)))
@@ -58,7 +57,7 @@
                          (into {}))]
 
         (doseq [[k v] new-vals]
-          (v/resource-state-view [{:resource/id k} v]))))
+          (rm/resource-state-view [{:resource/id k} v]))))
 
     (malformed "process-shipment" :provider/shipment shipment)))
 
@@ -84,7 +83,7 @@
        {:resource/id   #uuid"db9c50e6-3c57-11ee-a6ba-72e2bbe3a0f7",
         :resource/type 0, :resource/time 5}])
     (def provider-id "alpha")
-    (def extra-data (-> @order->sales-request-view
+    (def extra-data (-> (rm/order->sales-request (rm/state))
                       (get id)
                       ((juxt :order/id :customer/id :sales/request-id
                          :agreement/id :order/needs))))
@@ -101,20 +100,20 @@
                   (into {})))
 
   (reduce (fn [m [k v :as x]] (assoc m k v))
-    (v/resource-states @mvs.read-model.state/app-db) new-vals)
+    (rm/resource-states (rm/state)) new-vals)
 
 
   ((juxt :resource/id :resource/time) (first items))
 
-  (-> @order->sales-request-view
+  (-> (rm/order->sales-request (rm/state))
     (get id)
     ((juxt :customer/id :sales/request-id
        :agreement/id :order/needs)))
 
   (do
-    (def local (atom (v/resource-states @mvs.read-model.state/app-db)))
+    (def local (atom (rm/resource-states (rm/state))))
     (def id items)
-    (def id (-> @order->sales-request-view keys first))
+    (def id (-> (rm/order->sales-request (rm/state)) keys first))
     (def new-vals (->> items
                     (map (fn [{:keys [resource/id] :as i}]
                            {id {:resource/attributes   (dissoc i :resource/id)
@@ -201,12 +200,12 @@
     (def resource-id (first resource))
     (def content (second resource)))
 
-  (v/resource-state-view [{:resource/id resource-id} content])
+  (rm/resource-state-view [{:resource/id resource-id} content])
 
   (count new-vals)
 
   (doseq [[k v] new-vals]
-    (v/resource-state-view [{:resource/id k} v]))
+    (rm/resource-state-view [{:resource/id k} v]))
 
 
   ())

@@ -1,10 +1,9 @@
 (ns mvs.service.process-resource-usage
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
-            [mvs.read-models :refer :all]
             [mvs.specs :refer :all]
             [clj-uuid :as uuid]))
 
@@ -67,7 +66,7 @@
     (do
       (let [_           (update-ktable resource-usage-view measurement)
             usage       (compute-usage resource-usage-view
-                          order->sales-request-view measurement)
+                          (rm/order->sales-request (rm/state)) measurement)
             usage-event [event-key (merge measurement usage)]]
 
         ; what do we do with the result?
@@ -92,7 +91,7 @@
 (comment
   (do
     (def usage-view (atom {}))
-    (def order-view (atom @order->sales-request-view))
+    (def order-view (atom (rm/order->sales-request (rm/state))))
     (def customer-id #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
     (def order-id #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d")
     (def resource-id "resource-1")

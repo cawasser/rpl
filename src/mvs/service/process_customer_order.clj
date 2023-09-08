@@ -1,7 +1,7 @@
 (ns mvs.service.process-customer-order
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -26,7 +26,7 @@
 
   (println "process-customer-order" (:order/id order))
 
-  (reset! last-event order)
+  (reset! last-event event)
 
   (if (spec/valid? :customer/order order)
     ; region ; handle :customer/order
@@ -36,7 +36,8 @@
                        (mapcat (fn [service-id]
                                  (:service/elements
                                    (first
-                                     (filter #(= (:service/id %) service-id) @service-catalog-view)))))
+                                     (filter #(= (:service/id %) service-id)
+                                       (rm/sales-catalog (rm/state)))))))
                        (into []))]
 
       (println "process-customer-order (b) " (:order/needs order) " // " resources)
@@ -44,11 +45,15 @@
       (if (not-empty resources)
         (do
           ; 1) store the mapping from the :order/id to the :sales/request-id
-          (swap! order->sales-request-view assoc
-            (:order/id order) (assoc order :sales/request-id request-id))
+          (rm/order->sales-request-view [{:order-id (:order/id order)}
+                                         (assoc order
+                                           :sales/request-id request-id
+                                           :order/event :order/submitted)])
+
+          ;(swap! order->sales-request-view assoc
+          ;  (:order/id order) (assoc order :sales/request-id request-id))
 
           ; 2) publish the :sales/request or send the customer some kind of Error
-
           (publish! sales-request-topic [{:order/id (:order/id order)}
                                          {:sales/request-id request-id
                                           :request/status   :request/submitted
@@ -107,7 +112,7 @@
   (->> order
     :order/needs
     (mapcat (fn [service-id]
-              (->> @service-catalog-view
+              (->> (rm/sales-catalog (rm/state))
                 (filter #(= (:service/id %) service-id))
                 first
                 :service/elements)))
@@ -115,7 +120,7 @@
 
   (:service/elements
     (first
-      (filter #(= (:service/id %) service-id) @service-catalog-view)))
+      (filter #(= (:service/id %) service-id) (rm/sales-catalog (rm/state)))))
 
 
   (swap! local-view conj (assoc order :sales/request-id service-request-id))
@@ -141,17 +146,17 @@
     (mapcat (fn [service-id]
               (:service/elements
                 (first
-                  (filter #(= (:service/id %) service-id) @service-catalog-view)))))
+                  (filter #(= (:service/id %) service-id) (rm/sales-catalog (rm/state)))))))
     (into []))
 
-  (process-customer-order [] [] [] [{:order/id customer-id :customer/id customer-id}
-                                    order])
+  (process-customer-order [{:order/id customer-id :customer/id customer-id}
+                           order])
 
   ())
 
 
 
-; update order->sales-request-view with the new order->service-request mapping
+; update order->sales-request-view with the new order->sales-request mapping
 (comment
   (do
     (def local-order->sales-request-view (atom {}))

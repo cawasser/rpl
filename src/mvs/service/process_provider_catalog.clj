@@ -31,8 +31,8 @@
       ; 1) update provider-catalog-view
       (provider-v/provider-catalog-view event)
 
-      ; 2) update service-catalog-view (for later use)
-      (reset! service-catalog-view const/service-catalog)
+      ;; 2) update service-catalog-view (for later use)
+      ;(reset! service-catalog-view const/service-catalog)
 
       ; 3) 'publish' ACME's "Sales Catalog"
       (doseq [service const/service-catalog]

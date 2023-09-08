@@ -6,7 +6,7 @@
             [mvs.helpers :refer :all]
             [mvs.read-model.resource-measurements-view :as mv]
             [mvs.read-model.state :as state]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm :refer :all]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
@@ -63,7 +63,7 @@
     (start-ui))
 
 
-  @state/app-db
+  (state/db)
   ; endregion
 
   ; region ; 2) re-load the catalog(s)
@@ -74,33 +74,23 @@
     (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
     (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
 
-  @state/app-db
+  (state/db)
 
   ; endregion
 
   ; region ; 2b) view read-models as a sanity check
 
-  (mvs.read-model.provider-catalog-view/provider-catalogs @state/app-db)
-  @service-catalog-view
+  (mvs.read-model.provider-catalog-view/provider-catalogs (state/db))
+  (mvs.read-model.sales-catalog-view/sales-catalog (state/db))
   @available-resources-view
-  @order->sales-request-view
-  (mvs.read-model.resource-state-view/resource-states @mstate/app-db)
+  (mvs.read-model.order-sales-request-view/order->sales-request (state/db))
+  (mvs.read-model.resource-state-view/resource-states (state/db))
   @resource-performance-view
   @resource-usage-view
 
   ; endregion
 
   ; region ; 3) customers orders services
-  ;(do
-  ;  (def customer-1 #uuid"6d9bc4e0-3a4a-11ee-8473-e65ce679c38d")
-  ;  (def customer-2 #uuid"5a9ff450-3ac3-11ee-8473-e65ce679c38d")
-  ;  (def customer-3 #uuid"5a9ff451-3ac3-11ee-8473-e65ce679c38d")
-  ;
-  ;  (def order-1 #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d")
-  ;  (def order-2 #uuid"7a8a9400-3ac3-11ee-8473-e65ce679c38d")
-  ;
-  ;  (def order-3 #uuid"7f6e8fd0-3ac3-11ee-8473-e65ce679c38d")
-  ;  (def order-failure #uuid"84389b00-3ac3-11ee-8473-e65ce679c38d"))
 
   ; TODO: should we drop :order/id from the key here, leaving only :customer/id?
   (publish! customer-order-topic [{:customer/id alice :order/id alice-order-1}
@@ -135,14 +125,16 @@
   ;
   ; approve alice-order-1
   (publish! customer-order-approval [{:order/id alice-order-1}
-                                     {:agreement/id (-> @order->sales-request-view (get alice-order-1) :agreement/id)
+                                     {:agreement/id (-> (rm/order->sales-request (rm/state))
+                                                      (get alice-order-1) :agreement/id)
                                       :order/id     alice-order-1
                                       :customer/id  alice
                                       :order/status :order/purchased}])
 
   ; approve bob-order-1
   (publish! customer-order-approval [{:order/id bob-order-1}
-                                     {:agreement/id (-> @order->sales-request-view (get bob-order-1) :agreement/id)
+                                     {:agreement/id (-> (rm/order->sales-request (rm/state))
+                                                      (get bob-order-1) :agreement/id)
                                       :order/id     bob-order-1
                                       :customer/id  bob
                                       :order/status :order/purchased}])
@@ -151,7 +143,7 @@
 
   ; region (OBE) providers ship resources for order-1
   (do
-    (def order-id (-> @order->sales-request-view first second :order/id))
+    (def order-id (-> (rm/order->sales-request (rm/state)) first second :order/id))
     (def shipment-id (uuid/v1))
     (def alpha-shipment
       [{:provider/id    "alpha"}
@@ -182,13 +174,13 @@
   ; this should fail since order-3 cannot be committed...
   (ship/providers-ship-order carol-order-1)
 
-  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+  (mvs.read-model.resource-state-view/resource-states (mvs.read-model.state/db))
 
   ; endregion
 
   ; region ; (OBE) resources start reporting health & status (by hand)
   (do
-    (def resource-id (-> @state/app-db mv/resource-measurements keys first)))
+    (def resource-id (-> (state/db) mv/resource-measurements keys first)))
 
   (publish! resource-measurement-topic [{:resource/id resource-id}
                                         {:measurement/id        (uuid/v1)
@@ -258,9 +250,9 @@
     ; start the background thread to publish the reports
     (measure/start-reporting resource-measurement-topic 5))
 
-  (provider-catalogs @state/app-db)
+  (provider-catalogs (state/db))
 
-  (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+  (mvs.read-model.resource-state-view/resource-states (mvs.read-model.state/db))
   @mvs.demo.measurement/registry
   @resource-measurement-topic
   (reset! resource-measurement-topic nil)
@@ -269,7 +261,7 @@
 
   (measure/stop-reporting)
 
-  (first (mv/resource-measurements @state/app-db))
+  (first (mv/resource-measurements (state/db)))
   @health-topic
   @performance-topic
   @usage-topic

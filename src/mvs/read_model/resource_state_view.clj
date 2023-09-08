@@ -37,7 +37,7 @@
 
 (comment
 
-  (resource-states @state/app-db)
+  (resource-states (state/db))
 
   (def state-event [{:resource/id #uuid"b4337b81-4dbb-11ee-aeab-b9081dfd246f"}
                     {:resource/attributes   {:resource/type 0, :resource/time 0},

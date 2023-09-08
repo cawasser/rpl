@@ -105,7 +105,8 @@
 (spec/def :order/status (spec/or
                           :submitted #(= % :order/submitted) ; submitted (customer->ACME or ACME->Provider)
                           :accepted #(= % :order/accepted)  ; accepted by AMCE or Provider
-                          :planned #(= % :order/planned)    ; ? ACME created commitment
+                          :planned #(= % :order/planned)    ; ? ACME created commitment - replace with :order/reserved
+                          :reserved #(= % :order/reserved)  ; ACME reserved resources
                           :awaiting-approval #(= % :order/awaiting-approval) ; (customer or ACME)
                           :approved #(= % :order/approved)  ; (customer or ACME)
                           :awaiting-fulfilment #(= % :order/awaiting-fulfilment) ; ? ACME->Provider

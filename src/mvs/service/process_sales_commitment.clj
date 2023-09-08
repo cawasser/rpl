@@ -1,7 +1,7 @@
 (ns mvs.service.process-sales-commitment
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm :refer :all]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -25,11 +25,10 @@
 
   (if (spec/valid? :sales/agreement agreement)
 
-    (swap! order->sales-request-view
-      assoc order-id (-> @order->sales-request-view
-                       (get order-id)
-                       (assoc :agreement/id agreement-id)
-                       (assoc :agreement/resources resources)))
+    (rm/reset-order->sales-request-view [{:order/id order-id}
+                                         {:order/event         :order/awaiting-approval
+                                          :agreement/id        agreement-id
+                                          :agreement/resources resources}])
 
     (malformed "- add-agreement" :sales/agreement agreement)))
 
@@ -70,7 +69,7 @@
               agreement-price      (->> order-needs
                                      (mapcat (fn [id]
                                                (filter (fn [r] (= id (:service/id r)))
-                                                 @service-catalog-view)))
+                                                 (rm/sales-catalog (rm/state)))))
                                      (map :service/price)
                                      (reduce +))
               agreement-notes      ["note 1" "note 2"]
@@ -133,7 +132,7 @@
   (do
     (def sales-request-id #uuid"86678e00-3c39-11ee-bad8-8e6f1376370b"))
 
-  (->> @order->sales-request-view
+  (->> (rm/order->sales-request (rm/state))
     vals
     (filter #(= sales-request-id (:sales/request-id %)))
     first)
@@ -146,7 +145,7 @@
   (do
     (def order-id #uuid"75f888c0-3ac3-11ee-8473-e65ce679c38d"))
 
-  @order->sales-request-view
+  (rm/order->sales-request (rm/state))
 
   (associated-sales-request order-id)
 
@@ -195,7 +194,7 @@
     (def agreement-price (->> order-needs
                            (mapcat (fn [id]
                                      (filter (fn [r] (= id (:service/id r)))
-                                       @service-catalog-view)))
+                                       (sc/sales-catalog (state/db)))))
                            (map :service/price)
                            (reduce +)))
     (def agreement-notes ["note 1" "note 2"]))
@@ -203,7 +202,7 @@
 
   (do
     (def sales-request-id #uuid"8f2c8eb0-3882-11ee-be86-1768c9d0d0e5")
-    (->> @order->sales-request-view
+    (->> (rm/order->sales-request (rm/state))
       vals
       (filter #(= sales-request-id (:sales/request-id %)))
       first))
@@ -228,7 +227,7 @@
               :order/needs      [0 1],
               :sales/request-id #uuid"7139d330-3a4a-11ee-8473-e65ce679c38d"}})))
 
-  @order->sales-request-view
+  (rm/order->sales-request (rm/state))
 
 
   (-> @local-order->sales-request-view

@@ -48,7 +48,7 @@
       ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
       ;       @resource-state-view
       ;
-      (let [enrichment (->> (get (mv/resource-measurements @state/app-db) id)
+      (let [enrichment (->> (get (mv/resource-measurements (state/db)) id)
                          ((juxt :order/id :customer/id :sales/request-id
                             :agreement/id :order/needs))
                          (zipmap [:order/id :customer/id :sales/request-id
@@ -70,7 +70,7 @@
 ; convert to app-db
 (comment
   (do
-    (def measurements (mv/resource-measurements @state/app-db)))
+    (def measurements (mv/resource-measurements (state/db))))
 
 
 

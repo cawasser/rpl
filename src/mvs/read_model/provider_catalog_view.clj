@@ -58,7 +58,7 @@
 ; work out the logic
 (comment
 
-  (provider-catalogs @state/app-db)
+  (provider-catalogs (state/db))
 
 
   ; NEW catalog (replace)

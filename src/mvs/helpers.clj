@@ -1,5 +1,7 @@
 (ns mvs.helpers
   (:require [mvs.read-models :refer :all]
+            [mvs.read-model.state :as state]
+            [mvs.read-model.order-sales-request-view :as v]
             [mvs.specs :refer :all]
             [clojure.spec.alpha :as spec]))
 
@@ -13,14 +15,14 @@
 
 
 (defn associated-sales-request [order-id]
-  (->> @order->sales-request-view
+  (->> (v/order->sales-request (state/db))
     vals
     (filter #(= order-id (:order/id %)))
     first))
 
 
 (defn associated-order [sales-request-id]
-  (->> @order->sales-request-view
+  (->> (v/order->sales-request (state/db))
     vals
     (filter #(= sales-request-id (:sales/request-id %)))
     first))

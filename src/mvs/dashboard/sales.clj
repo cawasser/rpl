@@ -142,7 +142,7 @@
 
 (comment
   (require '[mvs.read-model.state :as state])
-  (def catalog (v/provider-catalogs @state/app-db))
+  (def catalog (v/provider-catalogs (state/db)))
 
   (def presentation (for [[id {cat :resource/catalog}] catalog
                           {:keys [resource/type resource/time-frames resource/cost]} cat]

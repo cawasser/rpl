@@ -4,9 +4,10 @@
             [mvs.dashboards :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
-            [mvs.read-model.sales-catalog-view :as scv]
+            [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
+            [mvs.read-model.sales-catalog-view :as scv]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
@@ -199,7 +200,7 @@
   (reset-available-resources-view)
   ;(reset-service-catalog-view)
   ;(reset-sales-catalog-history-view)
-  (reset-order->sales-request-view)
+  (osr/reset-order->sales-request-view)
   (reset-committed-resources-view)
   (reset-resource-state-view)
   (reset-available-resources-view)

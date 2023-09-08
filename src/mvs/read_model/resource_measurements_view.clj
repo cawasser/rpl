@@ -47,7 +47,7 @@
 
 
 (comment
-  (resource-measurements @state/app-db)
+  (resource-measurements (state/db))
 
 
 

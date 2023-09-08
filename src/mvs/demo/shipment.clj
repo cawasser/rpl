@@ -1,11 +1,11 @@
 (ns mvs.demo.shipment
-  (:require [mvs.read-models :refer :all]
+  (:require [mvs.read-models :as rm :refer :all]
             [mvs.topics :refer :all]
             [clj-uuid :as uuid]))
 
 
 (defn- make-shipment-events [order-id]
-  (as-> @order->sales-request-view d
+  (as-> (rm/order->sales-request (rm/state)) d
     (get d order-id)
     (:agreement/resources d)
     (group-by :provider/id d)
@@ -48,7 +48,7 @@
 
     (def shipment-id (uuid/v1))
 
-    (def resources (as-> @order->sales-request-view d
+    (def resources (as-> (rm/order->sales-request (rm/state)) d
                      (get d order-id)
                      (:agreement/resources d)
                      (group-by :provider/id d))))
@@ -94,7 +94,7 @@
                             items)})
     resources)
 
-  (as-> @order->sales-request-view d
+  (as-> (rm/order->sales-request (rm/state)) d
     (get d order-id)
     (:agreement/resources d)
     (group-by :provider/id d)

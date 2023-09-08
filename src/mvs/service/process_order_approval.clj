@@ -7,6 +7,7 @@
             [mvs.specs]
             [clj-uuid :as uuid]))
 
+
 (def last-event (atom []))
 
 
@@ -54,7 +55,7 @@
   (do
     (def sales-request-id #uuid"def57e90-3b05-11ee-9c78-16a8ee85083d"))
 
-  @order->sales-request-view
+  (rm/order->sales-request (rm/state))
 
   (associated-order sales-request-id)
 

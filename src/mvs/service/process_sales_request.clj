@@ -1,6 +1,7 @@
 (ns mvs.service.process-sales-request
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
+            [mvs.read-models :as rm]
             [mvs.read-models :refer :all]
             [mvs.read-model.state :as state]
             [mvs.read-model.provider-catalog-view :as v]
@@ -38,7 +39,7 @@
 
 
 (defn- get-provider-resource-cost [provider-id resource-type]
-  (as-> (v/provider-catalogs @state/app-db) v
+  (as-> (v/provider-catalogs (state/db)) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -131,12 +132,16 @@
       (println "process-sales-request (a)")
 
       (if successful-allocation
-        (do
+        (let []
           ; 1) commit the allocations, durably
           (println "process-sales-request (b)")
           (commit-resources allocations)
 
-          ; 2) publish the :sales/committed event
+          ; 2) update the :order/status :order/reserved
+          (rm/order->sales-request-view [{:order/id (:order/id request)}
+                                         {:order/event :order/reserved}])
+
+          ; 3) publish the :sales/committed event
           (println "process-sales-request (c)")
           (publish! sales-commitment-topic
             [{:sales/request-id (:sales/request-id request)}
@@ -190,7 +195,7 @@
     (def provider-id "alpha")
     (def resource-type 3))
 
-  (as-> (provider-catalogs @state/app-db) v
+  (as-> (provider-catalogs (state/db)) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -536,9 +541,9 @@
             :provider/id          provider
             :resource/time-frames (into [] (map first t))
             :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in (provider-catalogs @state/app-db) [provider
-                                                                               resource-type
-                                                                               :resource/cost]))})))
+                                    (get-in (provider-catalogs (state/db)) [provider
+                                                                            resource-type
+                                                                            :resource/cost]))})))
 
 
 
@@ -637,6 +642,7 @@
 
 
   ())
+
 
 ; debuggging "Execution error (NullPointerException) at cljfx.context/sub-ctx (context.clj:107)."
 (comment

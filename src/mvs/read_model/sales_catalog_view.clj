@@ -97,7 +97,7 @@
              :service/elements    elements}]))
     service-catalog)
 
-  @state/app-db
+  (state/db)
 
 
   ())
@@ -106,7 +106,7 @@
 ; whats' in the app-db
 (comment
 
-  (sales-catalog @state/app-db)
+  (sales-catalog (state/db))
 
   ())
 

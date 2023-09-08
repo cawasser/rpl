@@ -1,6 +1,7 @@
 (ns mvs.read-models
   (:require [mvs.constants :refer :all]
             [mvs.read-model.state :as state]
+            [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
             [mvs.read-model.resource-state-view :as rsv]
@@ -9,19 +10,25 @@
             [clj-uuid :as uuid]))
 
 
-(def app-db #'state/app-db)
+(def state #'state/db)
 (def initial-state #'state/initial-state)
 
+(def order->sales-request-view #'osr/order->sales-request-view)
+(def order->sales-request #'osr/order->sales-request)
+(def reset-order->sales-request-view #'osr/reset-order->sales-request-view)
 
 (def provider-catalog-view #'pcv/provider-catalog-view)
 (def provider-catalogs #'pcv/provider-catalogs)
 (def reset-provider-catalog-view #'pcv/reset-provider-catalog-view)
+
 (def sales-catalog-view #'scv/sales-catalog-view)
 (def sales-catalog #'scv/sales-catalog)
 (def reset-sales-catalog-view #'scv/reset-sales-catalog-view)
+
 (def resource-measurements-view #'rmv/resource-measurements-view)
 (def resource-measurements #'rmv/resource-measurements)
 (def reset-resource-measurements-view #'rmv/reset-resource-measurements-view)
+
 (def resource-state-view #'rsv/resource-state-view)
 (def resource-states #'rsv/resource-states)
 (def reset-resource-state-view #'rsv/reset-resource-state-view)
@@ -95,17 +102,17 @@
   "denormalized arrangements of all resources available" (atom {}))
 (defn reset-available-resources-view [] (reset! available-resources-view {}))
 
-(def service-catalog-view
-  "catalog of service ACME offers to customer" (atom []))
-(defn reset-service-catalog-view [] (reset! service-catalog-view []))
+;(def service-catalog-view
+;  "catalog of service ACME offers to customer" (atom []))
+;(defn reset-service-catalog-view [] (reset! service-catalog-view []))
 
 ;(def sales-catalog-history-view
 ;  "history of all the sales catalogs of ACME ever offered to customer" (atom []))
 ;(defn reset-sales-catalog-history-view [] (reset! sales-catalog-history-view []))
 
-(def order->sales-request-view
-  "maps order/id to :sales/request-id so we can relate all information" (atom {}))
-(defn reset-order->sales-request-view [] (reset! order->sales-request-view {}))
+;(def order->sales-request-view
+;  "maps order/id to :sales/request-id so we can relate all information" (atom {}))
+;(defn reset-order->sales-request-view [] (reset! order->sales-request-view {}))
 
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
