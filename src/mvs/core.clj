@@ -4,9 +4,11 @@
             [mvs.dashboards :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
+            [mvs.read-model.customer-order-view :as cov]
             [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
+            [mvs.read-model.resource-state-view :as rsv]
             [mvs.read-model.sales-catalog-view :as scv]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
@@ -69,9 +71,7 @@
                                   :performance-topic            {:mvs/entity-type :mvs/topic :mvs/topic-name performance-topic}
                                   :usage-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name usage-topic}
 
-                                  :service-catalog-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name service-catalog-view}
                                   :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
-                                  :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-state-view}
                                   :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
                                   :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
                                   :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
@@ -80,8 +80,15 @@
                                   :resource-performance-view    {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-performance-view}
                                   :resource-usage-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-usage-view}
 
+
                                   ; TODO: finish the conversion form atoms to app-db events
+                                  :order->sales-request-view    {:mvs/entity-type :mvs/ktable :mvs/name #'osr/order->sales-request-view}
                                   :provider-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/name #'pcv/provider-catalog-view}
+                                  :resource-measurement-view    {:mvs/entity-type :mvs/ktable :mvs/name #'rmv/reset-resource-measurements-view}
+                                  :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name #'rsv/resource-state-view}
+                                  :sales-catalog-view           {:mvs/entity-type :mvs/ktable :mvs/topic-name #'scv/sales-catalog-view}
+
+
 
                                   :customer-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'customer-dashboard}
                                   :provider-dashboard           {:mvs/entity-type :mvs/dashboard :mvs/name #'provider-dashboard}
@@ -112,8 +119,8 @@
                                    [:provider-catalog-topic :process-provider-catalog :provider/catalog]
                                    [:provider-catalog-topic :process-available-resources :provider/catalog]
                                    [:provider-catalog-topic :provider-catalog-view :provider/catalog]
-                                   [:service-catalog-view :process-provider-catalog :provider/catalog]
-                                   [:process-provider-catalog :service-catalog-view :provider/catalog]
+                                   [:sales-catalog-view :process-provider-catalog :provider/catalog]
+                                   [:process-provider-catalog :sales-catalog-view :provider/catalog]
                                    [:process-provider-catalog :sales-catalog-view :sales/catalog]
                                    [:process-available-resources :available-resources-view :resource/resources]
                                    [:sales-catalog-view :customer-dashboard :sales/catalog]
@@ -269,6 +276,6 @@
 
 
 
- ())
+  ())
 
 ; endregion

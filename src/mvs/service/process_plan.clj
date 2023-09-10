@@ -37,7 +37,9 @@
                                      r)})
                           resources)]
 
-      ; 1) place orders with the providers
+      ; TODO: 1) update :order/status to :order/purchased
+
+      ; 2) place orders with the providers
       (doseq [p expanded-plan]
         (doseq [[id r] p]
           (let [provider-order {:order/id         (uuid/v1)

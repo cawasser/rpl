@@ -25,12 +25,12 @@
 
   (if (spec/valid? :sales/agreement agreement)
 
-    (rm/reset-order->sales-request-view [{:order/id order-id}
-                                         {:order/event         :order/awaiting-approval
-                                          :agreement/id        agreement-id
-                                          :agreement/resources resources}])
+    (rm/order->sales-request-view [{:order/id order-id}
+                                   {:order/event         :order/awaiting-approval
+                                    :agreement/id        agreement-id
+                                    :agreement/resources resources}])
 
-    (malformed "- add-agreement" :sales/agreement agreement)))
+    (malformed "add-agreement" :sales/agreement agreement)))
 
 ; endregion
 
@@ -87,8 +87,10 @@
 
           (println "process-sales-commitment (b) " associated-order)
 
-          ; we should also (assoc) the :agreement/id & :commitment/resources into order->sales-request-view
-          (add-agreement sales-agreement)
+          ; we should also (assoc) the :agreement/id & other data
+          (rm/order->sales-request-view [{:order/id order-id}
+                                         (assoc sales-agreement
+                                           :order/event :order/awaiting-approval)])
 
           (publish! sales-agreement-topic [{:agreement/id agreement-id}
                                            sales-agreement])))

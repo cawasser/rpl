@@ -106,7 +106,9 @@
                           :submitted #(= % :order/submitted) ; submitted (customer->ACME or ACME->Provider)
                           :accepted #(= % :order/accepted)  ; accepted by AMCE or Provider
                           :planned #(= % :order/planned)    ; ? ACME created commitment - replace with :order/reserved
+                          :committed #(= % :order/:committed)  ; ACME :committed resources
                           :reserved #(= % :order/reserved)  ; ACME reserved resources
+                          :unable #(= % :order/unable-to-reserve)
                           :awaiting-approval #(= % :order/awaiting-approval) ; (customer or ACME)
                           :approved #(= % :order/approved)  ; (customer or ACME)
                           :awaiting-fulfilment #(= % :order/awaiting-fulfilment) ; ? ACME->Provider

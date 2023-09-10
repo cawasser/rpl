@@ -1,7 +1,7 @@
 (ns mvs.service.process-customer-order
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :as rm :refer :all]
+            [mvs.read-models :as rm]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -44,7 +44,7 @@
 
       (if (not-empty resources)
         (do
-          ; 1) store the mapping from the :order/id to the :sales/request-id
+          ; 1) store the mapping from the :order/id to the :sales/request-id and :order/status to :order/
           (rm/order->sales-request-view [{:order-id (:order/id order)}
                                          (assoc order
                                            :sales/request-id request-id

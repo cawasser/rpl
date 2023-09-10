@@ -2,10 +2,7 @@
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
             [mvs.read-models :as rm]
-            [mvs.read-models :refer :all]
-            [mvs.read-model.state :as state]
-            [mvs.read-model.provider-catalog-view :as v]
-            [mvs.topics :refer :all]
+            [mvs.topics :as t]
             [mvs.helpers :refer :all]
             [mvs.specs]
             [clj-uuid :as uuid]))
@@ -39,7 +36,7 @@
 
 
 (defn- get-provider-resource-cost [provider-id resource-type]
-  (as-> (v/provider-catalogs (state/db)) v
+  (as-> (rm/provider-catalogs (rm/state)) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
@@ -74,10 +71,10 @@
 
   [resources]
 
-  (reset! available-resources-view
+  (reset! rm/available-resources-view
     (reduce (fn [m [id alloc]]
               (assoc m id (apply disj (get m id) alloc)))
-      @available-resources-view
+      @rm/available-resources-view
       resources)))
 
 ; endregion
@@ -129,23 +126,24 @@
                                   (map :resource/cost)
                                   (reduce +))]
 
-      (println "process-sales-request (a)")
-
       (if successful-allocation
-        (let []
+        (let [commitment-id (uuid/v1)]
           ; 1) commit the allocations, durably
-          (println "process-sales-request (b)")
           (commit-resources allocations)
 
-          ; 2) update the :order/status :order/reserved
+          ; TODO: 2) update the :order/status to :order/reserved
+          ;  this should probably be a side-effect of (publish! sales-commitment-topic)
           (rm/order->sales-request-view [{:order/id (:order/id request)}
-                                         {:order/event :order/reserved}])
+                                         {:order/event           :order/committed
+                                          :commitment/id         commitment-id
+                                          :commitment/resources  allocated-resources
+                                          :commitment/time-frame time-frame
+                                          :commitment/cost       total-cost}])
 
           ; 3) publish the :sales/committed event
-          (println "process-sales-request (c)")
-          (publish! sales-commitment-topic
+          (t/publish! t/sales-commitment-topic
             [{:sales/request-id (:sales/request-id request)}
-             {:commitment/id         (uuid/v1)
+             {:commitment/id         commitment-id
               :sales/request-id      (:sales/request-id request)
               :request/status        :request/successful
               :commitment/resources  allocated-resources
@@ -154,8 +152,10 @@
 
         ; OR, we failed to satisfy (allocate) all the customer needs
         (do
-          (println "process-sales-request (d)")
-          (publish! sales-failure-topic
+          (rm/order->sales-request-view [{:order/id (:order/id request)}
+                                         {:order/event :order/unable-to-reserve}])
+
+          (t/publish! t/sales-failure-topic
             [{:sales/request-id (:sales/request-id request)}
              {:failure/id       (uuid/v1)
               :sales/request-id (:sales/request-id request)
@@ -195,7 +195,7 @@
     (def provider-id "alpha")
     (def resource-type 3))
 
-  (as-> (provider-catalogs (state/db)) v
+  (as-> (rm/provider-catalogs (rm/state)) v
     (get v provider-id)
     (:resource/catalog v)
     (filter #(= resource-type (:resource/type %)) v)
