@@ -1,7 +1,7 @@
 (ns mvs.service.process-available-resources
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -30,7 +30,9 @@
                                          time-frames))}))
                         (into {}))]
 
-      (swap! available-resources-view #(merge-with into %1 %2) new-values))
+      (rm/available-resources-view [{:key :available-resource-view}
+                                    {:availability/event :availability/add
+                                     :availability/resources new-values}]))
 
     (malformed "process-available-resources" :provider/catalog catalog)))
 
@@ -44,31 +46,36 @@
 ; build available-resources-view from provider-catalogs
 (comment
   (do
-    (def provider-a [{:provider/id "alpha"} provider-alpha])
-    (def provider-b [{:provider/id "bravo"} provider-bravo])
+    (def provider-a [{:provider/id "alpha"} rm/provider-alpha])
+    (def provider-b [{:provider/id "bravo"} rm/provider-bravo])
     (def m-key {:provider/id "alpha"})
 
     (def local-available-resources (atom {})))
 
 
-  (->> (second provider-a)
-    :resource/catalog
-    (map (fn [{:keys [resource/id resource/time-frames]}]
-           {id (into #{}
-                 (map (fn [t]
-                        {t (:provider/id m-key)})
-                   time-frames))}))
-    (into {}))
+  (def new-values (->> (second provider-a)
+                    :resource/catalog
+                    (map (fn [{:keys [resource/type resource/time-frames]}]
+                           {type (into #{}
+                                   (map (fn [t]
+                                          {t (:provider/id m-key)})
+                                     time-frames))}))
+                    (into {})))
 
   (let [[m-key m-content] provider-a
-        new-values (->> m-content
-                     (map (fn [{:keys [resource/id resource/time-frames]}]
-                            {id (into #{}
+        new-vals (->> m-content
+                   :resource/catalog
+                   (map (fn [{:keys [resource/type resource/time-frames]}]
+                          {type (into #{}
                                   (map (fn [t]
                                          {t (:provider/id m-key)})
                                     time-frames))}))
-                     (into {}))]
-    (swap! local-available-resources #(merge-with into %1 %2) new-values))
+                   (into {}))]
+    (swap! local-available-resources #(merge-with into % new-vals)))
+
+  (merge-with into {} new-values)
+
+  (swap! local-available-resources #(merge-with into % new-values))
 
   (merge {} {0 #{{0 :a} {1 :a} {2 :a}}
              1 #{{0 :a} {1 :a} {2 :a}}})
@@ -87,8 +94,8 @@
   (defn process [catalog]
     (let [[m-key m-content] catalog
           new-values (->> m-content
-                       (map (fn [{:keys [resource/id resource/time-frames]}]
-                              {id time-frames}))
+                       (map (fn [{:keys [resource/type resource/time-frames]}]
+                              {type time-frames}))
                        (into {}))]
       (swap! local-available-resources #(merge-with into %1 %2) new-values)))
 
@@ -102,11 +109,13 @@
 ; test process-available-resources
 (comment
   (do
-    (reset! available-resources-view {})
-    (def provider-id (:provider/id provider-alpha)))
+    (rm/reset-available-resources-view)
+    (def provider-id (:provider/id rm/provider-alpha)))
 
   (process-available-resources [{:provider/id provider-id}
-                                provider-alpha])
+                                rm/provider-alpha])
+
+  (rm/available-resources (rm/state))
 
   ())
 

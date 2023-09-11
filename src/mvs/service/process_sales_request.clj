@@ -71,12 +71,9 @@
 
   [resources]
 
-  (reset! rm/available-resources-view
-    (reduce (fn [m [id alloc]]
-              (assoc m id (apply disj (get m id) alloc)))
-      @rm/available-resources-view
-      resources)))
-
+  (rm/available-resources-view [{:key :available-resource-view}
+                                {:availability/event :availability/remove
+                                 :availability/resources resources}]))
 ; endregion
 
 
@@ -91,7 +88,7 @@
   (reset! last-event event)
 
   ; TODO: where does process-service-request get the available-resources?
-  ;         currently using @available-resources-view
+  ;         currently using available-resources-view
 
   (println "process-sales-request"
     (:sales/request-id request) "//" (:order/needs request)
@@ -104,7 +101,7 @@
           allocations           (into {}
                                   (map (fn [{:keys [resource/type resource/time-frames]}]
                                          {type (into [] (map (fn [time-t]
-                                                               (allocate @rm/available-resources-view type time-t))
+                                                               (allocate (rm/available-resources (rm/state)) type time-t))
                                                           time-frames))})
                                     customer-actual-needs))
           allocated-resources   (mapcat (fn [[provider-id allocs]]
@@ -303,14 +300,14 @@
 
   (map (fn [{:keys [resource/type resource/time-frames]}]
          (map (fn [time-t]
-                (allocate @rm/available-resources-view type time-t))
+                (allocate (rm/available-resources (rm/state)) type time-t))
            time-frames))
     customer-actual-needs)
 
   (def allocations (into {}
                      (map (fn [{:keys [resource/type resource/time-frames]}]
                             {type (into [] (map (fn [time-t]
-                                                  (allocate @rm/available-resources-view type time-t))
+                                                  (allocate (rm/available-resources (rm/state)) type time-t))
                                              time-frames))})
                        customer-actual-needs)))
 
@@ -329,8 +326,8 @@
   ;     (disj)
   (update @local-available-resources-view 0 disj allocation)
 
-  (def old-avail @rm/available-resources-view)
-  (allocate @rm/available-resources-view 0 3)
+  (def old-avail (rm/available-resources (rm/state)))
+  (allocate (rm/available-resources (rm/state)) 0 3)
 
 
   ())
@@ -496,7 +493,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @rm/available-resources-view id time-t))
+                                                  (allocate (rm/available-resources (rm/state)) id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocated-resources (mapcat (fn [[resource-type allocs]]
@@ -520,7 +517,7 @@
 
   ; sidebar: how does (allocate...) work?
   (do
-    (def available @rm/available-resources-view)
+    (def available (rm/available-resources (rm/state)))
     (def resource-type 0)
     (def time-t 3)
     (def sorted (map (fn [[r t]] {r (sort-by first t)}) available)))
@@ -559,7 +556,7 @@
         allocations           (into {}
                                 (map (fn [{:keys [resource/id resource/time-frames]}]
                                        {id (into [] (map (fn [time-t]
-                                                           (allocate @rm/available-resources-view id time-t))
+                                                           (allocate (rm/available-resources (rm/state)) id time-t))
                                                       time-frames))})
                                   customer-actual-needs))
         allocated-resources   (mapcat (fn [[provider-id allocs]]
@@ -587,7 +584,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @rm/available-resources-view id time-t))
+                                                  (allocate (rm/available-resources (rm/state)) id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocated-resources (mapcat (fn [[provider-id allocs]]
@@ -624,7 +621,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @rm/available-resources-view id time-t))
+                                                  (allocate (rm/available-resources (rm/state)) id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocations {0 [{0 "delta"} {1 "alpha"}]
@@ -663,7 +660,7 @@
   (def allocations (into {}
                      (map (fn [{:keys [resource/type resource/time-frames]}]
                             {type (into [] (map (fn [time-t]
-                                                  (allocate @rm/available-resources-view type time-t))
+                                                  (allocate (rm/available-resources (rm/state)) type time-t))
                                              time-frames))})
                        customer-actual-needs)))
   (def allocated-resources (mapcat (fn [[provider-id allocs]]

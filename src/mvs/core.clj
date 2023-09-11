@@ -199,28 +199,6 @@
                    :_            nil})
 
 
-(defn reset-read-models
-  "reset all the read-models to their starting value (generally, empty)"
-  []
-  (pcv/reset-provider-catalog-view)
-  (scv/reset-sales-catalog-view)
-  (rmv/reset-resource-measurements-view)
-  (reset-available-resources-view)
-  ;(reset-service-catalog-view)
-  ;(reset-sales-catalog-history-view)
-  (osr/reset-order->sales-request-view)
-  (reset-committed-resources-view)
-  (reset-resource-state-view)
-  (reset-available-resources-view)
-  (reset-resource-performance-view)
-  (reset-customer-order-view)
-  (reset-customer-agreement-view))
-
-
-(defn reset-topology [topo]
-  (reset-read-models)
-  (topo/init-topology topo))
-
 
 (defn start-ui [])
 

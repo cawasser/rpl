@@ -4,13 +4,12 @@
             [mvs.dashboards :refer :all]
             [mvs.demo :refer :all]
             [mvs.helpers :refer :all]
-            [mvs.read-model.resource-measurements-view :as mv]
             [mvs.read-model.state :as state]
             [mvs.read-models :as rm :refer :all]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
             [mvs.topics :refer :all]
-            [mvs.topology :refer :all]
+            [mvs.topology :as topo]
             [mvs.demo.measurement :as measure]
             [mvs.demo.shipment :as ship]
             [clojure.spec.alpha :as spec]
@@ -47,10 +46,30 @@
 
 
 
+(defn reset-read-models
+  "reset all the read-models to their starting value (generally, empty)"
+  []
+  (state/reset)
+
+  (reset-available-resources-view)
+  ;(reset-service-catalog-view)
+  ;(reset-sales-catalog-history-view)
+  (reset-committed-resources-view)
+  (reset-resource-state-view)
+  (reset-available-resources-view)
+  (reset-resource-performance-view)
+  (reset-customer-order-view)
+  (reset-customer-agreement-view))
+
+
+(defn reset-topology [topo]
+  (reset-read-models)
+  (topo/init-topology topo))
+
 
 
 (defn step-1 []
-  (mvs/reset-topology mvs/mvs-topology))
+  (reset-topology mvs/mvs-topology))
 
 
 (defn step-2 []
@@ -101,7 +120,7 @@
 
 (comment
 
-  (view-topo mvs-topology)
+  (topo/view-topo mvs/mvs-topology)
 
   ; region ; 1) start the backend services and the UIs
   (step-1)

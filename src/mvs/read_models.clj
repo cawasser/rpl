@@ -1,6 +1,7 @@
 (ns mvs.read-models
   (:require [mvs.constants :refer :all]
             [mvs.read-model.state :as state]
+            [mvs.read-model.available-resources-view :as arv]
             [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
@@ -12,6 +13,10 @@
 
 (def state #'state/db)
 (def initial-state #'state/initial-state)
+
+(def available-resources-view #'arv/available-resources-view)
+(def available-resources #'arv/available-resources)
+(def reset-available-resources-view #'arv/reset-available-resources-view)
 
 (def order->sales-request-view #'osr/order->sales-request-view)
 (def order->sales-request #'osr/order->sales-request)
@@ -94,33 +99,15 @@
 
 
 
-;(def provider-catalog-view
-;  "summary of all the provider catalogs" (atom {}))
-;(defn reset-provider-catalog-view [] (reset! provider-catalog-view {}))
 
-(def available-resources-view
-  "denormalized arrangements of all resources available" (atom {}))
-(defn reset-available-resources-view [] (reset! available-resources-view {}))
+;(def available-resources-view
+;  "denormalized arrangements of all resources available" (atom {}))
+;(defn reset-available-resources-view [] (reset! available-resources-view {}))
 
-;(def service-catalog-view
-;  "catalog of service ACME offers to customer" (atom []))
-;(defn reset-service-catalog-view [] (reset! service-catalog-view []))
-
-;(def sales-catalog-history-view
-;  "history of all the sales catalogs of ACME ever offered to customer" (atom []))
-;(defn reset-sales-catalog-history-view [] (reset! sales-catalog-history-view []))
-
-;(def order->sales-request-view
-;  "maps order/id to :sales/request-id so we can relate all information" (atom {}))
-;(defn reset-order->sales-request-view [] (reset! order->sales-request-view {}))
 
 (def committed-resources-view
   "all the resources that ACME has committed to customers" (atom []))
 (defn reset-committed-resources-view [] (reset! committed-resources-view []))
-
-;(def resource-state-view
-;  "all the resources that ACME must monitor" (atom {}))
-;(defn reset-resource-state-view [] (reset! resource-state-view {}))
 
 (def resource-performance-view
   "track update events against resources over time"
