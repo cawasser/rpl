@@ -75,10 +75,11 @@
                                   :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
                                   :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
                                   :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
-                                  :committed-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                   :resource-health-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-health-view}
                                   :resource-performance-view    {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-performance-view}
                                   :resource-usage-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-usage-view}
+
+
 
 
                                   ; TODO: finish the conversion form atoms to app-db events

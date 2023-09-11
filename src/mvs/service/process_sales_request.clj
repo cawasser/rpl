@@ -104,7 +104,7 @@
           allocations           (into {}
                                   (map (fn [{:keys [resource/type resource/time-frames]}]
                                          {type (into [] (map (fn [time-t]
-                                                               (allocate @available-resources-view type time-t))
+                                                               (allocate @rm/available-resources-view type time-t))
                                                           time-frames))})
                                     customer-actual-needs))
           allocated-resources   (mapcat (fn [[provider-id allocs]]
@@ -117,9 +117,8 @@
           time-frame            (if all-times
                                   [(apply min all-times) (apply max all-times)]
                                   [])
-          ; TODO: map -> for?
           successful-allocation (every? false?
-                                  (mapcat (fn [[resource-type time-frames]]
+                                  (mapcat (fn [[_ time-frames]]
                                             (map nil? time-frames))
                                     allocations))
           total-cost            (->> allocated-resources
@@ -152,6 +151,8 @@
 
         ; OR, we failed to satisfy (allocate) all the customer needs
         (do
+          (println "process-sales-request (failed)" allocations)
+
           (rm/order->sales-request-view [{:order/id (:order/id request)}
                                          {:order/event :order/unable-to-reserve}])
 
@@ -192,7 +193,7 @@
 ; getting the cost for a provider's resource
 (comment
   (do
-    (def provider-id "alpha")
+    (def provider-id "alpha-googoos")
     (def resource-type 3))
 
   (as-> (rm/provider-catalogs (rm/state)) v
@@ -245,10 +246,10 @@
                                              {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}},
                                          4 #{{5 "alpha"} {4 "echo"} {0 "delta"} {2 "delta"} {0 "alpha"} {3 "bravo"}
                                              {3 "echo"} {1 "alpha"} {5 "bravo"} {1 "delta"} {2 "charlie"} {5 "charlie"}
-                                             {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}}}))
+                                             {4 "charlie"} {1 "bravo"} {4 "alpha"} {3 "alpha"} {2 "alpha"}}})
 
 
-  (def customer-actual-needs (:sales/resources request-content))
+    (def customer-actual-needs (:sales/resources request-content)))
 
   (key {5 "alpha"})
 
@@ -302,14 +303,14 @@
 
   (map (fn [{:keys [resource/type resource/time-frames]}]
          (map (fn [time-t]
-                (allocate @available-resources-view type time-t))
+                (allocate @rm/available-resources-view type time-t))
            time-frames))
     customer-actual-needs)
 
   (def allocations (into {}
                      (map (fn [{:keys [resource/type resource/time-frames]}]
                             {type (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view type time-t))
+                                                  (allocate @rm/available-resources-view type time-t))
                                              time-frames))})
                        customer-actual-needs)))
 
@@ -328,8 +329,8 @@
   ;     (disj)
   (update @local-available-resources-view 0 disj allocation)
 
-  (def old-avail @available-resources-view)
-  (allocate @available-resources-view 0 3)
+  (def old-avail @rm/available-resources-view)
+  (allocate @rm/available-resources-view 0 3)
 
 
   ())
@@ -454,26 +455,31 @@
 (comment
   (do
     (def sales-id (uuid/v1))
-    (def customer-request-id (uuid/v1))
+    (def order-id (uuid/v1))
 
     ; one that can be satisfied
     (def event [{:sales/request-id sales-id}
-                {:sales/request-id    sales-id
-                 :request/status      :request/submitted
-                 :customer/request-id customer-request-id
-                 :customer/needs      [0 1]
-                 :sales/resources     [{:resource/type 0 :resource/time-frames [0 1 2 3 4 5]}
-                                       {:resource/type 1 :resource/time-frames [0 1 2 3 4 5]}]}])
+                {:sales/request-id sales-id
+                 :request/status   :request/submitted
+                 :order/id         order-id
+                 :order/needs      [0 1]
+                 :sales/resources  [{:resource/type 0 :resource/time-frames [0 1 2 3 4 5]}
+                                    {:resource/type 1 :resource/time-frames [0 1 2 3 4 5]}]}])
 
     ; one that can NOT be satisfied
     (def event2 [{:sales/request-id sales-id}
-                 {:sales/request-id    sales-id
-                  :request/status      :request/submitted
-                  :customer/request-id customer-request-id
-                  :customer/needs      [20]
-                  :sales/resources     [{:resource/type        20
-                                         :resource/time-frames [10 11]}]}]))
+                 {:sales/request-id sales-id
+                  :request/status   :request/submitted
+                  :order/id         order-id
+                  :order/needs      [20]
+                  :sales/resources  [{:resource/type        20
+                                      :resource/time-frames [10 11]}]}]))
 
+  [:sales/request-id
+   :request/status
+   :order/id
+   :order/needs
+   :sales/resources]
 
   ; happy-path
   (spec/explain :sales/commitment
@@ -490,7 +496,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view id time-t))
+                                                  (allocate @rm/available-resources-view id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocated-resources (mapcat (fn [[resource-type allocs]]
@@ -514,7 +520,7 @@
 
   ; sidebar: how does (allocate...) work?
   (do
-    (def available @available-resources-view)
+    (def available @rm/available-resources-view)
     (def resource-type 0)
     (def time-t 3)
     (def sorted (map (fn [[r t]] {r (sort-by first t)}) available)))
@@ -541,9 +547,10 @@
             :provider/id          provider
             :resource/time-frames (into [] (map first t))
             :resource/cost        (* (count (into [] (map first t)))
-                                    (get-in (provider-catalogs (state/db)) [provider
-                                                                            resource-type
-                                                                            :resource/cost]))})))
+                                    (get-in (rm/provider-catalogs (rm/state))
+                                      [provider
+                                       resource-type
+                                       :resource/cost]))})))
 
 
 
@@ -552,7 +559,7 @@
         allocations           (into {}
                                 (map (fn [{:keys [resource/id resource/time-frames]}]
                                        {id (into [] (map (fn [time-t]
-                                                           (allocate @available-resources-view id time-t))
+                                                           (allocate @rm/available-resources-view id time-t))
                                                       time-frames))})
                                   customer-actual-needs))
         allocated-resources   (mapcat (fn [[provider-id allocs]]
@@ -566,7 +573,7 @@
                                 [(apply min all-times) (apply max all-times)]
                                 [])
         successful-allocation (every? false?
-                                (mapcat (fn [[resource-type time-frames]]
+                                (mapcat (fn [[_ time-frames]]
                                           (map nil? time-frames))
                                   allocations))]
     {:success successful-allocation :time time-frame})
@@ -580,7 +587,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view id time-t))
+                                                  (allocate @rm/available-resources-view id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocated-resources (mapcat (fn [[provider-id allocs]]
@@ -594,7 +601,7 @@
                       [(apply min all-times) (apply max all-times)]
                       []))
     (def successful-allocation (every? false?
-                                 (mapcat (fn [[resource-type time-frames]]
+                                 (mapcat (fn [[_ time-frames]]
                                            (map nil? time-frames))
                                    allocations)))
     (def total-cost (->> allocated-resources
@@ -617,7 +624,7 @@
     (def allocations (into {}
                        (map (fn [{:keys [resource/id resource/time-frames]}]
                               {id (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view id time-t))
+                                                  (allocate @rm/available-resources-view id time-t))
                                              time-frames))})
                          customer-actual-needs)))
     (def allocations {0 [{0 "delta"} {1 "alpha"}]
@@ -656,7 +663,7 @@
   (def allocations (into {}
                      (map (fn [{:keys [resource/type resource/time-frames]}]
                             {type (into [] (map (fn [time-t]
-                                                  (allocate @available-resources-view type time-t))
+                                                  (allocate @rm/available-resources-view type time-t))
                                              time-frames))})
                        customer-actual-needs)))
   (def allocated-resources (mapcat (fn [[provider-id allocs]]
@@ -671,7 +678,7 @@
                     []))
   ; TODO: map -> for?
   (def successful-allocation (every? false?
-                               (mapcat (fn [[resource-type time-frames]]
+                               (mapcat (fn [[_ time-frames]]
                                          (map nil? time-frames))
                                  allocations)))
   (def total-cost (->> allocated-resources

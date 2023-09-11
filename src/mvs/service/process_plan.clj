@@ -1,7 +1,7 @@
 (ns mvs.service.process-plan
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.specs]
@@ -16,15 +16,16 @@
   sent to the providers for fulfillment.
 
   "
-  [[{:keys [order/id] :as event-key}
+  [[event-key
     {plan-id          :plan/id
+     order-id         :order/id
      customer-id      :customer/id
      sales-request-id :sales/request-id
      resources        :commitment/resources
      :as              plan}
     :as event]]
 
-  (println "process-plan" event-key)
+  (println "process-plan" event-key "//" plan)
 
   (if (spec/valid? :sales/plan plan)
     (let [resources     (->> plan
@@ -37,7 +38,11 @@
                                      r)})
                           resources)]
 
-      ; TODO: 1) update :order/status to :order/purchased
+      ; 1) update :order/status to :order/purchased
+      (rm/order->sales-request-view [{:order/id order-id}
+                                     (assoc plan
+                                       :order/event :order/purchased
+                                       :order/providers expanded-plan)])
 
       ; 2) place orders with the providers
       (doseq [p expanded-plan]
@@ -137,6 +142,20 @@
 
 
 
+
+  ())
+
+
+;
+(comment
+  (do
+    (def id "order-id")
+    (def expanded-plan {"alpha" []
+                        "bravo" []}))
+
+  (rm/order->sales-request-view [{:order/id id}
+                                 {:order/event     :order/awaiting-fulfilment
+                                  :order-providers (map :provider/id expanded-plan)}])
 
   ())
 

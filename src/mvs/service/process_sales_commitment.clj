@@ -11,30 +11,6 @@
 (def last-event (atom []))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; region ; helpers
-;
-
-(defn- add-agreement [{agreement-id :agreement/id
-                       order-id     :order/id
-                       resources    :agreement/resources
-                       :as          agreement}]
-
-  (println "add-agreement " agreement)
-
-  (if (spec/valid? :sales/agreement agreement)
-
-    (rm/order->sales-request-view [{:order/id order-id}
-                                   {:order/event         :order/awaiting-approval
-                                    :agreement/id        agreement-id
-                                    :agreement/resources resources}])
-
-    (malformed "add-agreement" :sales/agreement agreement)))
-
-; endregion
-
-
 (defn process-sales-commitment
   "this function takes a :sales/commitment from 'planning' and enriches into
    a :sales/agreement event which we send ot the customer for their approval (or rejection)

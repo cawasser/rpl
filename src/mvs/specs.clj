@@ -132,7 +132,7 @@
 (spec/def :sales/request (spec/keys :req [:sales/request-id
                                           :request/status
                                           :order/id
-                                          :customer/id
+                                          ;:customer/id ; TODO: :sales/request should NOT need :customer/id
                                           :order/needs
                                           :sales/resources]))
 

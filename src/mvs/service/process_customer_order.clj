@@ -45,10 +45,10 @@
       (if (not-empty resources)
         (do
           ; 1) store the mapping from the :order/id to the :sales/request-id and :order/status to :order/
-          (rm/order->sales-request-view [{:order-id (:order/id order)}
+          (rm/order->sales-request-view [{:order/id (:order/id order)}
                                          (assoc order
                                            :sales/request-id request-id
-                                           :order/event :order/submitted)])
+                                           :order/event :order/accepted)])
 
           ;(swap! order->sales-request-view assoc
           ;  (:order/id order) (assoc order :sales/request-id request-id))

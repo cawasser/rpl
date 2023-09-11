@@ -29,18 +29,19 @@
       (println "the customer " status " order " order-id)
 
       (let [sales-request-id (-> order-id associated-sales-request :sales/request-id)
-            assoc-agreement  (associated-order sales-request-id)
-            resources        (:agreement/resources assoc-agreement)
-            plan-id          (uuid/v1)
-            plan             {:plan/id              plan-id
-                              :customer/id          customer-id
-                              :sales/request-id     sales-request-id
-                              :commitment/resources resources}]
+            assoc-agreement (associated-order sales-request-id)
+            resources (:agreement/resources assoc-agreement)
+            plan-id (uuid/v1)
+            plan {:plan/id              plan-id
+                  :order/id             order-id
+                  :customer/id          customer-id
+                  :sales/request-id     sales-request-id
+                  :commitment/resources resources}]
 
-        ; TODO: 1) update :order/status to :order/:awaiting-fulfilment
-        (rm/order->sales-request-view [{:plan/id plan-id}
+        ; 1) update :order/status to :order/awaiting-fulfilment
+        (rm/order->sales-request-view [{:order/id id}
                                        (assoc plan
-                                         :order/event :order/:awaiting-fulfilment)])
+                                         :order/event :order/awaiting-fulfilment)])
 
         ; 2) publish the plan
         (publish! plan-topic [{:plan/id plan-id} plan])))

@@ -1,5 +1,5 @@
 (ns mvs.demo
-  (:require [mvs.core :refer :all]
+  (:require [mvs.core :as mvs]
             [mvs.constants :refer :all]
             [mvs.dashboards :refer :all]
             [mvs.demo :refer :all]
@@ -49,6 +49,52 @@
 
 
 
+(defn step-1 []
+  (mvs/reset-topology mvs/mvs-topology))
+
+
+(defn step-2 []
+  (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-alpha])
+  (publish! provider-catalog-topic [{:provider/id "bravo-googoos"} provider-bravo])
+  (publish! provider-catalog-topic [{:provider/id "charlie-googoos"} provider-charlie])
+  (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
+  (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
+
+
+(defn step-3 []
+  (publish! customer-order-topic [{:customer/id alice :order/id alice-order-1}
+                                  {:customer/id  alice
+                                   :order/id     alice-order-1
+                                   :order/status :order/submitted
+                                   :order/needs  [0 1]}]))
+
+
+(defn step-4 []
+  (publish! customer-order-approval [{:order/id alice-order-1}
+                                     {:agreement/id (-> (rm/order->sales-request (rm/state))
+                                                      (get alice-order-1) :agreement/id)
+                                      :order/id     alice-order-1
+                                      :customer/id  alice
+                                      :order/status :order/approved}]))
+
+
+(defn step-5 []
+  (ship/providers-ship-order alice-order-1))
+
+
+(defn step-6b []
+  ; register all the resources
+  (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+    keys
+    (map (fn [id] (measure/register-resource-update id
+                    :googoo/metric #(measure/generate-integer 100))))
+    doall)
+
+  ; start the background thread to publish the reports
+  (measure/start-reporting resource-measurement-topic 5))
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; Scripting
@@ -58,21 +104,15 @@
   (view-topo mvs-topology)
 
   ; region ; 1) start the backend services and the UIs
-  (do
-    (reset-topology mvs-topology)
-    (start-ui))
+  (step-1)
+  (mvs/start-ui)
 
 
   (state/db)
   ; endregion
 
   ; region ; 2) re-load the catalog(s)
-  (do
-    (publish! provider-catalog-topic [{:provider/id "alpha-googoos"} provider-alpha])
-    (publish! provider-catalog-topic [{:provider/id "bravo-googoos"} provider-bravo])
-    (publish! provider-catalog-topic [{:provider/id "charlie-googoos"} provider-charlie])
-    (publish! provider-catalog-topic [{:provider/id "delta-googoos"} provider-delta])
-    (publish! provider-catalog-topic [{:provider/id "echo-googoos"} provider-echo]))
+  (step-2)
 
   (state/db)
 
@@ -93,11 +133,7 @@
   ; region ; 3) customers orders services
 
   ; TODO: should we drop :order/id from the key here, leaving only :customer/id?
-  (publish! customer-order-topic [{:customer/id alice :order/id alice-order-1}
-                                  {:customer/id  alice
-                                   :order/id     alice-order-1
-                                   :order/status :order/submitted
-                                   :order/needs  [0 1]}])
+  (step-3)
 
   (publish! customer-order-topic [{:customer/id bob :order/id bob-order-1}
                                   {:customer/id  bob
@@ -124,12 +160,7 @@
   ; region ; 4) customers agree to successful orders (order-1 & order-2 above) i.e., :order/approval
   ;
   ; approve alice-order-1
-  (publish! customer-order-approval [{:order/id alice-order-1}
-                                     {:agreement/id (-> (rm/order->sales-request (rm/state))
-                                                      (get alice-order-1) :agreement/id)
-                                      :order/id     alice-order-1
-                                      :customer/id  alice
-                                      :order/status :order/purchased}])
+  (step-4)
 
   ; approve bob-order-1
   (publish! customer-order-approval [{:order/id bob-order-1}
@@ -137,7 +168,7 @@
                                                       (get bob-order-1) :agreement/id)
                                       :order/id     bob-order-1
                                       :customer/id  bob
-                                      :order/status :order/purchased}])
+                                      :order/status :order/approved}])
 
   ; endregion
 
@@ -146,7 +177,7 @@
     (def order-id (-> (rm/order->sales-request (rm/state)) first second :order/id))
     (def shipment-id (uuid/v1))
     (def alpha-shipment
-      [{:provider/id    "alpha"}
+      [{:provider/id "alpha"}
        {:shipment/id    shipment-id
         :order/id       order-id
         :provider/id    "alpha"
@@ -167,7 +198,7 @@
 
   ; region ; 5) build the "real" :provider/shipments for the :customer/orders
 
-  (ship/providers-ship-order alice-order-1)
+  (step-5)
 
   (ship/providers-ship-order bob-order-1)
 
@@ -239,16 +270,7 @@
 
   ; region ; 6b) all shipped resources start reporting automatically (every 5 sends)
 
-  (do
-    ; register all the resources
-    (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
-      keys
-      (map (fn [id] (measure/register-resource-update id
-                      :googoo/metric #(measure/generate-integer 100))))
-      doall)
-
-    ; start the background thread to publish the reports
-    (measure/start-reporting resource-measurement-topic 5))
+  (step-6b)
 
   (provider-catalogs (state/db))
 
@@ -275,6 +297,63 @@
   ; endregion
 
   ())
+
+
+; through step 3 - customer orders services
+(comment
+  (do
+    (step-1)
+    (step-2)
+    (step-3))
+
+  (rm/state)
+
+  ())
+
+
+; through step 4 - customer approved agreement
+(comment
+  (do
+    (step-1)
+    (step-2)
+    (step-3)
+    (step-4))
+
+  (rm/state)
+  (rm/order->sales-request (rm/state))
+
+  ())
+
+
+; through step 5 - providers ship resources
+(comment
+  (do
+    (step-1)
+    (step-2)
+    (step-3)
+    (step-4)
+    (step-5))
+
+  (rm/state)
+
+  ())
+
+
+; through step 6b - resources start reporting metrics
+(comment
+  (do
+    (step-1)
+    (step-2)
+    (step-3)
+    (step-4)
+    (step-5)
+    (step-6b))
+
+  (rm/state)
+
+  ())
+
+
 
 
 ; endregion
