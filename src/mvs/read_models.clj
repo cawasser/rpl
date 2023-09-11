@@ -105,9 +105,9 @@
 ;(defn reset-available-resources-view [] (reset! available-resources-view {}))
 
 
-(def committed-resources-view
-  "all the resources that ACME has committed to customers" (atom []))
-(defn reset-committed-resources-view [] (reset! committed-resources-view []))
+;(def committed-resources-view
+;  "all the resources that ACME has committed to customers" (atom []))
+;(defn reset-committed-resources-view [] (reset! committed-resources-view []))
 
 (def resource-performance-view
   "track update events against resources over time"

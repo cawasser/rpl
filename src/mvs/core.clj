@@ -71,7 +71,6 @@
                                   :performance-topic            {:mvs/entity-type :mvs/topic :mvs/topic-name performance-topic}
                                   :usage-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name usage-topic}
 
-                                  :committed-resource-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name committed-resources-view}
                                   :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
                                   :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
                                   :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
@@ -137,7 +136,6 @@
                                    [:process-order-approval :customer-order-view :orders/state]
                                    [:sales-request-topic :process-sales-request :sales/request]
                                    [:available-resources-view :process-sales-request :resource/resources]
-                                   [:process-sales-request :committed-resource-view :resource/resources]
 
                                    [:sales-commitment-topic :process-sales-commitment :sales/commitment]
                                    [:sales-failure-topic :process-sales-commitment :sales/failure]
@@ -147,8 +145,6 @@
 
                                    [:process-order-approval :plan-topic :resource/plan]
                                    [:plan-topic :process-plan :resource/plan]
-
-                                   [:committed-resource-view :process-order-approval :resource/resources]
 
                                    [:process-customer-order :sales-request-topic :sales/request]
                                    [:process-sales-request :sales-commitment-topic :sales/commitment]

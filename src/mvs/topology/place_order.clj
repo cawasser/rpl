@@ -23,7 +23,6 @@
                   :sales-agreement-topic     {:mvs/entity-type :mvs/topic :mvs/topic-name #'t/sales-agreement-topic}
 
                   :available-resources-view  {:mvs/entity-type :mvs/ktable :mvs/topic-name #'v/available-resources-view}
-                  :committed-resource-view   {:mvs/entity-type :mvs/ktable :mvs/topic-name #'v/committed-resources-view}
                   :order->sales-request-view {:mvs/entity-type :mvs/ktable :mvs/topic-name #'v/order->sales-request-view}
 
                   :process-customer-order    {:mvs/entity-type :mvs/service :mvs/name #'s/process-customer-order}
@@ -40,7 +39,6 @@
                    [:process-customer-order :order->sales-request-view :sales/order->request]
                    [:sales-request-topic :process-sales-request :sales/request]
                    [:available-resources-view :process-sales-request :resource/resources]
-                   [:committed-resource-view :process-sales-request :resource/resources]
                    [:process-sales-request :sales-commitment-topic :sales/commitment]
                    [:process-sales-request :sales-failure-topic :sales/failure]
                    [:process-sales-request :committed-resource-view :resource/resources]
@@ -51,7 +49,6 @@
                    [:process-sales-commitment :order->sales-request-view :sales/order->request]
                    [:order->sales-request-view :sales-dashboard :sales/order->request]
                    [:available-resources-view :planning-dashboard :resource/resources]
-                   [:committed-resource-view :planning-dashboard :resource/resources]
                    [:sales-agreement-topic :customer-dashboard :customer/agreement]}})
 
 

@@ -54,7 +54,6 @@
   (reset-available-resources-view)
   ;(reset-service-catalog-view)
   ;(reset-sales-catalog-history-view)
-  (reset-committed-resources-view)
   (reset-resource-state-view)
   (reset-available-resources-view)
   (reset-resource-performance-view)
