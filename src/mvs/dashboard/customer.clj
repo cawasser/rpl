@@ -73,23 +73,17 @@
                                                                                         :resource/cost        5})}})
 
 
-(def order-columns [{:column/id     :order/id
-                     :column/name   "Order #"
-                     :column/render :cell/string}
-                    {:column/id     :customer/id
-                     :column/name   "Customer #"
-                     :column/render :cell/string}
-                    {:column/id     :order/status
+(def order-columns [{:column/id     :order/status
                      :column/name   "Status"
                      :column/render :cell/string}
-                    {:column/id     :sales/request-id
-                     :column/name   "Sales Request #"
-                     :column/render :cell/string}
-                    {:column/id     :agreement/id
-                     :column/name   "Agreement #"
+                    {:column/id     :order/id
+                     :column/name   "Order #"
                      :column/render :cell/string}
                     {:column/id     :order/needs
                      :column/name   "Needs"
+                     :column/render :cell/string}
+                    {:column/id     :agreement/id
+                     :column/name   "Agreement #"
                      :column/render :cell/string}])
 
 
