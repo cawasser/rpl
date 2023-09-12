@@ -110,10 +110,12 @@
    :penwidth  3})
 
 
-(defn- wrapper [func]
-  (println "wrapper" func)
+(defn- wrapper [from to func]
+  (println "wrapper" from "->" to func)
   (fn [_ _ _ event]
-    (func event)))
+    (if func
+      (func event)
+      (println "BAD TOPO !!!!!!!!!!!!!!!" from "->" to))))
 
 
 (defn view-topo [{:keys [mvs/messages mvs/entities mvs/workflow] :as topo}]
@@ -153,7 +155,7 @@
                (do
                  (println "add-watch " from " -> " to)
                  (add-watch (-> entities from :mvs/topic-name)
-                   to (wrapper (-> entities to :mvs/name))))))
+                   to (wrapper from to (-> entities to :mvs/name))))))
         workflow)))
   nil)
 

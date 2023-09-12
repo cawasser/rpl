@@ -1,10 +1,10 @@
 (ns mvs.service.process-resource-performance
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
-            [mvs.read-models :refer :all]
+            [mvs.read-models :as rm]
             [mvs.specs]
             [clj-uuid :as uuid]))
 
@@ -25,24 +25,23 @@
   "manage state materialization (reduce/fold update events over time) into a
   'ktable' (currently just an atom) and we'll consider performance over the last 'size'
   events per resource"
-  [ktable size [event-key {:keys [resource/id measurement/attribute measurement/value]
-                           :as   measurement}]]
+  [size [event-key {:keys [resource/id]
+                    :as   measurement}]]
 
-  (swap! ktable assoc-in [id attribute]
-    (conj (or (into []
-                (as-> @ktable x
-                  (get-in x [id attribute])
-                  (take-last (dec size) x)))
-            [])
-      value)))
+  (rm/resource-performance-view [{:resource/id id}
+                                 (assoc measurement
+                                   :history/size size)]))
+
 
 (defn average [coll]
-  (double (/ (reduce + coll) (count coll))))
+  (double (/ (reduce + coll) (max (count coll) 1))))
 
 
-(defn- compute-performance [ktable [event-key {:keys [resource/id measurement/attribute]}]]
-  (let [history (get-in @ktable [id attribute])]
+(defn- compute-performance [[event-key {:keys [resource/id measurement/attribute]}]]
+  (let [history (get-in (rm/resource-performance (rm/state))
+                  [id :resource/performance attribute])]
     {:resource/performance (average history)}))
+
 
 ; endregion
 
@@ -62,8 +61,8 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-      (let [_                 (update-ktable resource-performance-view history-size event)
-            perf              (compute-performance resource-performance-view event)
+      (let [_                 (update-ktable history-size event)
+            perf              (compute-performance event)
             performance-event [event-key (merge measurement perf)]]
 
         (publish! performance-topic performance-event)))
@@ -78,45 +77,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; rich comments
 ;
-
-; test the "circular buffer" and average
-(comment
-  (do
-    (def view (atom {}))
-    (def resource-id #uuid"74bb49c1-4095-11ee-84d5-efb2362fd299"))
-
-  (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id           resource-id
-                          :measurement/attribute :googoo/metric
-                          :measurement/value     10}])
-  (average (get-in @view [resource-id :googoo/metric]))     ; 10
-
-  (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id           resource-id
-                          :measurement/attribute :googoo/metric
-                          :measurement/value     20}])
-  (average (get-in @view [resource-id :googoo/metric]))     ; 13
-
-  (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id           resource-id
-                          :measurement/attribute :googoo/metric
-                          :measurement/value     30}])
-  (average (get-in @view [resource-id :googoo/metric]))     ; 20
-
-  (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id           resource-id
-                          :measurement/attribute :googoo/metric
-                          :measurement/value     40}])
-  (average (get-in @view [resource-id :googoo/metric])) 30
-
-  (update-ktable view 3 [{:resource/id resource-id}
-                         {:resource/id           resource-id
-                          :measurement/attribute :googoo/metric
-                          :measurement/value     50}])
-  (average (get-in @view [resource-id :googoo/metric]))     ; 40
-
-  ())
-
 
 ; some explorations on mutating ATOMS
 (comment
@@ -156,6 +116,55 @@
   (reset! a {:c 200})
 
 
+
+
+  ())
+
+
+
+; try updating the ktable
+(comment
+  (do
+    (def resource-id (uuid/v1))
+    (def measurement-id (uuid/v1))
+    (def attribute "dummy")
+    (def history-size 3)
+
+    (def event [{:resource/id resource-id}
+                {:resource/id           resource-id
+                 :measurement/id        measurement-id
+                 :measurement/attribute attribute
+                 :measurement/value     (rand-int 100)}]))
+
+  (update-ktable history-size [{:resource/id resource-id}
+                               {:resource/id           resource-id
+                                :measurement/id        measurement-id
+                                :measurement/attribute attribute
+                                :measurement/value     (rand-int 100)}])
+
+
+  ())
+
+
+
+; compute average
+(comment
+  (do
+    (def event []))
+
+  (def history (get-in (rm/resource-performance (rm/state))
+                 [#uuid"3b7eecc0-50e9-11ee-bfe7-91e057b1b221"
+                  :resource/performance
+                  :googoo/metric]))
+
+
+  (compute-performance (rm/resource-performance (rm/state))
+    [{:resource/id #uuid"3b7eecc0-50e9-11ee-bfe7-91e057b1b221"}
+     {:resource/id #uuid"3b7eecc0-50e9-11ee-bfe7-91e057b1b221"
+      :measurement/attribute :googoo/metric}])
+
+
+  (def measurement @last-event)
 
 
   ())

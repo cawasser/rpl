@@ -44,14 +44,11 @@
 
       (if (not-empty resources)
         (do
-          ; 1) store the mapping from the :order/id to the :sales/request-id and :order/status to :order/
+          ; 1) store the mapping from the :order/id to the :sales/request-id and :order/status to :order/accepted
           (rm/order->sales-request-view [{:order/id (:order/id order)}
                                          (assoc order
                                            :sales/request-id request-id
                                            :order/event :order/accepted)])
-
-          ;(swap! order->sales-request-view assoc
-          ;  (:order/id order) (assoc order :sales/request-id request-id))
 
           ; 2) publish the :sales/request or send the customer some kind of Error
           (publish! sales-request-topic [{:order/id (:order/id order)}

@@ -106,7 +106,6 @@
          :order/providers providers))))
 
 
-
 ; :order/fulfilled (????)
 (defmethod e/event-handler :order/fulfilled
   [{event-key                         :event/key
@@ -120,14 +119,6 @@
     #(-> %
        (dissoc :order/event)
        (assoc :order/status :order/fulfilled))))
-
-
-; :order/fulfilled (process-shipment)
-(defmethod e/event-handler :order/fulfilled
-  [{event-key                         :event/key
-    {:keys [order/event] :as content} :event/content :as params}]
-
-  (println ":order/fulfilled" event-key "//" event "//" content))
 
 
 (defn order->sales-request [context]

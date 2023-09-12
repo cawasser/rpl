@@ -8,6 +8,7 @@
             [mvs.read-models :as rm :refer :all]
             [mvs.services :refer :all]
             [mvs.specs :refer :all]
+            [mvs.topics :as t]
             [mvs.topics :refer :all]
             [mvs.topology :as topo]
             [mvs.demo.measurement :as measure]
@@ -100,6 +101,16 @@
   (ship/providers-ship-order alice-order-1))
 
 
+(defn step-6a []
+  (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+    keys
+    (map (fn [id] (measure/register-resource-update id
+                    :googoo/metric #(measure/generate-integer 100))))
+    doall)
+
+  (measure/report-once resource-measurement-topic))
+
+
 (defn step-6b []
   ; register all the resources
   (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
@@ -140,10 +151,10 @@
 
   (mvs.read-model.provider-catalog-view/provider-catalogs (state/db))
   (mvs.read-model.sales-catalog-view/sales-catalog (state/db))
-  @available-resources-view
+  (mvs.read-model.available-resources-view/available-resources (state/db))
   (mvs.read-model.order-sales-request-view/order->sales-request (state/db))
   (mvs.read-model.resource-state-view/resource-states (state/db))
-  @resource-performance-view
+  (mvs.read-model.resource-performance-view/resource-performance (state/db))
   @resource-usage-view
 
   ; endregion
@@ -261,7 +272,7 @@
                                          :measurement/attribute :googoo/metric
                                          :measurement/value     0}])
   (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
-  @resource-performance-view
+  (mvs.read-model.resource-performance-view/resource-performance @mvs.read-model.state/app-db)
   @resource-usage-view
 
   @performance-topic
@@ -308,7 +319,7 @@
 
 
   (first (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db))
-  (first @resource-performance-view)
+  (first (mvs.read-model.resource-performance-view/resource-performance @mvs.read-model.state/app-db))
 
   (double (/ (+ 58 15 70 89 0) 5))
 
@@ -353,11 +364,13 @@
     (step-5))
 
   (rm/state)
+  (rm/resource-states (rm/state))
+  (rm/resource-performance (rm/state))
 
   ())
 
 
-; through step 6b - resources start reporting metrics
+; through step 6a - resources start reporting metrics
 (comment
   (do
     (step-1)
@@ -365,9 +378,12 @@
     (step-3)
     (step-4)
     (step-5)
-    (step-6b))
+    (step-6a))
 
   (rm/state)
+  (rm/resource-performance (rm/state))
+
+  @mvs.topics/measurement-topic
 
   ())
 

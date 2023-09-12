@@ -5,6 +5,7 @@
             [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
+            [mvs.read-model.resource-performance-view :as rpv]
             [mvs.read-model.resource-state-view :as rsv]
             [mvs.read-model.sales-catalog-view :as scv]
             [clojure.spec.alpha :as spec]
@@ -33,6 +34,10 @@
 (def resource-measurements-view #'rmv/resource-measurements-view)
 (def resource-measurements #'rmv/resource-measurements)
 (def reset-resource-measurements-view #'rmv/reset-resource-measurements-view)
+
+(def resource-performance-view #'rpv/resource-performance-view)
+(def resource-performance #'rpv/resource-performance)
+(def reset-resource-performance-view #'rpv/reset-resource-performance-view)
 
 (def resource-state-view #'rsv/resource-state-view)
 (def resource-states #'rsv/resource-states)
@@ -100,20 +105,11 @@
 
 
 
-;(def available-resources-view
-;  "denormalized arrangements of all resources available" (atom {}))
-;(defn reset-available-resources-view [] (reset! available-resources-view {}))
-
-
-;(def committed-resources-view
-;  "all the resources that ACME has committed to customers" (atom []))
-;(defn reset-committed-resources-view [] (reset! committed-resources-view []))
-
-(def resource-performance-view
-  "track update events against resources over time"
-  (atom {}))
-(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
-
+;(def resource-performance-view
+;  "track update events against resources over time"
+;  (atom {}))
+;(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
+;
 (def resource-health-view
   "track heath of resources over time"
   (atom {}))
@@ -122,7 +118,7 @@
 (def resource-usage-view
   "track resources that have produces any events over time, tracking the frist only"
   (atom {}))
-(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
+(defn reset-resource-usage-view [] (reset! resource-usage-view {}))
 
 (def customer-order-view (atom {}))
 (defn reset-customer-order-view [] (reset! customer-order-view {}))

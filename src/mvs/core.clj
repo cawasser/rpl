@@ -8,6 +8,7 @@
             [mvs.read-model.order-sales-request-view :as osr]
             [mvs.read-model.provider-catalog-view :as pcv]
             [mvs.read-model.resource-measurements-view :as rmv]
+            [mvs.read-model.resource-performance-view :as rpv]
             [mvs.read-model.resource-state-view :as rsv]
             [mvs.read-model.sales-catalog-view :as scv]
             [mvs.services :refer :all]
@@ -71,12 +72,11 @@
                                   :performance-topic            {:mvs/entity-type :mvs/topic :mvs/topic-name performance-topic}
                                   :usage-topic                  {:mvs/entity-type :mvs/topic :mvs/topic-name usage-topic}
 
-                                  :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name available-resources-view}
-                                  :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-order-view}
-                                  :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name customer-agreement-view}
-                                  :resource-health-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-health-view}
-                                  :resource-performance-view    {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-performance-view}
-                                  :resource-usage-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name resource-usage-view}
+                                  :available-resources-view     {:mvs/entity-type :mvs/ktable :mvs/topic-name #'available-resources-view}
+                                  :customer-order-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name #'customer-order-view}
+                                  :customer-agreement-view      {:mvs/entity-type :mvs/ktable :mvs/topic-name #'customer-agreement-view}
+                                  :resource-health-view         {:mvs/entity-type :mvs/ktable :mvs/topic-name #'resource-health-view}
+                                  :resource-usage-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name #'resource-usage-view}
 
 
 
@@ -85,8 +85,9 @@
                                   :order->sales-request-view    {:mvs/entity-type :mvs/ktable :mvs/name #'osr/order->sales-request-view}
                                   :provider-catalog-view        {:mvs/entity-type :mvs/ktable :mvs/name #'pcv/provider-catalog-view}
                                   :resource-measurement-view    {:mvs/entity-type :mvs/ktable :mvs/name #'rmv/reset-resource-measurements-view}
-                                  :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/topic-name #'rsv/resource-state-view}
-                                  :sales-catalog-view           {:mvs/entity-type :mvs/ktable :mvs/topic-name #'scv/sales-catalog-view}
+                                  :resource-performance-view    {:mvs/entity-type :mvs/ktable :mvs/name #'rpv/resource-performance-view}
+                                  :resource-state-view          {:mvs/entity-type :mvs/ktable :mvs/name #'rsv/resource-state-view}
+                                  :sales-catalog-view           {:mvs/entity-type :mvs/ktable :mvs/name #'scv/sales-catalog-view}
 
 
 
@@ -173,7 +174,7 @@
 
                                    [:measurement-topic :process-resource-performance :resource/measurement]
                                    [:process-resource-performance :performance-topic :resource/performance]
-                                   [:performance-topic :resource-performance-view :resource/performance]
+                                   ;[:performance-topic :resource-performance-view :resource/performance] ; duplicating the data, since we add "by-hand" and then again with this link
                                    [:resource-performance-view :planning-dashboard :resource/performance-view]
                                    [:resource-performance-view :customer-support-dashboard :resource/performance-view]
                                    [:resource-performance-view :monitoring-dashboard :resource/performance-view]

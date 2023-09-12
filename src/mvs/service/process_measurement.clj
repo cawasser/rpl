@@ -1,9 +1,7 @@
 (ns mvs.service.process-measurement
   (:require [clojure.spec.alpha :as spec]
             [mvs.constants :refer :all]
-            [mvs.read-model.resource-measurements-view :as mv]
-            [mvs.read-models :refer :all]
-            [mvs.read-model.state :as state]
+            [mvs.read-models :as rm]
             [mvs.topics :refer :all]
             [mvs.helpers :refer :all]
             [mvs.read-models :refer :all]
@@ -42,13 +40,13 @@
   (if (spec/valid? :resource/measurement measurement)
     (do
       ; 1) update the resource-measurement-view with the new data
-      (mv/resource-measurements-view event)
-
-      ; 2) republish this data upstream (?)
       ;       enriched with :order/id, :customer/id, :sales/request-id, etc. which can be acquired from
       ;       @resource-state-view
+      (rm/resource-measurements-view event)
+
+      ; 2) republish this data upstream (?)
       ;
-      (let [enrichment (->> (get (mv/resource-measurements (state/db)) id)
+      (let [enrichment (->> (get (rm/resource-states (rm/state)) id)
                          ((juxt :order/id :customer/id :sales/request-id
                             :agreement/id :order/needs))
                          (zipmap [:order/id :customer/id :sales/request-id
