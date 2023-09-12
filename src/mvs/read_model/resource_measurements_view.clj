@@ -21,7 +21,9 @@
     fx/swap-context
     update-in
     [:resource-measurements-view id :resource/measurements attribute]
-    conj value))
+    #(-> %
+       (conj value)
+       vec)))
 
 
 (defn resource-measurements [context]
@@ -49,6 +51,12 @@
 (comment
   (resource-measurements (state/db))
 
+
+  (do
+    (def id #uuid"8415b201-5172-11ee-ad2e-f29ec83e6171")
+    (def rsv (mvs.read-model.resource-state-view/resource-states (state/db))))
+
+  (get rsv id)
 
 
 

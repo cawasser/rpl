@@ -64,6 +64,7 @@
 
 (defn reset-topology [topo]
   (reset-read-models)
+  (measure/reset-register-resource-update)
   (topo/init-topology topo))
 
 
@@ -123,6 +124,17 @@
   (measure/start-reporting resource-measurement-topic 5))
 
 
+; only 1 resource produces metric, makes it easier to debug the flow
+(defn step-6c []
+  ; register all the resources
+  (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
+    keys
+    (map (fn [id] (measure/register-resource-update id
+                    :googoo/metric #(measure/generate-integer 100))))
+    doall)
+
+  ; start the background thread to publish the reports
+  (measure/report-one resource-measurement-topic))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -370,6 +382,27 @@
 
   ())
 
+
+
+; through step 6c - just a single resources reports a metric one time
+(comment
+  (do
+    (step-1)
+    (step-2)
+    (step-3)
+    (step-4)
+    (step-5)
+    (step-6c))
+
+  (rm/state)
+  (rm/resource-states (rm/state))
+  (rm/resource-performance (rm/state))
+  (rm/resource-measurements (rm/state))
+  (rm/resource-usage (rm/state))
+
+  @mvs.topics/measurement-topic
+
+  ())
 
 ; through step 6a - resources start reporting metrics
 (comment

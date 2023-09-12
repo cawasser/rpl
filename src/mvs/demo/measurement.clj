@@ -49,6 +49,17 @@
   (measurements topic))
 
 
+(defn report-one
+  "picks just the very first resource in the registry
+  and generates and published just one measurement for it"
+  [topic]
+  (let [item (first @registry)
+        resource-id (first item)
+        attribute (-> item second :attribute)
+        value-fn (-> item second :value-fn)]
+    (publish-measurement topic resource-id attribute value-fn)))
+
+
 (defn register-resource-update
   "add an entry to the registry for producing a :resource/measurement event
   on a periodic schedule
@@ -63,6 +74,8 @@
     {:attribute attribute :value-fn value-fn}))
 
 
+(defn reset-register-resource-update []
+  (reset! registry {}))
 
 
 
@@ -141,6 +154,26 @@
   (start-reporting resource-measurement-topic 5)
 
   (stop-reporting)
+
+  ())
+
+
+; publish just one resource measurement
+(comment
+  (do
+    (def item (first @registry))
+    (def resource-id (first item))
+    (def attribute (-> item second :attribute))
+    (def value-fn (-> item second :value-fn)))
+
+
+  (let [item (first @registry)
+        resource-id (first item)
+        attribute (-> item second :attribute)
+        value-fn (-> item second :value-fn)]
+    (publish-measurement topic resource-id attribute value-fn))
+
+
 
   ())
 

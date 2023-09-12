@@ -20,6 +20,16 @@
 ; region ; helpers
 ;
 
+(defn average [coll]
+  (println "average" coll)
+  (double (/ (reduce + coll) (max (count coll) 1))))
+
+
+(defn- compute-performance [[event-key {:keys [resource/id measurement/attribute]}]]
+  (let [history (get-in (rm/resource-performance (rm/state))
+                  [id :resource/performance attribute :performance/history])]
+    (average history)))
+
 
 (defn- update-ktable
   "manage state materialization (reduce/fold update events over time) into a
@@ -30,17 +40,8 @@
 
   (rm/resource-performance-view [{:resource/id id}
                                  (assoc measurement
+                                   :performance/function [(str "average last " size) average]
                                    :history/size size)]))
-
-
-(defn average [coll]
-  (double (/ (reduce + coll) (max (count coll) 1))))
-
-
-(defn- compute-performance [[event-key {:keys [resource/id measurement/attribute]}]]
-  (let [history (get-in (rm/resource-performance (rm/state))
-                  [id :resource/performance attribute])]
-    {:resource/performance (average history)}))
 
 
 ; endregion
@@ -62,7 +63,7 @@
   (if (spec/valid? :resource/measurement measurement)
     (do
       (let [_                 (update-ktable history-size event)
-            perf              (compute-performance event)
+            perf              {:resource/performance (compute-performance event)}
             performance-event [event-key (merge measurement perf)]]
 
         (publish! performance-topic performance-event)))
