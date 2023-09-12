@@ -78,9 +78,6 @@
    :content {:fx/type :split-pane
              :items   [{:fx/type resource-monitoring-table
                         :width   width
-                        :height  height}
-                       {:fx/type chart-view
-                        :width   width
                         :height  height}]}})
 
 

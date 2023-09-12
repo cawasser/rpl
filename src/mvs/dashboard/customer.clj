@@ -1,7 +1,8 @@
 (ns mvs.dashboard.customer
   (:require [mvs.dashboard.ui.table :as table]
             [mvs.dashboard.ui.window :as w]
-            [mvs.read-model.sales-catalog-view :as sales-v]))
+            [mvs.read-model.sales-catalog-view :as sales-v]
+            [mvs.read-models :as rm]))
             ;[mvs.read-model.order-view :as order-v]))
 
 
@@ -93,7 +94,7 @@
 
 
 (defn- order-table [{:keys [fx/context width height]}]
-  (let [orders       dummy-orders
+  (let [orders       (rm/order->sales-request context)
         presentation (vals orders)]
     {:fx/type  :v-box
      :spacing  2
