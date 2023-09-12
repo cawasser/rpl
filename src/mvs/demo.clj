@@ -382,6 +382,7 @@
 
   (rm/state)
   (rm/resource-performance (rm/state))
+  (rm/resource-usage (rm/state))
 
   @mvs.topics/measurement-topic
 

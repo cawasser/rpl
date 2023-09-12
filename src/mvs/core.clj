@@ -167,7 +167,7 @@
 
                                    [:measurement-topic :process-resource-health :resource/measurement]
                                    [:process-resource-health :health-topic :resource/health]
-                                   [:health-topic :resource-health-view :resource/health]
+                                   ;[:health-topic :resource-health-view :resource/health]  ; duplicating the data, since we add "by-hand" and then again with this link
                                    [:resource-health-view :planning-dashboard :resource/health-view]
                                    [:resource-health-view :customer-support-dashboard :resource/health-view]
                                    [:resource-health-view :monitoring-dashboard :resource/health-view]
@@ -182,7 +182,7 @@
 
                                    [:measurement-topic :process-resource-usage :resource/measurement]
                                    [:process-resource-usage :usage-topic :resource/usage]
-                                   [:usage-topic :resource-usage-view :resource/usage]
+                                   ;[:usage-topic :resource-usage-view :resource/usage]  ; duplicating the data, since we add "by-hand" and then again with this link
                                    [:resource-usage-view :billing-dashboard :resource/usage-view]
                                    [:resource-usage-view :customer-support-dashboard :resource/usage-view]
                                    [:resource-usage-view :monitoring-dashboard :resource/usage-view]

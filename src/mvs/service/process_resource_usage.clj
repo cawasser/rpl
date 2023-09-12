@@ -16,19 +16,20 @@
 ;
 
 (defn- update-ktable
-  "manage state materialization (reduce/fold update events over time) into a
-  'ktable' (currently just an atom) and we'll track usage of resources "
-  [ktable {resource-id :resource/id
-           customer-id :customer/id
-           order-id    :order/id
-           :as         measurement}]
+  "the idea here is ot keep track of all the :resource/ids that report
+  metrics, count them , and report 'usage' as the percentage of the
+  purchased resources that have reported.
 
-  (swap! ktable assoc-in [customer-id order-id]
-    (conj (or (get-in @ktable [customer-id order-id]) #{}) resource-id)))
+  For example, if the order is for 5 resources and 3 of them hav reported
+  at least once, the SLA will be 0.60 or 60%"
+
+  [event]
+
+  (rm/resource-usage-view event))
 
 
 (defn- get-sla [ktable order-id]
-  (let [agreement (get-in @ktable [order-id :agreement/resources])]
+  (let [agreement (get-in ktable [order-id :agreement/resources])]
     (reduce (fn [acc {t :resource/time-frames}]
               (+ acc (count t)))
       0
@@ -37,7 +38,7 @@
 
 (defn- compute-usage [reports orders {customer-id :customer/id
                                       order-id    :order/id}]
-  (let [usage (or (count (get-in @reports [customer-id order-id])) 0.0)
+  (let [usage (or (count (get-in reports [customer-id order-id])) 0.0)
         sla   (or (get-sla orders order-id) 1.0)]
 
     {:customer/usage (double (/ usage sla))}))
@@ -64,9 +65,11 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-      (let [_           (update-ktable resource-usage-view measurement)
-            usage       (compute-usage resource-usage-view
-                          (rm/order->sales-request (rm/state)) measurement)
+      (let [_           (rm/resource-usage-view event)
+            usage       (compute-usage                      ; notice the implicit JOIN here
+                          (rm/resource-usage (rm/state))
+                          (rm/order->sales-request (rm/state))
+                          measurement)
             usage-event [event-key (merge measurement usage)]]
 
         ; what do we do with the result?
@@ -124,6 +127,27 @@
   (do
     (def usage (or (count (get-in @usage-view [customer-id order-id])) 0.0))
     (def sla (or (get-sla order->sales-request-view order-id) 1.0)))
+  ())
+
+
+(comment
+  (def measurement {:resource/id           #uuid"fe3f5d81-5116-11ee-9a65-f0935daac663",
+                    :order/id              #uuid"faec3ae4-5116-11ee-9a65-f0935daac663",
+                    :agreement/id          #uuid"fe3c9e60-5116-11ee-9a65-f0935daac663",
+                    :measurement/attribute :googoo/metric,
+                    :measurement/value     19,
+                    :customer/id           #uuid"faec3ae0-5116-11ee-9a65-f0935daac663",
+                    :sales/request-id      #uuid"fe35c090-5116-11ee-9a65-f0935daac663",
+                    :order/needs           [0 1],
+                    :measurement/id
+                    #uuid"16e9ba80-511a-11ee-9a65-f0935daac663"})
+
+  (compute-usage                                            ; notice the implicit JOIN here
+    (rm/resource-usage (rm/state))
+    (rm/order->sales-request (rm/state))
+    measurement)
+
+
   ())
 
 ; endregion

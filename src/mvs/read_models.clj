@@ -7,6 +7,7 @@
             [mvs.read-model.resource-measurements-view :as rmv]
             [mvs.read-model.resource-performance-view :as rpv]
             [mvs.read-model.resource-state-view :as rsv]
+            [mvs.read-model.resource-usage-view :as ruv]
             [mvs.read-model.sales-catalog-view :as scv]
             [clojure.spec.alpha :as spec]
             [clj-uuid :as uuid]))
@@ -42,6 +43,11 @@
 (def resource-state-view #'rsv/resource-state-view)
 (def resource-states #'rsv/resource-states)
 (def reset-resource-state-view #'rsv/reset-resource-state-view)
+
+(def resource-usage-view #'ruv/resource-usage-view)
+(def resource-usage #'ruv/resource-usage)
+(def reset-resource-usage-view #'ruv/reset-resource-usage-view)
+
 
 
 
@@ -101,24 +107,13 @@
 ;
 
 
+;(def resource-usage-view (atom {}))
+;(defn reset-resource-usage-view [] (reset! resource-usage-view {}))
 
-
-
-
-;(def resource-performance-view
-;  "track update events against resources over time"
-;  (atom {}))
-;(defn reset-resource-performance-view [] (reset! resource-performance-view {}))
-;
 (def resource-health-view
   "track heath of resources over time"
   (atom {}))
 (defn reset-resource-health-view [] (reset! resource-health-view {}))
-
-(def resource-usage-view
-  "track resources that have produces any events over time, tracking the frist only"
-  (atom {}))
-(defn reset-resource-usage-view [] (reset! resource-usage-view {}))
 
 (def customer-order-view (atom {}))
 (defn reset-customer-order-view [] (reset! customer-order-view {}))
