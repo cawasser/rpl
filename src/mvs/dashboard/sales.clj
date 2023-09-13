@@ -1,7 +1,7 @@
 (ns mvs.dashboard.sales
   (:require [mvs.dashboard.ui.table :as table]
             [mvs.dashboard.ui.window :as w]
-            [mvs.read-model.provider-catalog-view :as v]))
+            [mvs.read-models :as rm]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24,7 +24,7 @@
 
 (defn- provider-catalog-table [{:keys [fx/context width height]}]
   (println "provider-catalog-table" context)
-  (let [catalog      (v/provider-catalogs context)
+  (let [catalog      (rm/provider-catalogs context)
         presentation (into []
                        (for [[id {cat :resource/catalog}] catalog
                              {:keys [resource/type resource/time-frames resource/cost]} cat]
@@ -51,37 +51,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; region ; CUSTOMER ORDERS TABLE VIEW
 ;
-(def dummy-orders {#uuid"d24d9034-4b66-11ee-b095-a36a1a8bbf73" {:customer/id         #uuid"d24d9030-4b66-11ee-b095-a36a1a8bbf73",
-                                                                :order/id            #uuid"d24d9034-4b66-11ee-b095-a36a1a8bbf73",
-                                                                :order/status        :order/submitted,
-                                                                :order/needs         [0 1],
-                                                                :sales/request-id    #uuid"e2b0d090-4b66-11ee-b095-a36a1a8bbf73",
-                                                                :agreement/id        #uuid"e2b2a550-4b66-11ee-b095-a36a1a8bbf73",
-                                                                :agreement/resources '({:resource/type        0,
-                                                                                        :provider/id          "delta-googoos",
-                                                                                        :resource/time-frames [0 1],
-                                                                                        :resource/cost        10}
-                                                                                       {:resource/type        0,
-                                                                                        :provider/id          "alpha-googoos",
-                                                                                        :resource/time-frames [2 3 4],
-                                                                                        :resource/cost        30}
-                                                                                       {:resource/type        0,
-                                                                                        :provider/id          "bravo-googoos",
-                                                                                        :resource/time-frames [5],
-                                                                                        :resource/cost        5}
-                                                                                       {:resource/type        1,
-                                                                                        :provider/id          "delta-googoos",
-                                                                                        :resource/time-frames [0 1],
-                                                                                        :resource/cost        10}
-                                                                                       {:resource/type        1,
-                                                                                        :provider/id          "alpha-googoos",
-                                                                                        :resource/time-frames [2 3 4],
-                                                                                        :resource/cost        30}
-                                                                                       {:resource/type        1,
-                                                                                        :provider/id          "bravo-googoos",
-                                                                                        :resource/time-frames [5],
-                                                                                        :resource/cost        5})}})
-
 
 (def order-columns [{:column/id     :order/id
                      :column/name   "Order #"
@@ -92,20 +61,30 @@
                     {:column/id     :order/status
                      :column/name   "Status"
                      :column/render :cell/string}
+                    {:column/id         :customer/usage
+                     :column/name       "Usage"
+                     :column/render     :cell/string
+                     :column/pref-width 100}
+                    {:column/id     :order/needs
+                     :column/name   "Needs"
+                     :column/render :cell/string}
                     {:column/id     :sales/request-id
                      :column/name   "Sales Request #"
                      :column/render :cell/string}
                     {:column/id     :agreement/id
                      :column/name   "Agreement #"
-                     :column/render :cell/string}
-                    {:column/id     :order/needs
-                     :column/name   "Needs"
                      :column/render :cell/string}])
 
 
 (defn- order-table [{:keys [fx/context width height]}]
-  (let [orders       dummy-orders
-        presentation (vals orders)]
+  (let [orders       (rm/order->sales-request context)
+        usage        (rm/resource-usage context)
+        presentation (->> orders
+                       vals
+                       (map (fn [{order :order/id customer :customer/id :as p}]
+                              (assoc p
+                                :customer/usage (get-in usage
+                                                  [customer order :usage/metric])))))]
     {:fx/type  :v-box
      :spacing  2
      :children [{:fx/type :label

@@ -3,7 +3,7 @@
             [mvs.dashboard.ui.window :as w]
             [mvs.read-model.sales-catalog-view :as sales-v]
             [mvs.read-models :as rm]))
-            ;[mvs.read-model.order-view :as order-v]))
+;[mvs.read-model.order-view :as order-v]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -18,7 +18,7 @@
                              :column/render :cell/string}
                             {:column/id     :service/elements
                              :column/name   "Elements"
-                                   :column/render :cell/string}])
+                             :column/render :cell/string}])
 
 
 (defn- sales-catalog-table [{:keys [fx/context width height]}]
@@ -47,11 +47,12 @@
                      :column/render :cell/string}
                     {:column/id     :order/id
                      :column/name   "Order #"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 50}
                     {:column/id     :order/needs
                      :column/name   "Needs"
                      :column/render :cell/string}
-                    {:column/id         :usage
+                    {:column/id         :customer/usage
                      :column/name       "Usage"
                      :column/render     :cell/string
                      :column/pref-width 100}
@@ -62,7 +63,13 @@
 
 (defn- order-table [{:keys [fx/context width height]}]
   (let [orders       (rm/order->sales-request context)
-        presentation (vals orders)]
+        usage        (rm/resource-usage context)
+        presentation (->> orders
+                       vals
+                       (map (fn [{order :order/id customer :customer/id :as p}]
+                              (assoc p
+                                :customer/usage (get-in usage
+                                                  [customer order :usage/metric])))))]
     {:fx/type  :v-box
      :spacing  2
      :children [{:fx/type :label
@@ -102,7 +109,7 @@
 
   (do
     (def context (rm/state))
-    (def orders       (rm/order->sales-request context))
+    (def orders (rm/order->sales-request context))
     (def presentation (vals orders))
     (def order (-> presentation first :order/id))
     (def customer (-> presentation first :customer/id))
@@ -110,9 +117,11 @@
 
     (def usage (rm/resource-usage context)))
 
-  (->> presentation
-    (map (fn [{:keys [order :order/id customer :customer/id] :as p}]
-           (assoc p :customer/usage (get-in usage [customer order])))))
+
+  (->> orders
+    vals
+    (map (fn [{order :order/id customer :customer/id :as p}]
+           (assoc p :customer/usage (get-in usage [customer order :usage/metric])))))
 
 
 
