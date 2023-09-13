@@ -399,6 +399,7 @@
   (rm/resource-performance (rm/state))
   (rm/resource-measurements (rm/state))
   (rm/resource-usage (rm/state))
+  (rm/order->sales-request (rm/state))
 
   @mvs.topics/measurement-topic
 

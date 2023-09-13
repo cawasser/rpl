@@ -5,6 +5,8 @@
             [mvs.read-model.event-handler :as e]))
 
 
+(declare resource-usage)
+
 
 ; :resource/usage (process-resource-usage)
 ;
@@ -20,6 +22,7 @@
     {resource-id :resource/id
      customer-id :customer/id
      order-id    :order/id
+     function    :usage/function
      :as         content} :event/content :as params}]
 
   (println ":resource/usage" event-key "//" content)
@@ -27,13 +30,26 @@
   ; usage are a "time ordered" collection of values, so we can see
   ; history (materialized view)
 
-  (swap! state/app-db
-    fx/swap-context
-    update-in
-    [:resource-usage-view customer-id order-id]
-    #(-> %
-       (conj resource-id)
-       set)))
+  (let [[fn-name func] function
+        history (-> (resource-usage (state/db))
+                  (get-in [customer-id order-id :usage/history])
+                  (#(-> %
+                      (conj resource-id)
+                      set)))]
+    (swap! state/app-db
+      fx/swap-context
+      #(-> %
+         (assoc-in
+           [:resource-usage-view customer-id order-id
+            :usage/history]
+           history)
+         (assoc-in [:resource-usage-view customer-id order-id
+                    :usage/function]
+           fn-name)
+         (assoc-in
+           [:resource-usage-view customer-id order-id
+            :usage/metric]
+           (func history))))))
 
 
 (defn resource-usage [context]

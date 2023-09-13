@@ -28,20 +28,23 @@
   (rm/resource-usage-view event))
 
 
-(defn- get-sla [ktable order-id]
-  (let [agreement (get-in ktable [order-id :agreement/resources])]
-    (reduce (fn [acc {t :resource/time-frames}]
-              (+ acc (count t)))
-      0
-      agreement)))
+(defn- target [order-resources]
+  (reduce (fn [acc {t :resource/time-frames}]
+            (+ acc (count t)))
+    0
+    (:agreement/resources order-resources)))
 
 
-(defn- compute-usage [reports orders {customer-id :customer/id
-                                      order-id    :order/id}]
-  (let [usage (or (count (get-in reports [customer-id order-id])) 0.0)
-        sla   (or (get-sla orders order-id) 1.0)]
+(defn- compute-sla-compliance [order-resources resources-reporting]
+  (println "compute-sla-compliance" resources-reporting)
 
-    {:customer/usage (double (/ usage sla))}))
+  (let [usage          (or (count resources-reporting) 0.0)
+        resource-count (target order-resources)
+        target         (max resource-count 1.0)]
+
+    (println "compute-sla-compliance (b)" usage target "//" resource-count)
+
+    (double (/ usage target))))
 
 ; endregion
 
@@ -50,7 +53,7 @@
   "we will compute 'usage' as the percent of the resources the customer purchased
   vs. those that have reported a measurement event at least once.
 
-  uses a local Ktable (atom) to track the :resource/ids that have reported to-date"
+  uses resource-usage-view to track the :resource/ids that have reported to-date"
 
   [[event-key {resource-id :resource/id
                order-id    :order/id
@@ -65,12 +68,18 @@
 
   (if (spec/valid? :resource/measurement measurement)
     (do
-      (let [_           (rm/resource-usage-view event)
-            usage       (compute-usage                      ; notice the implicit JOIN here
-                          (rm/resource-usage (rm/state))
-                          (rm/order->sales-request (rm/state))
-                          measurement)
-            usage-event [event-key (merge measurement usage)]]
+      (let [order-resources (-> (rm/state)
+                              rm/order->sales-request
+                              (get order-id))
+            _               (rm/resource-usage-view [event-key
+                                                     (assoc measurement
+                                                       :usage/function ["SLA" (partial compute-sla-compliance order-resources)]
+                                                       :order-resources order-resources)])
+            usage           {:customer/usage
+                             (compute-sla-compliance        ; notice the implicit JOIN here
+                               (get-in (rm/resource-usage (rm/state)) [customer-id order-id])
+                               (get (rm/order->sales-request (rm/state)) order-id))}
+            usage-event     [event-key (merge measurement usage)]]
 
         ; what do we do with the result?
         ;

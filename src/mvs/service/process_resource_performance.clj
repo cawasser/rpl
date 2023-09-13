@@ -21,7 +21,6 @@
 ;
 
 (defn average [coll]
-  (println "average" coll)
   (double (/ (reduce + coll) (max (count coll) 1))))
 
 

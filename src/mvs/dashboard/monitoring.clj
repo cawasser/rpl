@@ -18,10 +18,6 @@
                                   {:column/id         :health
                                    :column/name       "Health"
                                    :column/render     :cell/string
-                                   :column/pref-width 100}
-                                  {:column/id         :usage
-                                   :column/name       "Usage"
-                                   :column/render     :cell/string
                                    :column/pref-width 100}])
 
 
