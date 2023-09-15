@@ -39,7 +39,11 @@
 
   io.github.nextjournal/clerk     {:mvn/version "0.8.451"}
 
-  danlentz/clj-uuid               {:mvn/version "0.1.9"}}
+  danlentz/clj-uuid               {:mvn/version "0.1.9"}
+
+  ;; https://mvnrepository.com/artifact/eu.hansolo/Medusa
+  eu.hansolo/Medusa               {:mvn/version "16.0.0"}}
+
 
  :aliases
  {:rebl {:extra-deps {

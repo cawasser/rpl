@@ -383,7 +383,6 @@
   ())
 
 
-
 ; through step 6c - just a single resources reports a metric one time
 (comment
   (do
@@ -405,7 +404,8 @@
 
   ())
 
-; through step 6a - resources start reporting metrics
+
+; through step 6a - resources report metrics ONLY ONCE!
 (comment
   (do
     (step-1)
@@ -414,6 +414,10 @@
     (step-4)
     (step-5)
     (step-6a))
+
+  (step-6b)
+
+  (measure/stop-reporting)
 
   (rm/state)
   (rm/resource-performance (rm/state))

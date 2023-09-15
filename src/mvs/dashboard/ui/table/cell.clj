@@ -1,4 +1,5 @@
-(ns mvs.dashboard.ui.table.cell)
+(ns mvs.dashboard.ui.table.cell
+  (:require [mvs.dashboard.ui.medusa-gauge :as g]))
 
 
 
@@ -28,7 +29,19 @@
                                  :data    (id x)}]}}))
 
 
+
+(defn gauge-cell [{:keys [column/id gauge/skin]}]
+  (fn [x]
+    (println "gauge-cell" id (id x))
+    {:text    ""
+     :graphic {:fx/type   g/lifecycle
+               :title     "Usage"
+               :skin-type skin
+               :value     (or (id x) 0)}}))
+
+
 (def reg {:cell/string #'string-cell
           :cell/color  #'color-cell
-          :cell/chart  #'chart-cell})
+          :cell/chart  #'chart-cell
+          :cell/gauge  #'gauge-cell})
 

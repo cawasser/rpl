@@ -44,7 +44,7 @@
 
     (println "compute-sla-compliance (b)" usage target "//" resource-count)
 
-    (double (/ usage target))))
+    (double (* (/ usage target) 100))))
 
 ; endregion
 
