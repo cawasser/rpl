@@ -112,7 +112,7 @@
   (measure/report-once resource-measurement-topic))
 
 
-(defn step-6b []
+(defn step-6b [percentage]
   ; register all the resources
   (->> (mvs.read-model.resource-state-view/resource-states @mvs.read-model.state/app-db)
     keys
@@ -121,7 +121,7 @@
     doall)
 
   ; start the background thread to publish the reports
-  (measure/start-reporting resource-measurement-topic 5))
+  (measure/start-reporting resource-measurement-topic 5 percentage))
 
 
 ; only 1 resource produces metric, makes it easier to debug the flow
@@ -376,6 +376,11 @@
     (step-4)
     (step-5))
 
+  (step-6b 40.0)
+
+  (measure/stop-reporting)
+
+
   (rm/state)
   (rm/resource-states (rm/state))
   (rm/resource-performance (rm/state))
@@ -415,7 +420,7 @@
     (step-5)
     (step-6a))
 
-  (step-6b)
+  (step-6b 40.0)
 
   (measure/stop-reporting)
 

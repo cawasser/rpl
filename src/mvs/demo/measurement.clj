@@ -22,22 +22,28 @@
       :measurement/value     (value-fn)}]))
 
 
-(defn- measurements [topic]
-  (doall
-    (map (fn [[resource-id {:keys [attribute value-fn]}]]
-           (publish-measurement topic resource-id attribute value-fn))
-      @registry)))
+(defn- measurements [topic & percentage]
+  (let [take-count (int (Math/ceil
+                          (* (count @registry)
+                            (/ (or (first percentage) 100.0) 100.0))))]
+    (doall
+      (->> @registry
+        seq
+        shuffle
+        (take take-count)
+        (map (fn [[resource-id {:keys [attribute value-fn]}]]
+               (publish-measurement topic resource-id attribute value-fn)))))))
 
 
 (defn start-reporting
   "start a thread that goes off every 'period' seconds and produces events for all
   resources in the registry, publishing them to 'topic'"
 
-  [topic period]
-  (reset! thread (Thread. (fn []
-                            (while true
-                              (measurements topic)
-                              (Thread/sleep (* 1000 period))))))
+  [topic period & percentage]
+  (reset! thread (Thread. ^Runnable (fn []
+                                      (while true
+                                        (measurements topic (first percentage))
+                                        (Thread/sleep (* 1000 period))))))
   (.start @thread))
 
 
@@ -45,8 +51,8 @@
   (.stop @thread))
 
 
-(defn report-once [topic]
-  (measurements topic))
+(defn report-once [topic & percentage]
+  (measurements topic (first percentage)))
 
 
 (defn report-one
@@ -76,6 +82,7 @@
 
 (defn reset-register-resource-update []
   (reset! registry {}))
+
 
 
 
@@ -173,6 +180,25 @@
         value-fn (-> item second :value-fn)]
     (publish-measurement topic resource-id attribute value-fn))
 
+
+
+  ())
+
+
+; take a random percentage of the items in a hash-map
+(comment
+  (do
+    (def reg {:one [] :two [] :three []})
+    (def percentage 30.0)
+    (def take-count (int (Math/ceil
+                           (* (count reg)
+                             (/ percentage 100.0))))))
+
+  (->> reg
+    seq
+    shuffle
+    (take take-count)
+    (map (fn [[k v]] {:k k :v v})))
 
 
   ())

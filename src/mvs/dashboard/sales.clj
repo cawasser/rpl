@@ -63,7 +63,8 @@
                      :column/render :cell/string}
                     {:column/id         :customer/usage
                      :column/name       "Usage"
-                     :column/render     :cell/string
+                     :column/render     :cell/gauge
+                     :gauge/skin        mvs.dashboard.ui.medusa-gauge/simple-digital
                      :column/pref-width 100}
                     {:column/id     :order/needs
                      :column/name   "Needs"
