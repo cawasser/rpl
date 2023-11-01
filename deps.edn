@@ -60,7 +60,7 @@
                                :main-opts  ["-m" "metav.release"
                                             "--without-sign"
                                             "--spit"
-                                            "--output-dir" "./src/"
+                                            "--output-dir" "./src"
                                             "--namespace" "version"
                                             "--formats" "clj"]}
 
@@ -68,9 +68,9 @@
            :version {:extra-deps {metav/metav {:git/url "https://github.com/jgrodziski/metav"
                                                :sha     "83dbd1fba42e868783a93c1e58b2a4d3c2a5055b"}}
                      :main-opts  ["-m" "metav.spit"
-                                  "--output-dir" "./src/"
-                                  "--namespace" "bh-ui.version"
-                                  "--formats" "cljs"]}}
+                                  "--output-dir" "src"
+                                  "--namespace" "version"
+                                  "--formats" "clj"]}}
 
 
 
