@@ -6,3 +6,9 @@
 /lsp/
 /.clj-kondo/
 /.clerk/
+/erl_crash.dump
+/*.key
+/*.pptx
+/*.pdf
+/*.numbers
+/*.xlsx
