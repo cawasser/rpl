@@ -54,27 +54,32 @@
 
 (def order-columns [{:column/id     :order/id
                      :column/name   "Order #"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 100}
                     {:column/id     :customer/id
                      :column/name   "Customer #"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 100}
                     {:column/id     :order/status
                      :column/name   "Status"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 100}
                     {:column/id         :customer/usage
                      :column/name       "Usage"
                      :column/render     :cell/gauge
                      :gauge/skin        mvs.dashboard.ui.medusa-gauge/simple-digital
-                     :column/pref-width 100}
+                     :column/pref-width 75}
                     {:column/id     :order/needs
                      :column/name   "Needs"
                      :column/render :cell/string}
                     {:column/id     :sales/request-id
                      :column/name   "Sales Request #"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 100}
                     {:column/id     :agreement/id
                      :column/name   "Agreement #"
-                     :column/render :cell/string}])
+                     :column/render :cell/string
+                     :column/pref-width 100}])
 
 
 (defn- order-table [{:keys [fx/context width height]}]

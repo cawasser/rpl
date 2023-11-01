@@ -212,6 +212,13 @@
                                       :customer/id  bob
                                       :order/status :order/approved}])
 
+  (publish! customer-order-approval [{:order/id carol-order-1}
+                                     {:agreement/id (-> (rm/order->sales-request (rm/state))
+                                                      (get carol-order-1) :agreement/id)
+                                      :order/id     carol-order-1
+                                      :customer/id  carol
+                                      :order/status :order/approved}])
+
   ; endregion
 
   ; region (OBE) providers ship resources for order-1
@@ -244,7 +251,7 @@
 
   (ship/providers-ship-order bob-order-1)
 
-  ; this should fail since order-3 cannot be committed...
+  ; this should fail since order-3 cannot be committed... ?????????
   (ship/providers-ship-order carol-order-1)
 
   (mvs.read-model.resource-state-view/resource-states (mvs.read-model.state/db))

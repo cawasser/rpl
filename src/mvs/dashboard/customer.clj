@@ -44,19 +44,21 @@
 
 (def order-columns [{:column/id     :order/status
                      :column/name   "Status"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 100}
                     {:column/id         :order/id
                      :column/name       "Order #"
                      :column/render     :cell/string
                      :column/pref-width 50}
                     {:column/id     :order/needs
                      :column/name   "Needs"
-                     :column/render :cell/string}
+                     :column/render :cell/string
+                     :column/pref-width 75}
                     {:column/id         :customer/usage
                      :column/name       "Usage"
                      :column/render     :cell/gauge
                      :gauge/skin        mvs.dashboard.ui.medusa-gauge/level
-                     :column/pref-width 100}
+                     :column/pref-width 75}
                     {:column/id     :agreement/id
                      :column/name   "Agreement #"
                      :column/render :cell/string}])
