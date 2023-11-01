@@ -45,12 +45,37 @@
   eu.hansolo/Medusa               {:mvn/version "16.0.0"}}
 
 
- :aliases
- {:rebl {:extra-deps {
-                      org.clojure/clojure    {:mvn/version "1.10.0"}
-                      org.clojure/core.async {:mvn/version "0.4.490"}
-                      com.cognitect/rebl     {:local/root "/Users/cawasser/Desktop/Clojure/REBL/REBL-0.9.218/REBL-0.9.218.jar"}}
-         :main-opts  ["-m" "cognitect.rebl"]}}
+ :aliases {:rebl {:extra-deps {
+                               org.clojure/clojure    {:mvn/version "1.10.0"}
+                               org.clojure/core.async {:mvn/version "0.4.490"}
+                               com.cognitect/rebl     {:local/root "/Users/cawasser/Desktop/Clojure/REBL/REBL-0.9.218/REBL-0.9.218.jar"}}
+                  :main-opts  ["-m" "cognitect.rebl"]}
+
+           ; see https://github.com/jgrodziski/metav#release
+           ; clj -M:release major (i.e., v1.1.3 -> v2.0.0)
+           ; clj -M:release minor (i.e., v1.1.3 -> v1.2.0)
+           ; clj -M:release patch (i.e., v1.1.3 -> v1.1.4)
+           :release           {:extra-deps {metav/metav {:git/url "https://github.com/jgrodziski/metav"
+                                                         :sha     "83dbd1fba42e868783a93c1e58b2a4d3c2a5055b"}}
+                               :main-opts  ["-m" "metav.release"
+                                            "--without-sign"
+                                            "--spit"
+                                            "--output-dir" "./src/"
+                                            "--namespace" "version"
+                                            "--formats" "cljs"]}
+
+           ; clj -M:version
+           :version {:extra-deps {metav/metav {:git/url "https://github.com/jgrodziski/metav"
+                                               :sha     "83dbd1fba42e868783a93c1e58b2a4d3c2a5055b"}}
+                     :main-opts  ["-m" "metav.spit"
+                                  "--output-dir" "./src/"
+                                  "--namespace" "bh-ui.version"
+                                  "--formats" "cljs"]}}
+
+
+
+
+
 
  :mvn/repos {"confluent" {:url "https://packages.confluent.io/maven/"}
              "clojars"   {:url "https://clojars.org/repo/"}
