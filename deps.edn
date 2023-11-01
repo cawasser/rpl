@@ -62,7 +62,7 @@
                                             "--spit"
                                             "--output-dir" "./src/"
                                             "--namespace" "version"
-                                            "--formats" "cljs"]}
+                                            "--formats" "clj"]}
 
            ; clj -M:version
            :version {:extra-deps {metav/metav {:git/url "https://github.com/jgrodziski/metav"
